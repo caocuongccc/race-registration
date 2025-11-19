@@ -32,7 +32,7 @@ export async function GET(req: NextRequest) {
     });
 
     // Prepare data for Excel
-    const excelData = registrations.map((r, index) => ({
+    const excelData = registrations.map((r: any, index) => ({
       STT: index + 1,
       "Số BIB": r.bibNumber || "Chưa có",
       "Họ tên": r.fullName,
