@@ -24,7 +24,7 @@ model User {
   updatedAt     DateTime  @updatedAt
   
   events        Event[]
-  
+  registrations Registration[]  // ⬅️ RELATION NÀY
   @@map("users")
 }
 
@@ -250,6 +250,10 @@ model Registration {
   
   payments                Payment[]
   emailLogs               EmailLog[]
+  
+  // Link to User account ⬅️ FIELD NÀY
+  userId                  String?
+  user                    User?     @relation(fields: [userId], references: [id])
   
   @@index([eventId, paymentStatus])
   @@index([distanceId])

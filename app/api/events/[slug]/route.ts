@@ -3,12 +3,12 @@ import { prisma } from "@/lib/prisma";
 
 export async function GET(
   req: NextRequest,
-  context: { params: Promise<{ id: string }> }
+  context: { params: Promise<{ slug: string }> }
 ) {
   try {
     const event = await prisma.event.findFirst({
       where: {
-        slug: (await context.params).id,
+        slug: (await context.params).slug,
         isPublished: true,
       },
       include: {
