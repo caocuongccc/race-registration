@@ -58,7 +58,7 @@ export async function POST(req: NextRequest) {
     // Calculate fees
     let raceFee = distance.price;
     let shirtFee = 0;
-    let shirt = null;
+    let shirt: any = null;
 
     if (body.shirtId) {
       shirt = event.shirts.find((s) => s.id === body.shirtId);
