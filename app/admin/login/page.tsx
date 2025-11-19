@@ -1,7 +1,7 @@
 // app/admin/login/page.tsx
 "use client";
 
-import { useState } from "react";
+import { Suspense, useState } from "react";
 import { signIn } from "next-auth/react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 
-export default function AdminLoginPage() {
+function AdminLoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [loading, setLoading] = useState(false);
@@ -33,7 +33,8 @@ export default function AdminLoginPage() {
         toast.error("Đăng nhập thất bại. Vui lòng kiểm tra lại thông tin.");
       } else {
         toast.success("Đăng nhập thành công!");
-        const callbackUrl = searchParams.get("callbackUrl") || "/admin/dashboard";
+        const callbackUrl =
+          searchParams.get("callbackUrl") || "/admin/dashboard";
         router.push(callbackUrl);
         router.refresh();
       }
@@ -79,7 +80,12 @@ export default function AdminLoginPage() {
               autoComplete="current-password"
             />
 
-            <Button type="submit" className="w-full" size="lg" isLoading={loading}>
+            <Button
+              type="submit"
+              className="w-full"
+              size="lg"
+              isLoading={loading}
+            >
               Đăng nhập
             </Button>
           </form>
@@ -96,5 +102,19 @@ export default function AdminLoginPage() {
         </CardContent>
       </Card>
     </div>
+  );
+}
+
+export default function AdminLoginPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+        </div>
+      }
+    >
+      <AdminLoginForm />
+    </Suspense>
   );
 }
