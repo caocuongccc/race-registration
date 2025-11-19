@@ -70,10 +70,12 @@ export async function GET(req: NextRequest) {
 
     // Auto-size columns
     const maxWidth = 50;
-    const colWidths = Object.keys(excelData[0] || {}).map((key) => {
+    const colWidths = Object.keys(excelData[0] || {}).map((key: any) => {
       const maxLen = Math.max(
         key.length,
-        ...excelData.map((row) => String(row[key as keyof typeof row]).length)
+        ...excelData.map(
+          (row: any) => String(row[key as keyof typeof row]).length
+        )
       );
       return { wch: Math.min(maxLen + 2, maxWidth) };
     });
