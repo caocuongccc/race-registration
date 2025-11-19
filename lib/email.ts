@@ -29,7 +29,7 @@ export async function sendRegistrationPendingEmail(
   const fromEmail = emailConfig?.fromEmail || process.env.FROM_EMAIL;
 
   // Generate QR attachment if needed (always attach for both modes)
-  let attachments = [];
+  let attachments: any[] = [];
 
   if (registration.qrPaymentUrl && emailConfig?.attachQrPayment) {
     attachments.push({
@@ -77,7 +77,7 @@ export async function sendPaymentConfirmedEmail(data: RegistrationEmailData) {
   const fromEmail = emailConfig?.fromEmail || process.env.FROM_EMAIL;
   console.log("From name/email:", fromName, fromEmail);
   // Attach QR checkin if enabled
-  let attachments = [];
+  let attachments: any[] = [];
 
   if (registration.qrCheckinUrl && emailConfig?.attachQrCheckin) {
     attachments.push({
