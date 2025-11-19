@@ -48,15 +48,15 @@ export async function GET(req: NextRequest) {
       _count: true,
     });
 
-    const distanceIds = revenueByDistanceRaw.map((i) => i.distanceId);
+    const distanceIds = revenueByDistanceRaw.map((i: any) => i.distanceId);
 
     const distances = await prisma.distance.findMany({
       where: { id: { in: distanceIds } },
     });
 
-    const distanceMap = new Map(distances.map((d) => [d.id, d.name]));
+    const distanceMap = new Map(distances.map((d: any) => [d.id, d.name]));
 
-    const revenueByDistance = revenueByDistanceRaw.map((i) => ({
+    const revenueByDistance = revenueByDistanceRaw.map((i: any) => ({
       name: distanceMap.get(i.distanceId) || "Unknown",
       value: i._sum.totalAmount || 0,
       count: i._count,
