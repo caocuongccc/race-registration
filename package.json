@@ -4,7 +4,6 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
     "start": "next start",
     "lint": "next lint",
     "db:generate": "prisma generate",
@@ -13,6 +12,7 @@
     "db:studio": "prisma studio",
     "db:migrate": "ts-node scripts/migrate.ts",
     "db:reset": "prisma migrate reset --force && prisma db seed",
+    "build": "prisma generate && next build",
     "postinstall": "prisma generate"
   },
   "dependencies": {
