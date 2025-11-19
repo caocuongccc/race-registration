@@ -132,7 +132,7 @@ export async function sendRacePackInfoEmails(eventId: string) {
     const batch = registrations.slice(i, i + batchSize);
 
     await Promise.all(
-      batch.map(async (registration) => {
+      batch.map(async (registration: any) => {
         try {
           await resend.emails.send({
             from: `${process.env.FROM_NAME} <${process.env.FROM_EMAIL}>`,
