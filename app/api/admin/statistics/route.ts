@@ -80,7 +80,7 @@ export async function GET(req: NextRequest) {
 
     const registrationsByDateMap = new Map<string, number>();
 
-    regsLast7Days.forEach((reg) => {
+    regsLast7Days.forEach((reg: any) => {
       const k = reg.registrationDate.toISOString().slice(0, 10);
       registrationsByDateMap.set(k, (registrationsByDateMap.get(k) || 0) + 1);
     });
@@ -107,7 +107,7 @@ export async function GET(req: NextRequest) {
     });
 
     const shirtsByCategory: Record<string, number> = {};
-    shirtGroup.forEach((s) => {
+    shirtGroup.forEach((s: any) => {
       if (s.shirtCategory) shirtsByCategory[s.shirtCategory] = s._count;
     });
 
