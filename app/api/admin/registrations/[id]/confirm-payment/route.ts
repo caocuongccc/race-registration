@@ -4,6 +4,8 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 // import { generateCheckinQR } from "@/lib/google-drive";
+import { Prisma } from "@prisma/client";
+
 import { generateCheckinQR } from "@/lib/imgbb";
 import { sendPaymentConfirmedEmail } from "@/lib/email";
 
@@ -85,35 +87,37 @@ export async function POST(
     const qrCheckinUrl = await generateCheckinQR(registrationId, bibNumber);
     console.log("Generated check-in QR URL:", qrCheckinUrl);
     // Update registration
-    const updatedRegistration = await prisma.$transaction(async (tx) => {
-      const updated = await tx.registration.update({
-        where: { id: registrationId },
-        data: {
-          paymentStatus: "PAID",
-          bibNumber: bibNumber,
-          qrCheckinUrl: qrCheckinUrl,
-          paymentDate: new Date(),
-          notes: notes || "Xác nhận thủ công bởi admin",
-        },
-        include: {
-          distance: true,
-          event: true,
-          shirt: true,
-        },
-      });
+    const updatedRegistration = await prisma.$transaction(
+      async (tx: Prisma.TransactionClient) => {
+        const updated = await tx.registration.update({
+          where: { id: registrationId },
+          data: {
+            paymentStatus: "PAID",
+            bibNumber: bibNumber,
+            qrCheckinUrl: qrCheckinUrl,
+            paymentDate: new Date(),
+            notes: notes || "Xác nhận thủ công bởi admin",
+          },
+          include: {
+            distance: true,
+            event: true,
+            shirt: true,
+          },
+        });
 
-      // Create payment record
-      await tx.payment.create({
-        data: {
-          registrationId: registrationId,
-          amount: registration.totalAmount,
-          status: "PAID",
-          paymentMethod: "manual_confirmation",
-        },
-      });
+        // Create payment record
+        await tx.payment.create({
+          data: {
+            registrationId: registrationId,
+            amount: registration.totalAmount,
+            status: "PAID",
+            paymentMethod: "manual_confirmation",
+          },
+        });
 
-      return updated;
-    });
+        return updated;
+      }
+    );
 
     // Send confirmation email
     try {
