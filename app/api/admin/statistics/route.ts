@@ -129,7 +129,7 @@ export async function GET(req: NextRequest) {
       "50+": 0,
     };
 
-    registrantsDob.forEach((reg) => {
+    registrantsDob.forEach((reg: any) => {
       if (!reg.dob) return;
       const age = now.getFullYear() - reg.dob.getFullYear();
       if (age >= 18 && age <= 29) ageGroups["18-29"]++;
