@@ -8,12 +8,6 @@ cloudinary.config({
   api_secret: process.env.CLOUDINARY_API_SECRET,
 });
 
-/**
- * Upload image to Cloudinary
- * @param file - Base64 string or file path
- * @param folder - Folder path (e.g., "events/event-123")
- * @param publicId - Custom public ID
- */
 export async function uploadToCloudinary(
   file: string,
   folder: string,
@@ -24,12 +18,19 @@ export async function uploadToCloudinary(
   secureUrl: string;
 }> {
   try {
+    console.log("Cloudinary config:", {
+      cloud_name: process.env.CLOUDINARY_CLOUD_NAME ? "✓" : "✗",
+      api_key: process.env.CLOUDINARY_API_KEY ? "✓" : "✗",
+      api_secret: process.env.CLOUDINARY_API_SECRET ? "✓" : "✗",
+      folder,
+    });
+
     const result = await cloudinary.uploader.upload(file, {
       folder: folder,
       public_id: publicId,
       resource_type: "auto",
       transformation: [
-        { width: 1200, height: 630, crop: "limit" }, // Optimize size
+        { width: 1200, height: 630, crop: "limit" },
         { quality: "auto" },
         { fetch_format: "auto" },
       ],
@@ -40,22 +41,19 @@ export async function uploadToCloudinary(
       publicId: result.public_id,
       secureUrl: result.secure_url,
     };
-  } catch (error) {
+  } catch (error: any) {
     console.error("Cloudinary upload error:", error);
-    throw new Error("Failed to upload image");
+    throw new Error(`Cloudinary upload failed: ${error.message}`);
   }
 }
 
-/**
- * Delete image from Cloudinary
- */
 export async function deleteFromCloudinary(publicId: string): Promise<void> {
   try {
     await cloudinary.uploader.destroy(publicId);
     console.log(`✅ Deleted image: ${publicId}`);
-  } catch (error) {
+  } catch (error: any) {
     console.error("Cloudinary delete error:", error);
-    throw error;
+    throw new Error(`Cloudinary delete failed: ${error.message}`);
   }
 }
 

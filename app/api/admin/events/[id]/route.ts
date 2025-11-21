@@ -51,14 +51,18 @@ export async function PUT(
     }
 
     const body = await req.json();
+    const eventId = (await context.params).id;
 
+    console.log("Updating event:", eventId, body);
+
+    // Update event with all fields including images
     const event = await prisma.event.update({
-      where: { id: (await context.params).id },
+      where: { id: eventId },
       data: {
         name: body.name,
         slug: body.slug,
         description: body.description,
-        date: new Date(body.date),
+        date: body.date ? new Date(body.date) : undefined,
         location: body.location,
         address: body.address,
         city: body.city,
@@ -66,17 +70,30 @@ export async function PUT(
         isPublished: body.isPublished,
         hasShirt: body.hasShirt,
         requireOnlinePayment: body.requireOnlinePayment,
+
+        // Bank info
         bankName: body.bankName,
         bankAccount: body.bankAccount,
         bankHolder: body.bankHolder,
         bankCode: body.bankCode,
+
+        // Contact
         hotline: body.hotline,
         emailSupport: body.emailSupport,
         facebookUrl: body.facebookUrl,
+
+        // Race pack
         racePackLocation: body.racePackLocation,
         racePackTime: body.racePackTime,
+
+        // Images - NEW
+        logoUrl: body.logoUrl,
+        bannerUrl: body.bannerUrl,
+        coverImageUrl: body.coverImageUrl,
       },
     });
+
+    console.log("Event updated successfully:", event.id);
 
     return NextResponse.json({ success: true, event });
   } catch (error) {

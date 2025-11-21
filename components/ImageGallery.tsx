@@ -1,7 +1,7 @@
-// components/ImageGallery.tsx - Enhanced version
+// components/ImageGallery.tsx
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { X, Plus, Loader2, ImageIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
@@ -28,8 +28,13 @@ export function ImageGallery({
 }: ImageGalleryProps) {
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const filteredImages = images.filter((img) => img.imageType === imageType);
+
+  const handleButtonClick = () => {
+    fileInputRef.current?.click();
+  };
 
   const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
@@ -44,11 +49,17 @@ export function ImageGallery({
 
     for (let i = 0; i < files.length; i++) {
       const file = files[i];
+
       try {
-        // Upload to Cloudinary
+        console.log(`Uploading file ${i + 1}/${totalFiles}:`, file.name);
+
+        // Step 1: Upload to Cloudinary
         const formData = new FormData();
         formData.append("file", file);
-        formData.append("folder", `events/${eventId}/${imageType}`);
+        formData.append(
+          "folder",
+          `events/${eventId}/${imageType.toLowerCase()}`
+        );
 
         const uploadRes = await fetch("/api/upload", {
           method: "POST",
@@ -56,12 +67,13 @@ export function ImageGallery({
         });
 
         const uploadResult = await uploadRes.json();
+        console.log("Upload result:", uploadResult);
 
         if (!uploadRes.ok) {
-          throw new Error(uploadResult.error);
+          throw new Error(uploadResult.error || "Upload failed");
         }
 
-        // Save to database
+        // Step 2: Save to database
         const saveRes = await fetch(`/api/admin/events/${eventId}/images`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -73,8 +85,11 @@ export function ImageGallery({
           }),
         });
 
+        const saveResult = await saveRes.json();
+        console.log("Save result:", saveResult);
+
         if (!saveRes.ok) {
-          throw new Error("Failed to save image");
+          throw new Error(saveResult.error || "Failed to save image");
         }
 
         successCount++;
@@ -82,19 +97,25 @@ export function ImageGallery({
       } catch (error: any) {
         console.error(`Failed to upload ${file.name}:`, error);
         failCount++;
+        toast.error(`Lỗi upload ${file.name}: ${error.message}`);
       }
     }
 
     setUploading(false);
     setUploadProgress(0);
 
+    // Reset input
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
+
     if (successCount > 0) {
-      toast.success(`Upload thành công ${successCount}/${totalFiles} ảnh`);
+      toast.success(`✅ Upload thành công ${successCount}/${totalFiles} ảnh`);
       onImagesChange();
     }
 
-    if (failCount > 0) {
-      toast.error(`${failCount} ảnh upload thất bại`);
+    if (failCount > 0 && successCount === 0) {
+      toast.error(`❌ Tất cả ${failCount} ảnh upload thất bại`);
     }
   };
 
@@ -102,19 +123,25 @@ export function ImageGallery({
     if (!confirm("Xóa ảnh này?")) return;
 
     try {
+      console.log("Deleting image:", imageId);
+
       const res = await fetch(
         `/api/admin/events/${eventId}/images?imageId=${imageId}`,
         { method: "DELETE" }
       );
 
+      const result = await res.json();
+      console.log("Delete result:", result);
+
       if (!res.ok) {
-        throw new Error("Failed to delete image");
+        throw new Error(result.error || "Failed to delete image");
       }
 
       toast.success("Đã xóa ảnh");
       onImagesChange();
     } catch (error: any) {
-      toast.error(error.message);
+      console.error("Delete error:", error);
+      toast.error(`Lỗi xóa ảnh: ${error.message}`);
     }
   };
 
@@ -127,37 +154,37 @@ export function ImageGallery({
             {filteredImages.length} ảnh • Có thể upload nhiều ảnh cùng lúc
           </p>
         </div>
-        <label>
-          <input
-            type="file"
-            multiple
-            accept="image/*"
-            onChange={handleUpload}
-            className="hidden"
-            disabled={uploading}
-          />
-          <Button
-            type="button"
-            size="sm"
-            disabled={uploading}
-            className="cursor-pointer"
-            asChild
-          >
-            <span>
-              {uploading ? (
-                <>
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  Đang upload {uploadProgress}%
-                </>
-              ) : (
-                <>
-                  <Plus className="w-4 h-4 mr-2" />
-                  Thêm ảnh
-                </>
-              )}
-            </span>
-          </Button>
-        </label>
+
+        {/* Hidden file input */}
+        <input
+          ref={fileInputRef}
+          type="file"
+          multiple
+          accept="image/*"
+          onChange={handleUpload}
+          className="hidden"
+          disabled={uploading}
+        />
+
+        {/* Button triggers file input */}
+        <Button
+          type="button"
+          size="sm"
+          onClick={handleButtonClick}
+          disabled={uploading}
+        >
+          {uploading ? (
+            <>
+              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+              Đang upload {uploadProgress}%
+            </>
+          ) : (
+            <>
+              <Plus className="w-4 h-4 mr-2" />
+              Thêm ảnh
+            </>
+          )}
+        </Button>
       </div>
 
       {uploading && (
@@ -221,9 +248,19 @@ export function ImageGallery({
         <div className="text-center py-12 border-2 border-dashed border-gray-300 rounded-lg bg-gray-50">
           <ImageIcon className="w-12 h-12 text-gray-400 mx-auto mb-3" />
           <p className="text-sm text-gray-600 mb-2">Chưa có ảnh nào</p>
-          <p className="text-xs text-gray-500">
+          <p className="text-xs text-gray-500 mb-3">
             Click nút "Thêm ảnh" để upload
           </p>
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            onClick={handleButtonClick}
+            disabled={uploading}
+          >
+            <Plus className="w-4 h-4 mr-2" />
+            Thêm ảnh đầu tiên
+          </Button>
         </div>
       )}
     </div>

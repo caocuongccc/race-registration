@@ -68,14 +68,18 @@ export default function EventImagesPage() {
       const res = await fetch(`/api/admin/events/${id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(formData),
+        body: JSON.stringify({
+          logoUrl: formData.logoUrl,
+          bannerUrl: formData.bannerUrl,
+          coverImageUrl: formData.coverImageUrl,
+        }),
       });
 
       if (!res.ok) throw new Error("Failed to save");
 
-      toast.success("Đã lưu thay đổi");
-    } catch (error) {
-      toast.error("Không thể lưu thay đổi");
+      toast.success("✅ Đã lưu thay đổi");
+    } catch (error: any) {
+      toast.error(`❌ Không thể lưu: ${error.message}`);
     }
   };
 
@@ -112,30 +116,30 @@ export default function EventImagesPage() {
         </Button>
       </div>
 
-      {/* Primary Images */}
+      {/* Primary Images - Compact Grid */}
       <Card>
         <CardHeader>
           <CardTitle>🖼️ Hình ảnh chính</CardTitle>
         </CardHeader>
-        <CardContent className="space-y-6">
-          <ImageUploader
-            folder={`events/${id}/cover`}
-            currentImage={formData.coverImageUrl}
-            onUploadComplete={(url, publicId) => {
-              setFormData({ ...formData, coverImageUrl: url });
-            }}
-            onRemove={() => {
-              setFormData({ ...formData, coverImageUrl: "" });
-            }}
-            label="📸 Ảnh bìa (Cover Image)"
-            aspectRatio="21/9"
-          />
+        <CardContent>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <ImageUploader
+              folder={`events/${id}/cover`}
+              currentImage={formData.coverImageUrl}
+              onUploadComplete={(url) => {
+                setFormData({ ...formData, coverImageUrl: url });
+              }}
+              onRemove={() => {
+                setFormData({ ...formData, coverImageUrl: "" });
+              }}
+              label="📸 Ảnh bìa"
+              aspectRatio="16/9"
+            />
 
-          <div className="border-t pt-6">
             <ImageUploader
               folder={`events/${id}/banner`}
               currentImage={formData.bannerUrl}
-              onUploadComplete={(url, publicId) => {
+              onUploadComplete={(url) => {
                 setFormData({ ...formData, bannerUrl: url });
               }}
               onRemove={() => {
@@ -144,13 +148,11 @@ export default function EventImagesPage() {
               label="🎨 Banner"
               aspectRatio="16/9"
             />
-          </div>
 
-          <div className="border-t pt-6">
             <ImageUploader
               folder={`events/${id}/logo`}
               currentImage={formData.logoUrl}
-              onUploadComplete={(url, publicId) => {
+              onUploadComplete={(url) => {
                 setFormData({ ...formData, logoUrl: url });
               }}
               onRemove={() => {
@@ -199,39 +201,31 @@ export default function EventImagesPage() {
         </CardContent>
       </Card>
 
-      {/* Shirt Images */}
+      {/* Shirt Images - GOM CHUNG */}
       <Card>
         <CardHeader>
-          <CardTitle>👕 Ảnh mẫu áo kỷ niệm</CardTitle>
+          <CardTitle>👕 Hình ảnh áo đấu kỷ niệm</CardTitle>
         </CardHeader>
-        <CardContent className="space-y-8">
+        <CardContent>
+          <div className="bg-blue-50 p-4 rounded-lg mb-6 border border-blue-200">
+            <p className="text-sm text-blue-900">
+              💡 <strong>Lưu ý:</strong> Upload tất cả ảnh áo vào đây (Nam, Nữ,
+              Trẻ em). Người xem sẽ thấy tất cả các mẫu trong một gallery chung.
+            </p>
+          </div>
+
+          {/* Gom tất cả ảnh áo MALE + FEMALE + KID vào 1 gallery */}
           <ImageGallery
             eventId={id!}
-            images={eventImages}
+            images={[
+              ...eventImages.filter((img) => img.imageType === "SHIRT_MALE"),
+              ...eventImages.filter((img) => img.imageType === "SHIRT_FEMALE"),
+              ...eventImages.filter((img) => img.imageType === "SHIRT_KID"),
+            ]}
             onImagesChange={loadImages}
-            imageType="SHIRT_MALE"
-            title="👔 Áo Nam"
+            imageType="SHIRT_MALE" // Dùng 1 type làm chính
+            title="👕 Tất cả mẫu áo đấu"
           />
-
-          <div className="border-t pt-8">
-            <ImageGallery
-              eventId={id!}
-              images={eventImages}
-              onImagesChange={loadImages}
-              imageType="SHIRT_FEMALE"
-              title="👗 Áo Nữ"
-            />
-          </div>
-
-          <div className="border-t pt-8">
-            <ImageGallery
-              eventId={id!}
-              images={eventImages}
-              onImagesChange={loadImages}
-              imageType="SHIRT_KID"
-              title="👶 Áo Trẻ Em"
-            />
-          </div>
         </CardContent>
       </Card>
     </div>
