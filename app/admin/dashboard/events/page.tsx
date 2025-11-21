@@ -18,6 +18,7 @@ import {
   Settings,
   CheckCircle,
   XCircle,
+  Image as ImageIcon, // ← NEW
 } from "lucide-react";
 
 interface Event {
@@ -191,29 +192,29 @@ export default function EventsPage() {
                 </div>
 
                 {/* Actions */}
-                <div className="flex gap-2 pt-3 border-t">
+                <div className="grid grid-cols-2 gap-2 pt-3 border-t">
                   <Button
                     variant="outline"
                     size="sm"
                     onClick={() =>
                       window.open(`/events/${event.slug}/register`, "_blank")
                     }
-                    className="flex-1"
                   >
                     <Eye className="w-4 h-4 mr-2" />
                     Xem
                   </Button>
+
                   <Button
                     variant="outline"
                     size="sm"
                     onClick={() =>
                       router.push(`/admin/dashboard/events/${event.id}/edit`)
                     }
-                    className="flex-1"
                   >
                     <Edit className="w-4 h-4 mr-2" />
                     Sửa
                   </Button>
+
                   <Button
                     variant="outline"
                     size="sm"
@@ -222,10 +223,22 @@ export default function EventsPage() {
                         `/admin/dashboard/registrations?eventId=${event.id}`
                       )
                     }
-                    className="flex-1"
                   >
                     <Users className="w-4 h-4 mr-2" />
                     ĐK ({event._count.registrations})
+                  </Button>
+
+                  {/* NEW: Hình ảnh Button */}
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="bg-gradient-to-r from-purple-50 to-pink-50 hover:from-purple-100 hover:to-pink-100 border-purple-200"
+                    onClick={() =>
+                      router.push(`/admin/dashboard/events/${event.id}/images`)
+                    }
+                  >
+                    <ImageIcon className="w-4 h-4 mr-2" />
+                    Hình ảnh
                   </Button>
                 </div>
               </CardContent>

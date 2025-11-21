@@ -9,6 +9,8 @@ const resend = new Resend(process.env.RESEND_API_KEY);
 interface RegistrationEmailData {
   registration: any;
   event: any;
+  isNewUser?: boolean;
+  temporaryPassword?: string;
 }
 
 /**
@@ -17,7 +19,7 @@ interface RegistrationEmailData {
 export async function sendRegistrationPendingEmail(
   data: RegistrationEmailData
 ) {
-  const { registration, event } = data;
+  const { registration, event, isNewUser, temporaryPassword } = data;
 
   // Get email config from database
   const emailConfig = await prisma.emailConfig.findUnique({
@@ -32,17 +34,20 @@ export async function sendRegistrationPendingEmail(
   let attachments: any[] = [];
 
   if (registration.qrPaymentUrl && emailConfig?.attachQrPayment) {
-    attachments.push({
-      filename: `qr-thanh-toan-${registration.id}.png`,
-      path: registration.qrPaymentUrl,
-    });
+    // If URL is from VietQR API, include as attachment
+    if (registration.qrPaymentUrl.startsWith("http")) {
+      attachments.push({
+        filename: `qr-thanh-toan-${registration.id}.png`,
+        path: registration.qrPaymentUrl,
+      });
+    }
   }
 
   try {
     await resend.emails.send({
       from: `${fromName} <${fromEmail}>`,
       to: registration.email,
-      subject: `Xác nhận đăng ký - ${event.name}`,
+      subject: `Xác nhận đăng ký ${isNewUser ? "& Thông tin tài khoản" : ""} - ${event.name}`,
       react: RegistrationPendingEmail({
         registration,
         event,
@@ -51,6 +56,8 @@ export async function sendRegistrationPendingEmail(
           accountNumber: event.bankAccount || process.env.SEPAY_ACCOUNT_NUMBER,
           accountHolder: event.bankHolder || process.env.SEPAY_BANK_HOLDER,
         },
+        isNewUser,
+        temporaryPassword,
       }),
       attachments: attachments.length > 0 ? attachments : undefined,
     });

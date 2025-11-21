@@ -2,35 +2,29 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 
+// app/api/events/route.ts
 export async function GET() {
   try {
     const events = await prisma.event.findMany({
       where: {
         isPublished: true,
-        // Accept both PUBLISHED and REGISTRATION_OPEN status
         status: {
           in: ["PUBLISHED", "REGISTRATION_OPEN"],
         },
       },
       include: {
         distances: {
-          where: {
-            isAvailable: true,
-          },
+          where: { isAvailable: true },
           select: {
             name: true,
             price: true,
             currentParticipants: true,
             maxParticipants: true,
           },
-          orderBy: {
-            sortOrder: "asc",
-          },
+          orderBy: { sortOrder: "asc" },
         },
       },
-      orderBy: {
-        date: "asc",
-      },
+      orderBy: { date: "asc" },
     });
 
     return NextResponse.json({
@@ -43,6 +37,7 @@ export async function GET() {
         location: event.location,
         logoUrl: event.logoUrl,
         bannerUrl: event.bannerUrl,
+        coverImageUrl: event.coverImageUrl, // NEW
         hasShirt: event.hasShirt,
         distances: event.distances,
       })),

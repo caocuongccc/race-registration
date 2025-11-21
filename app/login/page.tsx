@@ -35,8 +35,21 @@ export default function LoginPage() {
         );
       } else {
         toast.success("Đăng nhập thành công!");
-        // Redirect based on role (handled by middleware/session)
-        router.push("/member");
+
+        // Fetch user session to get role
+        const response = await fetch("/api/auth/session");
+        const session = await response.json();
+
+        // Redirect based on role
+        if (
+          session?.user?.role === "ADMIN" ||
+          session?.user?.role === "ORGANIZER"
+        ) {
+          router.push("/admin/dashboard");
+        } else {
+          router.push("/member");
+        }
+
         router.refresh();
       }
     } catch (error) {

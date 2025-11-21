@@ -58,6 +58,7 @@ export default function RegistrationPage() {
   const [selectedDistance, setSelectedDistance] = useState<any>(null);
   const [selectedShirt, setSelectedShirt] = useState<any>(null);
   const [availableSizes, setAvailableSizes] = useState<any[]>([]);
+  const [selectedShirtPrice, setSelectedShirtPrice] = useState(0);
 
   const {
     register,
@@ -114,14 +115,22 @@ export default function RegistrationPage() {
     setSelectedShirt(null);
   }, [watchShirtCategory, watchShirtType, eventData, setValue]);
 
+  // Update price when shirt selection changes
+  useEffect(() => {
+    if (watchShirtCategory && watchShirtType && eventData?.shirts) {
+      const shirtGroup = eventData.shirts.find(
+        (s) => s.category === watchShirtCategory && s.type === watchShirtType
+      );
+      setSelectedShirtPrice(shirtGroup?.price || 0);
+    } else {
+      setSelectedShirtPrice(0);
+    }
+  }, [watchShirtCategory, watchShirtType, eventData]);
   // Calculate total amount
   const calculateTotal = () => {
     let total = selectedDistance?.price || 0;
-    if (selectedShirt) {
-      const shirtGroup = eventData?.shirts.find(
-        (s) => s.category === watchShirtCategory && s.type === watchShirtType
-      );
-      total += shirtGroup?.price || 0;
+    if (selectedShirtPrice) {
+      total += selectedShirtPrice;
     }
     return total;
   };
@@ -169,9 +178,26 @@ export default function RegistrationPage() {
         throw new Error(result.error || "Đăng ký thất bại");
       }
 
-      toast.success(
-        "Đăng ký thành công! Vui lòng kiểm tra email để thanh toán."
-      );
+      // Show success message with account info
+      if (result.accountInfo) {
+        toast.success(
+          <div>
+            <div className="font-bold">Đăng ký thành công! 🎉</div>
+            <div className="text-sm mt-1">{result.accountInfo.message}</div>
+            <div className="text-xs mt-2 p-2 bg-blue-50 rounded">
+              📧 Thông tin đăng nhập đã được gửi đến:{" "}
+              <strong>{result.accountInfo.email}</strong>
+            </div>
+          </div>,
+          { duration: 6000 }
+        );
+      } else {
+        toast.success(
+          "Đăng ký thành công! Vui lòng kiểm tra email để thanh toán."
+        );
+      }
+
+      // Redirect to payment page
       router.push(`/registrations/${result.registration.id}/payment`);
     } catch (error: any) {
       toast.error(error.message || "Đã có lỗi xảy ra");
@@ -345,6 +371,7 @@ export default function RegistrationPage() {
                   <option value="">-- Chọn giới tính --</option>
                   <option value="MALE">Nam</option>
                   <option value="FEMALE">Nữ</option>
+                  <option value="OTHER">Khác</option>
                 </Select>
                 <Input
                   label="CCCD/CMND"
@@ -533,7 +560,7 @@ export default function RegistrationPage() {
                 {watchShirtType && availableSizes.length > 0 && (
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Size áo
+                      Size áo - Giá: {formatCurrency(selectedShirtPrice)}
                     </label>
                     <div className="grid grid-cols-5 gap-3">
                       {availableSizes.map((sizeOption) => (
@@ -543,22 +570,30 @@ export default function RegistrationPage() {
                             value={sizeOption.id}
                             disabled={!sizeOption.isAvailable}
                             {...register("shirtId")}
-                            onChange={() => setValue("shirtId", sizeOption.id)}
+                            onChange={() => {
+                              setValue("shirtId", sizeOption.id);
+                              setSelectedShirt(sizeOption);
+                            }}
                             className="sr-only peer"
                           />
                           <div
                             className={`p-4 border-2 rounded-lg text-center cursor-pointer transition-all peer-checked:border-blue-600 peer-checked:bg-blue-50 hover:border-blue-300 ${
                               !sizeOption.isAvailable
-                                ? "opacity-50 cursor-not-allowed"
+                                ? "opacity-50 cursor-not-allowed bg-gray-50"
                                 : ""
                             }`}
                           >
                             <div className="text-lg font-bold">
                               {sizeOption.size}
                             </div>
+                            <div className="text-xs text-gray-500 mt-1">
+                              Còn{" "}
+                              {sizeOption.stockQuantity -
+                                sizeOption.soldQuantity}
+                            </div>
                             {!sizeOption.isAvailable && (
-                              <div className="text-xs text-red-500 mt-1">
-                                Hết
+                              <div className="text-xs text-red-500 mt-1 font-medium">
+                                Hết hàng
                               </div>
                             )}
                           </div>
@@ -577,45 +612,64 @@ export default function RegistrationPage() {
               <CardTitle>Tổng Kết Đơn Hàng</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="space-y-2">
+              <div className="space-y-3">
                 {selectedDistance && (
-                  <div className="flex justify-between text-gray-700">
-                    <span>Phí đăng ký - {selectedDistance.name}</span>
-                    <span className="font-medium">
+                  <div className="flex justify-between items-center text-gray-700 p-3 bg-gray-50 rounded-lg">
+                    <div>
+                      <div className="font-medium">{selectedDistance.name}</div>
+                      <div className="text-xs text-gray-500">Phí đăng ký</div>
+                    </div>
+                    <span className="text-lg font-semibold text-blue-600">
                       {formatCurrency(selectedDistance.price)}
                     </span>
                   </div>
                 )}
 
-                {selectedShirt && watchShirtCategory && watchShirtType && (
-                  <div className="flex justify-between text-gray-700">
-                    <span>
-                      Áo{" "}
-                      {watchShirtCategory === "MALE"
-                        ? "Nam"
-                        : watchShirtCategory === "FEMALE"
-                          ? "Nữ"
-                          : "Trẻ Em"}{" "}
-                      -{watchShirtType === "SHORT_SLEEVE" ? " Có tay" : " 3 lỗ"}{" "}
-                      - Size {selectedShirt.size}
-                    </span>
-                    <span className="font-medium">
-                      {formatCurrency(
-                        eventData.shirts.find(
-                          (s) =>
-                            s.category === watchShirtCategory &&
-                            s.type === watchShirtType
-                        )?.price || 0
-                      )}
+                {selectedShirtPrice > 0 && (
+                  <div className="flex justify-between items-center text-gray-700 p-3 bg-purple-50 rounded-lg animate-fadeIn">
+                    <div>
+                      <div className="font-medium">
+                        Áo{" "}
+                        {watchShirtCategory === "MALE"
+                          ? "Nam"
+                          : watchShirtCategory === "FEMALE"
+                            ? "Nữ"
+                            : "Trẻ Em"}
+                        {" - "}
+                        {watchShirtType === "SHORT_SLEEVE" ? "Có tay" : "3 lỗ"}
+                        {selectedShirt?.size && ` - Size ${selectedShirt.size}`}
+                      </div>
+                      <div className="text-xs text-gray-500">Áo kỷ niệm</div>
+                    </div>
+                    <span className="text-lg font-semibold text-purple-600">
+                      {formatCurrency(selectedShirtPrice)}
                     </span>
                   </div>
                 )}
 
-                <div className="border-t pt-2 mt-2 flex justify-between text-lg font-bold text-gray-900">
-                  <span>TỔNG CỘNG:</span>
-                  <span className="text-blue-600">
-                    {formatCurrency(calculateTotal())}
-                  </span>
+                <div className="border-t-2 border-gray-200 pt-3 mt-3">
+                  <div className="flex justify-between items-center">
+                    <div>
+                      <div className="text-lg font-bold text-gray-900">
+                        TỔNG CỘNG
+                      </div>
+                      <div className="text-xs text-gray-500">
+                        {selectedShirtPrice > 0
+                          ? "Phí đăng ký + Áo"
+                          : "Phí đăng ký"}
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <div className="text-3xl font-bold text-blue-600">
+                        {formatCurrency(calculateTotal())}
+                      </div>
+                      {selectedShirtPrice > 0 && (
+                        <div className="text-xs text-gray-500">
+                          (Tiết kiệm so với mua riêng)
+                        </div>
+                      )}
+                    </div>
+                  </div>
                 </div>
               </div>
 
@@ -624,13 +678,15 @@ export default function RegistrationPage() {
                 size="lg"
                 className="w-full mt-6"
                 isLoading={submitting}
-                disabled={submitting}
+                disabled={submitting || !selectedDistance}
               >
-                Đăng ký và thanh toán
+                {submitting
+                  ? "Đang xử lý..."
+                  : `Đăng ký - ${formatCurrency(calculateTotal())}`}
               </Button>
 
               <p className="text-xs text-gray-500 text-center mt-3">
-                Sau khi bấm đăng ký, bạn sẽ nhận được email hướng dẫn thanh toán
+                💳 Sau khi đăng ký, bạn sẽ nhận email với QR Code thanh toán
               </p>
             </CardContent>
           </Card>

@@ -20,12 +20,16 @@ interface RegistrationPendingEmailProps {
     accountNumber: string;
     accountHolder: string;
   };
+  isNewUser?: boolean;
+  temporaryPassword?: string;
 }
 
 export function RegistrationPendingEmail({
   registration,
   event,
   bankInfo,
+  isNewUser,
+  temporaryPassword,
 }: RegistrationPendingEmailProps) {
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat("vi-VN", {
@@ -44,7 +48,12 @@ export function RegistrationPendingEmail({
       <Body style={main}>
         <Container style={container}>
           {event.logoUrl && (
-            <Img src={event.logoUrl} alt={event.name} width="200" style={logo} />
+            <Img
+              src={event.logoUrl}
+              alt={event.name}
+              width="200"
+              style={logo}
+            />
           )}
 
           <Text style={heading}>Xác nhận đăng ký thành công! 🎉</Text>
@@ -54,10 +63,34 @@ export function RegistrationPendingEmail({
           </Text>
 
           <Text style={paragraph}>
-            Cảm ơn bạn đã đăng ký tham gia <strong>{event.name}</strong>. 
-            Dưới đây là thông tin đăng ký của bạn:
+            Cảm ơn bạn đã đăng ký tham gia <strong>{event.name}</strong>. Dưới
+            đây là thông tin đăng ký của bạn:
           </Text>
-
+          {/* NEW: Account Information Section */}
+          {isNewUser && temporaryPassword && (
+            <Section style={accountBox}>
+              <Text style={accountTitle}>🔐 THÔNG TIN TÀI KHOẢN</Text>
+              <Text style={accountText}>
+                Chúng tôi đã tạo tài khoản để bạn theo dõi thông tin đăng ký:
+              </Text>
+              <table style={accountTable}>
+                <tbody>
+                  <tr>
+                    <td style={accountLabel}>Email đăng nhập:</td>
+                    <td style={accountValue}>{registration.email}</td>
+                  </tr>
+                  <tr>
+                    <td style={accountLabel}>Mật khẩu tạm thời:</td>
+                    <td style={accountPassword}>{temporaryPassword}</td>
+                  </tr>
+                </tbody>
+              </table>
+              <Text style={accountNote}>
+                ⚠️ Vui lòng đổi mật khẩu sau lần đăng nhập đầu tiên tại:{" "}
+                <strong>{process.env.NEXTAUTH_URL}/login</strong>
+              </Text>
+            </Section>
+          )}
           {/* Registration Info */}
           <Section style={infoBox}>
             <Text style={infoTitle}>📋 THÔNG TIN ĐĂNG KÝ</Text>
@@ -106,8 +139,8 @@ export function RegistrationPendingEmail({
                         {registration.shirtCategory === "MALE"
                           ? "Nam"
                           : registration.shirtCategory === "FEMALE"
-                          ? "Nữ"
-                          : "Trẻ em"}{" "}
+                            ? "Nữ"
+                            : "Trẻ em"}{" "}
                         -{" "}
                         {registration.shirtType === "SHORT_SLEEVE"
                           ? "Có tay"
@@ -129,12 +162,16 @@ export function RegistrationPendingEmail({
               <tbody>
                 <tr>
                   <td>Phí đăng ký {registration.distance?.name}:</td>
-                  <td style={priceCell}>{formatCurrency(registration.raceFee)}</td>
+                  <td style={priceCell}>
+                    {formatCurrency(registration.raceFee)}
+                  </td>
                 </tr>
                 {registration.shirtFee > 0 && (
                   <tr>
                     <td>Áo kỷ niệm:</td>
-                    <td style={priceCell}>{formatCurrency(registration.shirtFee)}</td>
+                    <td style={priceCell}>
+                      {formatCurrency(registration.shirtFee)}
+                    </td>
                   </tr>
                 )}
                 <tr style={totalRow}>
@@ -169,13 +206,15 @@ export function RegistrationPendingEmail({
                   <br />
                   Chủ TK: <strong>{bankInfo.accountHolder}</strong>
                   <br />
-                  Số tiền: <strong>{formatCurrency(registration.totalAmount)}</strong>
+                  Số tiền:{" "}
+                  <strong>{formatCurrency(registration.totalAmount)}</strong>
                   <br />
                   Nội dung: <strong>DK {registration.id}</strong>
                 </Text>
 
                 <Text style={warningText}>
-                  ⚠️ Vui lòng ghi CHÍNH XÁC nội dung chuyển khoản: <strong>DK {registration.id}</strong>
+                  ⚠️ Vui lòng ghi CHÍNH XÁC nội dung chuyển khoản:{" "}
+                  <strong>DK {registration.id}</strong>
                 </Text>
               </Section>
             )}
@@ -186,12 +225,13 @@ export function RegistrationPendingEmail({
             <Text style={noteTitle}>📌 LƯU Ý QUAN TRỌNG</Text>
             <ul style={noteList}>
               <li>
-                Sau khi chuyển khoản thành công, bạn sẽ nhận email xác nhận kèm số
-                BIB trong vòng 5-10 phút (nếu tự động) hoặc sau khi BTC xác nhận.
+                Sau khi chuyển khoản thành công, bạn sẽ nhận email xác nhận kèm
+                số BIB trong vòng 5-10 phút (nếu tự động) hoặc sau khi BTC xác
+                nhận.
               </li>
               <li>
-                Nếu không nhận được email, vui lòng kiểm tra hộp thư spam hoặc liên
-                hệ hotline.
+                Nếu không nhận được email, vui lòng kiểm tra hộp thư spam hoặc
+                liên hệ hotline.
               </li>
               <li>Đơn đăng ký chỉ được xác nhận khi thanh toán thành công.</li>
               <li>
@@ -391,4 +431,67 @@ const footer = {
   color: "#6b7280",
   textAlign: "center" as const,
   margin: "20px 0",
+};
+
+// Add new styles
+const accountBox = {
+  backgroundColor: "#eff6ff",
+  padding: "20px",
+  borderRadius: "8px",
+  margin: "20px 0",
+  border: "2px solid #3b82f6",
+};
+
+const accountTitle = {
+  fontSize: "18px",
+  fontWeight: "bold" as const,
+  color: "#1e40af",
+  margin: "0 0 12px",
+  textAlign: "center" as const,
+};
+
+const accountText = {
+  fontSize: "14px",
+  color: "#374151",
+  margin: "0 0 16px",
+  textAlign: "center" as const,
+};
+
+const accountTable = {
+  width: "100%",
+  backgroundColor: "#ffffff",
+  borderRadius: "6px",
+  padding: "16px",
+};
+
+const accountLabel = {
+  fontSize: "14px",
+  color: "#6b7280",
+  padding: "8px 0",
+};
+
+const accountValue = {
+  fontSize: "14px",
+  color: "#111827",
+  fontWeight: "600" as const,
+  padding: "8px 0",
+};
+
+const accountPassword = {
+  fontSize: "18px",
+  color: "#2563eb",
+  fontWeight: "bold" as const,
+  fontFamily: "monospace",
+  padding: "8px 0",
+  letterSpacing: "2px",
+};
+
+const accountNote = {
+  fontSize: "13px",
+  color: "#dc2626",
+  backgroundColor: "#fef2f2",
+  padding: "12px",
+  borderRadius: "6px",
+  marginTop: "12px",
+  border: "1px solid #fca5a5",
 };

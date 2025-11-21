@@ -105,23 +105,23 @@ export async function generateAndUploadQR(
  * Generate Payment QR Code
  * Format: BankCode|AccountNumber|Amount|Content
  */
-export async function generatePaymentQR(
-  registrationId: string,
-  amount: number
-): Promise<string> {
-  const bankCode = process.env.SEPAY_BANK_CODE || "MB";
-  const accountNumber = process.env.SEPAY_ACCOUNT_NUMBER || "0123456789";
-  const content = `DK ${registrationId}`;
+// export async function generatePaymentQR(
+//   registrationId: string,
+//   amount: number
+// ): Promise<string> {
+//   const bankCode = process.env.SEPAY_BANK_CODE || "MB";
+//   const accountNumber = process.env.SEPAY_ACCOUNT_NUMBER || "0123456789";
+//   const content = `DK ${registrationId}`;
 
-  // VietQR format
-  const qrData = `${bankCode}|${accountNumber}|${amount}|${content}`;
+//   // VietQR format
+//   const qrData = `${bankCode}|${accountNumber}|${amount}|${content}`;
 
-  console.log(
-    `Generating payment QR for registration ${registrationId}, amount: ${amount}`
-  );
+//   console.log(
+//     `Generating payment QR for registration ${registrationId}, amount: ${amount}`
+//   );
 
-  return await generateAndUploadQR(qrData, `payment-qr-${registrationId}`);
-}
+//   return await generateAndUploadQR(qrData, `payment-qr-${registrationId}`);
+// }
 
 /**
  * Generate Check-in QR Code
@@ -141,4 +141,137 @@ export async function generateCheckinQR(
   console.log(`Generating checkin QR for BIB ${bibNumber}`);
 
   return await generateAndUploadQR(qrData, `checkin-qr-${bibNumber}`);
+}
+// /**
+//  * Generate Payment QR Code theo chuẩn VietQR/NAPAS
+//  * Format: 00020101021238570010A00000072701270006970436011201234567890208QRIBFTTA530370454061000005802VN62150811DK ABC1236304XXXX
+//  */
+// export async function generatePaymentQR(
+//   registrationId: string,
+//   amount: number
+// ): Promise<string> {
+//   const bankCode = process.env.SEPAY_BANK_CODE || "970436"; // MB Bank BIN
+//   const accountNumber = process.env.SEPAY_ACCOUNT_NUMBER || "0123456789";
+//   const content = `DK ${registrationId}`;
+
+//   // VietQR chuẩn theo EMVCo Specification
+//   const vietQRData = generateVietQRString({
+//     bankBIN: bankCode,
+//     accountNumber: accountNumber,
+//     amount: amount,
+//     description: content,
+//   });
+
+//   console.log(
+//     `Generating VietQR payment for registration ${registrationId}, amount: ${amount}`
+//   );
+//   console.log(`QR Data: ${vietQRData}`);
+
+//   return await generateAndUploadQR(vietQRData, `payment-qr-${registrationId}`);
+// }
+
+/**
+ * Generate VietQR using VietQR API (Recommended)
+ */
+export async function generatePaymentQR(
+  registrationId: string,
+  amount: number
+): Promise<string> {
+  const accountNo = process.env.SEPAY_ACCOUNT_NUMBER || "0123456789";
+  const accountName = process.env.SEPAY_BANK_HOLDER || "NGUYEN VAN A";
+  const bankId = process.env.SEPAY_BANK_CODE || "MB"; // Mã ngân hàng (MB, VCB, TCB...)
+  const template = "compact"; // compact, compact2, qr_only, print
+  const description = `DK ${registrationId}`;
+
+  // VietQR API
+  const vietqrUrl = `https://img.vietqr.io/image/${bankId}-${accountNo}-${template}.png?amount=${amount}&addInfo=${encodeURIComponent(description)}&accountName=${encodeURIComponent(accountName)}`;
+
+  console.log(`Generated VietQR URL: ${vietqrUrl}`);
+
+  // Return URL directly (no need to upload)
+  return vietqrUrl;
+}
+/**
+ * Generate VietQR string theo chuẩn EMVCo
+ */
+function generateVietQRString(params: {
+  bankBIN: string;
+  accountNumber: string;
+  amount: number;
+  description: string;
+}): string {
+  const { bankBIN, accountNumber, amount, description } = params;
+
+  // Format theo EMVCo QR Code Specification
+  const payload = [
+    { id: "00", value: "01" }, // Payload Format Indicator
+    { id: "01", value: "12" }, // Point of Initiation Method (12 = QR Static)
+    {
+      // Merchant Account Information
+      id: "38",
+      value: [
+        { id: "00", value: "A000000727" }, // Guid
+        { id: "01", value: bankBIN }, // Bank BIN
+        { id: "02", value: accountNumber }, // Account Number
+      ]
+        .map(
+          (item) =>
+            `${item.id}${String(item.value.length).padStart(2, "0")}${item.value}`
+        )
+        .join(""),
+    },
+    { id: "53", value: "704" }, // Currency Code (704 = VND)
+    { id: "54", value: String(amount) }, // Transaction Amount
+    { id: "58", value: "VN" }, // Country Code
+    {
+      // Additional Data
+      id: "62",
+      value: [{ id: "08", value: description }]
+        .map(
+          (item) =>
+            `${item.id}${String(item.value.length).padStart(2, "0")}${item.value}`
+        )
+        .join(""),
+    },
+  ];
+
+  // Build QR string
+  let qrString = payload
+    .map(
+      (item) =>
+        `${item.id}${String(item.value.length).padStart(2, "0")}${item.value}`
+    )
+    .join("");
+
+  // Add CRC (placeholder, tính sau)
+  qrString += "6304";
+
+  // Calculate CRC16
+  const crc = calculateCRC16(qrString);
+  qrString += crc;
+
+  return qrString;
+}
+
+/**
+ * Calculate CRC16-CCITT checksum
+ */
+function calculateCRC16(data: string): string {
+  let crc = 0xffff;
+  const polynomial = 0x1021;
+
+  for (let i = 0; i < data.length; i++) {
+    crc ^= data.charCodeAt(i) << 8;
+
+    for (let j = 0; j < 8; j++) {
+      if ((crc & 0x8000) !== 0) {
+        crc = (crc << 1) ^ polynomial;
+      } else {
+        crc = crc << 1;
+      }
+    }
+  }
+
+  crc = crc & 0xffff;
+  return crc.toString(16).toUpperCase().padStart(4, "0");
 }

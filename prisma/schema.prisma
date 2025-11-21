@@ -71,7 +71,8 @@ model Event {
   // Media
   logoUrl             String?
   bannerUrl           String?
-  
+  coverImageUrl       String?     // NEW: Cover image for event detail page
+
   // Shirt configuration
   hasShirt            Boolean     @default(false)
   
@@ -94,8 +95,41 @@ model Event {
   shirts              EventShirt[]
   registrations       Registration[]
   emailConfig         EmailConfig?
-  
+  // Image gallery
+  eventImages         EventImage[]
+
   @@map("events")
+}
+
+// NEW: Event Image Gallery
+model EventImage {
+  id                  String    @id @default(cuid())
+  eventId             String
+  event               Event     @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  
+  imageUrl            String
+  cloudinaryPublicId  String?   // For deletion
+  imageType           EventImageType // banner, gallery, shirt_preview
+  title               String?
+  description         String?
+  sortOrder           Int       @default(0)
+  
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+  
+  @@index([eventId, imageType])
+  @@map("event_images")
+}
+
+enum EventImageType {
+  BANNER              // Banner image
+  COVER               // Cover image (hero)
+  GALLERY             // Event gallery
+  SHIRT_MALE          // Shirt preview - Male
+  SHIRT_FEMALE        // Shirt preview - Female
+  SHIRT_KID           // Shirt preview - Kid
+  VENUE               // Venue photos
+  COURSE_MAP          // Course map
 }
 
 enum EventStatus {
@@ -158,7 +192,9 @@ model EventShirt {
   updatedAt         DateTime        @updatedAt
   
   registrations     Registration[]
-  
+  previewImageUrl     String?   // NEW: Preview image for shirt
+  cloudinaryPublicId  String?
+
   @@unique([eventId, category, type, size])
   @@index([eventId, isAvailable])
   @@map("event_shirts")

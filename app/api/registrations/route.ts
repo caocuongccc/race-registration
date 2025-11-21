@@ -35,7 +35,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Check distance exists and available
+    // Check distance
     const distance = event.distances.find((d) => d.id === body.distanceId);
     if (!distance || !distance.isAvailable) {
       return NextResponse.json(
@@ -44,7 +44,6 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Check distance capacity
     if (
       distance.maxParticipants &&
       distance.currentParticipants >= distance.maxParticipants
@@ -69,7 +68,6 @@ export async function POST(req: NextRequest) {
         );
       }
 
-      // Check shirt stock
       if (shirt.soldQuantity >= shirt.stockQuantity) {
         return NextResponse.json({ error: "Áo đã hết hàng" }, { status: 400 });
       }
@@ -79,20 +77,26 @@ export async function POST(req: NextRequest) {
 
     const totalAmount = raceFee + shirtFee;
 
-    // Check if user already exists with this email
+    // Check if user exists
     let user = await prisma.user.findUnique({
       where: { email: body.email },
     });
 
+    let isNewUser = false;
+    let temporaryPassword = "";
+
     // Create user account if not exists
     if (!user) {
       const bcrypt = require("bcryptjs");
-      // Generate random password (will be sent via email)
-      const randomPassword =
-        Math.random().toString(36).slice(-8) +
-        Math.random().toString(36).slice(-8).toUpperCase() +
-        "!";
-      const hashedPassword = await bcrypt.hash(randomPassword, 10);
+
+      // Generate random password
+      temporaryPassword =
+        Math.random().toString(36).slice(-4).toUpperCase() +
+        Math.random().toString(36).slice(-4) +
+        "!@" +
+        Math.floor(Math.random() * 100);
+
+      const hashedPassword = await bcrypt.hash(temporaryPassword, 10);
 
       user = await prisma.user.create({
         data: {
@@ -103,20 +107,18 @@ export async function POST(req: NextRequest) {
         },
       });
 
-      console.log(
-        `✅ Created user account for ${body.email} with password: ${randomPassword}`
-      );
-      // Note: Mật khẩu sẽ được gửi qua email ở bước sau
+      isNewUser = true;
+      console.log(`✅ Created user account for ${body.email}`);
     }
 
     // Create registration in transaction
     const registration = await prisma.$transaction(async (tx) => {
-      // Create registration
       const newRegistration = await tx.registration.create({
         data: {
           eventId: body.eventId,
           distanceId: body.distanceId,
           shirtId: body.shirtId || null,
+          userId: user!.id, // Link to user account
 
           fullName: body.fullName,
           email: body.email,
@@ -161,7 +163,7 @@ export async function POST(req: NextRequest) {
         },
       });
 
-      // Update shirt sold quantity if applicable
+      // Update shirt sold quantity
       if (body.shirtId) {
         await tx.eventShirt.update({
           where: { id: body.shirtId },
@@ -176,7 +178,7 @@ export async function POST(req: NextRequest) {
       return newRegistration;
     });
 
-    // Generate Payment QR Code (always generate for both online & offline)
+    // Generate Payment QR Code
     const qrPaymentUrl = await generatePaymentQR(registration.id, totalAmount);
 
     // Update registration with QR URL
@@ -185,7 +187,7 @@ export async function POST(req: NextRequest) {
       data: { qrPaymentUrl },
     });
 
-    // Send email with registration info & QR code
+    // Send email with account info if new user
     try {
       await sendRegistrationPendingEmail({
         registration: {
@@ -193,9 +195,10 @@ export async function POST(req: NextRequest) {
           qrPaymentUrl,
         },
         event,
+        isNewUser,
+        temporaryPassword: isNewUser ? temporaryPassword : undefined,
       });
 
-      // Log email sent
       await prisma.emailLog.create({
         data: {
           registrationId: registration.id,
@@ -206,7 +209,7 @@ export async function POST(req: NextRequest) {
       });
     } catch (emailError) {
       console.error("Email sending error:", emailError);
-      // Don't fail the registration if email fails
+
       await prisma.emailLog.create({
         data: {
           registrationId: registration.id,
@@ -227,6 +230,13 @@ export async function POST(req: NextRequest) {
         totalAmount: registration.totalAmount,
         qrPaymentUrl,
       },
+      accountInfo: isNewUser
+        ? {
+            message:
+              "Tài khoản đã được tạo. Thông tin đăng nhập đã gửi qua email.",
+            email: body.email,
+          }
+        : null,
     });
   } catch (error) {
     console.error("Registration error:", error);
