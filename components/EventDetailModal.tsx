@@ -12,8 +12,6 @@ import {
   Mail,
   Facebook,
   ArrowRight,
-  ChevronLeft,
-  ChevronRight,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { formatCurrency, formatDate } from "@/lib/utils";
@@ -56,7 +54,7 @@ export function EventDetailModal({
 
   return (
     <div className="fixed inset-0 z-50 overflow-hidden">
-      {/* Backdrop với blur */}
+      {/* Backdrop */}
       <div
         className="absolute inset-0 bg-black/70 backdrop-blur-sm transition-opacity"
         onClick={onClose}
@@ -68,8 +66,8 @@ export function EventDetailModal({
           className="relative bg-white rounded-2xl shadow-2xl w-full max-w-6xl max-h-[90vh] overflow-hidden flex flex-col animate-slideUp"
           onClick={(e) => e.stopPropagation()}
         >
-          {/* Header với Cover Image - Compact */}
-          <div className="relative h-48 flex-shrink-0">
+          {/* Header với Cover Image - GIỐNG CARD */}
+          <div className="relative h-64 flex-shrink-0 overflow-hidden">
             {event.coverImageUrl || event.bannerUrl ? (
               <img
                 src={event.coverImageUrl || event.bannerUrl}
@@ -80,46 +78,45 @@ export function EventDetailModal({
               <div className="w-full h-full bg-gradient-to-br from-blue-500 to-indigo-600" />
             )}
 
-            <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent" />
+            {/* Overlay gradient */}
+            <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent" />
 
             {/* Close button */}
             <button
               onClick={onClose}
-              className="absolute top-4 right-4 p-2 bg-white/10 backdrop-blur-md rounded-full hover:bg-white/20 transition-colors border border-white/20"
+              className="absolute top-4 right-4 p-2 bg-white/10 backdrop-blur-md rounded-full hover:bg-white/20 transition-colors border border-white/20 z-10"
             >
               <X className="w-5 h-5 text-white" />
             </button>
 
-            {/* Event Info Overlay - Compact */}
-            <div className="absolute bottom-0 left-0 right-0 p-4 text-white">
-              <div className="flex items-center gap-3">
-                {event.logoUrl && (
-                  <img
-                    src={event.logoUrl}
-                    alt={event.name}
-                    className="w-12 h-12 object-contain bg-white/90 backdrop-blur-sm rounded-lg p-1.5"
-                  />
-                )}
-                <div className="flex-1 min-w-0">
-                  <h2 className="text-2xl font-bold mb-1 truncate">
-                    {event.name}
-                  </h2>
-                  <div className="flex flex-wrap items-center gap-3 text-sm opacity-90">
-                    <div className="flex items-center gap-1.5">
-                      <Calendar className="w-4 h-4" />
-                      <span>{formatDate(event.date)}</span>
-                    </div>
-                    <div className="flex items-center gap-1.5">
-                      <MapPin className="w-4 h-4" />
-                      <span className="truncate">{event.location}</span>
-                    </div>
-                  </div>
+            {/* Logo overlay - Bottom Left */}
+            {event.logoUrl && (
+              <div className="absolute bottom-4 left-4">
+                <img
+                  src={event.logoUrl}
+                  alt={event.name}
+                  className="w-16 h-16 object-contain bg-white/90 backdrop-blur-sm rounded-lg p-2 shadow-lg"
+                />
+              </div>
+            )}
+
+            {/* Event Info Overlay - Bottom */}
+            <div className="absolute bottom-0 left-0 right-0 p-6 text-white">
+              <h2 className="text-3xl font-bold mb-2">{event.name}</h2>
+              <div className="flex flex-wrap items-center gap-4 text-sm opacity-90">
+                <div className="flex items-center gap-1.5">
+                  <Calendar className="w-4 h-4" />
+                  <span>{formatDate(event.date)}</span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <MapPin className="w-4 h-4" />
+                  <span>{event.location}</span>
                 </div>
               </div>
             </div>
           </div>
 
-          {/* Tabs - Compact */}
+          {/* Tabs */}
           <div className="border-b bg-gray-50 flex-shrink-0">
             <div className="flex">
               {[
@@ -292,7 +289,7 @@ export function EventDetailModal({
               {/* Gallery Tab */}
               {selectedTab === "gallery" && (
                 <div className="space-y-4">
-                  <div className="flex gap-2">
+                  <div className="flex gap-2 flex-wrap">
                     {["GALLERY", "VENUE", "COURSE_MAP"].map((type) => (
                       <button
                         key={type}
@@ -313,22 +310,24 @@ export function EventDetailModal({
                   </div>
 
                   {galleryImages.length > 0 ? (
-                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
                       {galleryImages.map((image, idx) => (
                         <div
                           key={idx}
-                          className="relative group cursor-pointer aspect-video"
+                          className="relative group cursor-pointer rounded-lg overflow-hidden border-2 border-gray-200 hover:border-blue-500 transition-all shadow-sm hover:shadow-md bg-white"
                           onClick={() => setLightboxImage(image.imageUrl)}
                         >
-                          <img
-                            src={image.imageUrl}
-                            alt={image.title || `Image ${idx + 1}`}
-                            className="w-full h-full object-cover rounded-lg"
-                          />
-                          <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 transition-opacity rounded-lg flex items-center justify-center">
-                            <div className="opacity-0 group-hover:opacity-100 transition-opacity">
-                              <div className="bg-white/90 backdrop-blur-sm px-3 py-1.5 rounded-full text-sm font-medium">
-                                Xem
+                          <div className="aspect-video">
+                            <img
+                              src={image.imageUrl}
+                              alt={image.title || `Image ${idx + 1}`}
+                              className="w-full h-full object-cover"
+                            />
+                          </div>
+                          <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-40 transition-opacity flex items-center justify-center">
+                            <div className="opacity-0 group-hover:opacity-100 transition-opacity transform scale-90 group-hover:scale-100">
+                              <div className="bg-white/95 backdrop-blur-sm px-4 py-2 rounded-full text-sm font-medium shadow-lg">
+                                🔍 Xem lớn
                               </div>
                             </div>
                           </div>
@@ -337,13 +336,14 @@ export function EventDetailModal({
                     </div>
                   ) : (
                     <div className="text-center py-12 text-gray-500">
-                      Chưa có hình ảnh
+                      <div className="text-4xl mb-3">📷</div>
+                      <p>Chưa có hình ảnh</p>
                     </div>
                   )}
                 </div>
               )}
 
-              {/* Shirts Tab - GOM CHUNG */}
+              {/* Shirts Tab */}
               {selectedTab === "shirts" && (
                 <div className="space-y-6">
                   {event.hasShirt ? (
@@ -361,7 +361,7 @@ export function EventDetailModal({
                             </p>
                           </div>
 
-                          {/* Grid ảnh áo - tất cả loại */}
+                          {/* Grid ảnh áo */}
                           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
                             {allShirtImages.map((image, idx) => (
                               <div
@@ -369,22 +369,24 @@ export function EventDetailModal({
                                 className="group cursor-pointer"
                                 onClick={() => setLightboxImage(image.imageUrl)}
                               >
-                                <div className="relative overflow-hidden rounded-lg border-2 border-gray-200 group-hover:border-blue-600 transition-colors aspect-square">
-                                  <img
-                                    src={image.imageUrl}
-                                    alt={image.title || "Áo đấu"}
-                                    className="w-full h-full object-cover group-hover:scale-105 transition-transform"
-                                  />
-                                  <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 transition-opacity flex items-center justify-center">
-                                    <div className="opacity-0 group-hover:opacity-100 transition-opacity">
-                                      <div className="bg-white/90 backdrop-blur-sm px-3 py-1.5 rounded-full text-sm font-medium">
-                                        Xem chi tiết
+                                <div className="relative overflow-hidden rounded-lg border-2 border-gray-200 group-hover:border-blue-600 transition-colors shadow-sm hover:shadow-md bg-white">
+                                  <div className="aspect-[3/4]">
+                                    <img
+                                      src={image.imageUrl}
+                                      alt={image.title || "Áo đấu"}
+                                      className="w-full h-full object-cover"
+                                    />
+                                  </div>
+                                  <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-40 transition-opacity flex items-center justify-center">
+                                    <div className="opacity-0 group-hover:opacity-100 transition-opacity transform scale-90 group-hover:scale-100">
+                                      <div className="bg-white/95 backdrop-blur-sm px-4 py-2 rounded-full text-sm font-medium shadow-lg">
+                                        🔍 Xem chi tiết
                                       </div>
                                     </div>
                                   </div>
                                 </div>
                                 {image.title && (
-                                  <p className="mt-2 text-sm text-gray-600 text-center truncate">
+                                  <p className="mt-2 text-xs text-gray-600 text-center truncate">
                                     {image.title}
                                   </p>
                                 )}
@@ -448,7 +450,7 @@ export function EventDetailModal({
             </div>
           </div>
 
-          {/* Footer - Compact */}
+          {/* Footer */}
           <div className="border-t bg-white p-4 flex-shrink-0">
             <div className="flex items-center justify-between">
               <div className="text-sm text-gray-600">
@@ -473,15 +475,15 @@ export function EventDetailModal({
         </div>
       </div>
 
-      {/* Lightbox cho ảnh */}
+      {/* Lightbox */}
       {lightboxImage && (
         <div
-          className="fixed inset-0 z-[60] bg-black/90 flex items-center justify-center p-4"
+          className="fixed inset-0 z-[60] bg-black/95 flex items-center justify-center p-4"
           onClick={() => setLightboxImage(null)}
         >
           <button
             onClick={() => setLightboxImage(null)}
-            className="absolute top-4 right-4 p-2 bg-white/10 backdrop-blur-md rounded-full hover:bg-white/20 transition-colors"
+            className="absolute top-4 right-4 p-3 bg-white/10 backdrop-blur-md rounded-full hover:bg-white/20 transition-colors"
           >
             <X className="w-6 h-6 text-white" />
           </button>

@@ -4,7 +4,9 @@
 import { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select } from "@/components/ui/select";
+import { Button } from "@/components/ui/button";
 import { formatCurrency } from "@/lib/utils";
+import { toast } from "sonner";
 import {
   BarChart,
   Bar,
@@ -20,6 +22,7 @@ import {
   LineChart,
   Line,
 } from "recharts";
+import { Download } from "lucide-react";
 
 interface Stats {
   totalRegistrations: number;
@@ -42,6 +45,29 @@ export default function StatisticsPage() {
   const [loading, setLoading] = useState(true);
   const [selectedEvent, setSelectedEvent] = useState("all");
   const [events, setEvents] = useState<any[]>([]);
+
+  // Handle export
+  const handleExport = async () => {
+    if (selectedEvent === "all") {
+      toast.error("Vui lòng chọn sự kiện cụ thể để xuất Excel");
+      return;
+    }
+
+    try {
+      const res = await fetch(
+        `/api/admin/registrations/export?eventId=${selectedEvent}`
+      );
+      const blob = await res.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `registrations-${selectedEvent}-${Date.now()}.xlsx`;
+      a.click();
+      toast.success("✅ Đã xuất file Excel");
+    } catch (error) {
+      toast.error("❌ Không thể xuất file");
+    }
+  };
 
   useEffect(() => {
     loadEvents();
@@ -102,19 +128,31 @@ export default function StatisticsPage() {
           </h1>
           <p className="text-gray-600 mt-1">Phân tích dữ liệu đăng ký</p>
         </div>
-        <div className="w-64">
-          <Select
-            value={selectedEvent}
-            onChange={(e) => setSelectedEvent(e.target.value)}
-            label="Chọn sự kiện"
-          >
-            <option value="all">Tất cả sự kiện</option>
-            {events.map((event) => (
-              <option key={event.id} value={event.id}>
-                {event.name}
-              </option>
-            ))}
-          </Select>
+        <div className="flex items-center gap-3">
+          <div className="w-64">
+            <Select
+              value={selectedEvent}
+              onChange={(e) => setSelectedEvent(e.target.value)}
+              label="Chọn sự kiện"
+            >
+              <option value="all">Tất cả sự kiện</option>
+              {events.map((event) => (
+                <option key={event.id} value={event.id}>
+                  {event.name}
+                </option>
+              ))}
+            </Select>
+          </div>
+          {selectedEvent !== "all" && (
+            <Button
+              variant="outline"
+              onClick={handleExport}
+              className="flex items-center gap-2"
+            >
+              <Download className="w-4 h-4" />
+              Xuất Excel
+            </Button>
+          )}
         </div>
       </div>
 
