@@ -233,7 +233,7 @@ export function EventDetailModal({
                 </div>
 
                 {/* images */}
-                {galleryImages.length > 0 ? (
+                {/* {galleryImages.length > 0 ? (
                   <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
                     {galleryImages.map((img, i) => (
                       <div
@@ -243,7 +243,27 @@ export function EventDetailModal({
                       >
                         <img
                           src={img.imageUrl}
-                          className="max-w-full max-h-full object-contain" // FIX
+                          className="w-full h-full object-contain" // FIX
+                        />
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-10 text-gray-500">
+                    Không có ảnh
+                  </div>
+                )} */}
+                {galleryImages.length > 0 ? (
+                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                    {galleryImages.map((img, i) => (
+                      <div
+                        key={i}
+                        className="rounded-lg border overflow-hidden cursor-pointer bg-gray-100 aspect-square"
+                        onClick={() => setLightboxImage(img.imageUrl)}
+                      >
+                        <img
+                          src={img.imageUrl}
+                          className="w-full h-full object-cover"
                         />
                       </div>
                     ))}
@@ -259,6 +279,26 @@ export function EventDetailModal({
             {/* SHIRTS */}
             {selectedTab === "shirts" && (
               <div className="space-y-4">
+                {/* {allShirtImages.length > 0 ? (
+                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                    {allShirtImages.map((img, i) => (
+                      <div
+                        key={i}
+                        className="rounded-lg border overflow-hidden bg-black cursor-pointer h-60 flex items-center justify-center"
+                        onClick={() => setLightboxImage(img.imageUrl)}
+                      >
+                        <img
+                          src={img.imageUrl}
+                          className="w-full h-full object-contain" // FIX
+                        />
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-12 text-gray-500">
+                    Không có áo đấu
+                  </div>
+                )} */}
                 {allShirtImages.length > 0 ? (
                   <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
                     {allShirtImages.map((img, i) => (
@@ -269,7 +309,7 @@ export function EventDetailModal({
                       >
                         <img
                           src={img.imageUrl}
-                          className="max-w-full max-h-full object-contain" // FIX
+                          className="w-full h-full object-contain" // FIX
                         />
                       </div>
                     ))}

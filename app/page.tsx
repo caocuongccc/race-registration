@@ -425,9 +425,9 @@ export default function HomePage() {
                 Đăng ký online nhanh chóng, tiện lợi
               </p>
             </div>
-            <Link href="/login">
+            {/* <Link href="/login">
               <Button variant="outline">Đăng nhập</Button>
-            </Link>
+            </Link> */}
           </div>
         </div>
       </header>

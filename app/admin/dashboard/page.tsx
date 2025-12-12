@@ -39,16 +39,36 @@ interface DashboardStats {
   };
 }
 
+interface EventItem {
+  id: string;
+  name: string;
+}
+
 const COLORS = ["#3b82f6", "#10b981", "#f59e0b", "#ef4444", "#8b5cf6"];
 
 export default function AdminDashboard() {
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [selectedEvent, setSelectedEvent] = useState<string>("all");
+  const [events, setEvents] = useState<EventItem[]>([]);
 
   useEffect(() => {
     loadStats();
   }, [selectedEvent]);
+
+  useEffect(() => {
+    loadEvents();
+  }, []);
+
+  const loadEvents = async () => {
+    try {
+      const res = await fetch("/api/admin/events");
+      const data = await res.json();
+      setEvents(data.events || []);
+    } catch (error) {
+      console.error("Failed to load events:", error);
+    }
+  };
 
   const loadStats = async () => {
     try {
@@ -87,6 +107,32 @@ export default function AdminDashboard() {
         <p className="text-gray-600 mt-1">
           Dashboard quản lý đăng ký giải chạy
         </p>
+      </div>
+      {/* Event Filter */}
+      <div className="flex items-center gap-3 bg-white p-4 rounded-xl shadow-sm border border-gray-200 w-full max-w-md">
+        <div className="flex items-center gap-2 text-gray-600 font-medium whitespace-nowrap">
+          <Calendar className="w-4 h-4 text-blue-600" />
+          Chọn sự kiện:
+        </div>
+
+        <select
+          value={selectedEvent}
+          onChange={(e) => setSelectedEvent(e.target.value)}
+          className="
+      flex-1 px-3 py-2 rounded-lg bg-gray-50 border border-gray-300 
+      text-gray-800 text-sm shadow-sm
+      hover:bg-gray-100 
+      focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500
+      transition-all
+    "
+        >
+          <option value="all">🔄 Tất cả sự kiện</option>
+          {events.map((event) => (
+            <option key={event.id} value={event.id}>
+              {event.name}
+            </option>
+          ))}
+        </select>
       </div>
 
       {/* Stats Cards */}
