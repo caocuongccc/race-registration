@@ -1,4 +1,3 @@
-// lib/auth.ts
 import { NextAuthOptions } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 import { PrismaAdapter } from "@auth/prisma-adapter";
@@ -6,13 +5,23 @@ import { compare } from "bcryptjs";
 import { prisma } from "./prisma";
 
 export const authOptions: NextAuthOptions = {
-  adapter: PrismaAdapter(prisma),
+  secret: process.env.NEXTAUTH_SECRET!, // 👈 BẮT BUỘC TRONG NEXT.JS 16
+
   session: {
     strategy: "jwt",
   },
+
+  jwt: {
+    encryption: false, // 👈 BẮT BUỘC TRONG NEXT.JS 16
+    maxAge: 60 * 60 * 24 * 30,
+  },
+
+  adapter: PrismaAdapter(prisma),
+
   pages: {
     signIn: "/admin/login",
   },
+
   providers: [
     CredentialsProvider({
       name: "credentials",
@@ -26,9 +35,7 @@ export const authOptions: NextAuthOptions = {
         }
 
         const user = await prisma.user.findUnique({
-          where: {
-            email: credentials.email,
-          },
+          where: { email: credentials.email },
         });
 
         if (!user || !user.password) {
@@ -53,6 +60,7 @@ export const authOptions: NextAuthOptions = {
       },
     }),
   ],
+
   callbacks: {
     async jwt({ token, user }) {
       if (user) {
@@ -61,6 +69,7 @@ export const authOptions: NextAuthOptions = {
       }
       return token;
     },
+
     async session({ session, token }) {
       if (session.user) {
         session.user.id = token.id as string;

@@ -28,7 +28,7 @@ function AdminLoginForm() {
         password: formData.password,
         redirect: false,
       });
-
+      console.log(formData.email, formData.password);
       if (result?.error) {
         toast.error("Đăng nhập thất bại. Vui lòng kiểm tra lại thông tin.");
       } else {
