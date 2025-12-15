@@ -42,3 +42,6 @@ next-env.d.ts
 next.config.ts
 /app/generated/prisma
 
+prisma/seed-huong-thuy.ts
+prisma/seed.ts
+prisma/seed.ts

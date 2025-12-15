@@ -41,7 +41,8 @@ export default function EditEventPage() {
     isPublished: false,
     hasShirt: false,
     requireOnlinePayment: true,
-
+    sendBibImmediately: true, // NEW
+    allowRegistration: false, // NEW
     // Images
     logoUrl: "",
     bannerUrl: "",
@@ -491,11 +492,11 @@ export default function EditEventPage() {
         )}
 
         {/* Payment Tab */}
-        {activeTab === "payment" && (
+        {/* {activeTab === "payment" && (
           <Card className="border-2 border-blue-200">
             <CardHeader className="bg-blue-50">
               <CardTitle className="text-blue-900">
-                ⚙️ Cấu hình thanh toán
+                ⚙️ Cấu hình thanh toán 
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4 pt-6">
@@ -537,6 +538,175 @@ export default function EditEventPage() {
               </div>
 
               <div className="space-y-4 border-t pt-4">
+                <h4 className="font-medium text-gray-900">
+                  Thông tin tài khoản ngân hàng
+                </h4>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <Input
+                    label="Tên ngân hàng"
+                    placeholder="MB Bank"
+                    value={formData.bankName}
+                    onChange={(e) =>
+                      setFormData({ ...formData, bankName: e.target.value })
+                    }
+                  />
+
+                  <Input
+                    label="Mã ngân hàng"
+                    placeholder="MB"
+                    value={formData.bankCode}
+                    onChange={(e) =>
+                      setFormData({ ...formData, bankCode: e.target.value })
+                    }
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <Input
+                    label="Số tài khoản"
+                    value={formData.bankAccount}
+                    onChange={(e) =>
+                      setFormData({ ...formData, bankAccount: e.target.value })
+                    }
+                  />
+
+                  <Input
+                    label="Chủ tài khoản"
+                    value={formData.bankHolder}
+                    onChange={(e) =>
+                      setFormData({ ...formData, bankHolder: e.target.value })
+                    }
+                  />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )} */}
+        {activeTab === "payment" && (
+          <Card className="border-2 border-blue-200">
+            <CardHeader className="bg-blue-50">
+              <CardTitle className="text-blue-900">
+                ⚙️ Cấu hình thanh toán & Email
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-6 pt-6">
+              {/* PAYMENT MODE */}
+              <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                <label className="flex items-start gap-3">
+                  <input
+                    type="checkbox"
+                    checked={formData.requireOnlinePayment}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        requireOnlinePayment: e.target.checked,
+                      })
+                    }
+                    className="mt-1 h-5 w-5 text-blue-600 rounded border-gray-300"
+                  />
+                  <div>
+                    <span className="text-sm font-semibold text-gray-900 block mb-1">
+                      Bật webhook tự động xác nhận thanh toán
+                    </span>
+                    <span className="text-sm text-gray-600">
+                      {formData.requireOnlinePayment ? (
+                        <>
+                          ✅ <strong>BẬT:</strong> Webhook tự động đánh dấu
+                          thanh toán
+                        </>
+                      ) : (
+                        <>
+                          ⚠️ <strong>TẮT:</strong> Admin phải xác nhận thủ công
+                        </>
+                      )}
+                    </span>
+                  </div>
+                </label>
+              </div>
+
+              {/* NEW: EMAIL BIB CONFIGURATION */}
+              <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
+                <label className="flex items-start gap-3">
+                  <input
+                    type="checkbox"
+                    checked={formData.sendBibImmediately}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        sendBibImmediately: e.target.checked,
+                      })
+                    }
+                    className="mt-1 h-5 w-5 text-purple-600 rounded border-gray-300"
+                  />
+                  <div>
+                    <span className="text-sm font-semibold text-gray-900 block mb-1">
+                      Gửi số BIB ngay khi thanh toán thành công
+                    </span>
+                    <span className="text-sm text-gray-600">
+                      {formData.sendBibImmediately ? (
+                        <>
+                          ✅ <strong>BẬT:</strong> Email có số BIB ngay khi
+                          thanh toán
+                          <br />→ VĐV nhận số BIB và mã QR check-in ngay lập tức
+                        </>
+                      ) : (
+                        <>
+                          📋 <strong>TẮT:</strong> Email xác nhận thanh toán
+                          (không có BIB)
+                          <br />
+                          → Admin phải vào trang "Gửi số BIB" để công bố sau
+                          <br />→ Thích hợp khi cần xếp BIB theo đội, theo tuổi,
+                          v.v.
+                        </>
+                      )}
+                    </span>
+                  </div>
+                </label>
+              </div>
+
+              {/* REGISTRATION STATUS */}
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <label className="flex items-start gap-3">
+                  <input
+                    type="checkbox"
+                    checked={formData.allowRegistration}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        allowRegistration: e.target.checked,
+                      })
+                    }
+                    className="mt-1 h-5 w-5 text-blue-600 rounded border-gray-300"
+                  />
+                  <div>
+                    <span className="text-sm font-semibold text-gray-900 block mb-1">
+                      Cho phép đăng ký online
+                    </span>
+                    <span className="text-sm text-gray-600">
+                      {formData.allowRegistration ? (
+                        <>
+                          ✅ <strong>BẬT:</strong> Hiển thị nút "Đăng ký ngay"
+                          trên trang sự kiện
+                        </>
+                      ) : (
+                        <>
+                          🚫 <strong>TẮT:</strong> Chỉ hiển thị thông tin, không
+                          cho đăng ký
+                          <br />
+                          (Thích hợp khi: hết chỗ, chưa mở đăng ký, hoặc chỉ
+                          muốn công bố thông tin)
+                        </>
+                      )}
+                    </span>
+                  </div>
+                </label>
+              </div>
+
+              {/* <br /> */}
+
+              {/* BANK INFO */}
+              <div className="space-y-4">
                 <h4 className="font-medium text-gray-900">
                   Thông tin tài khoản ngân hàng
                 </h4>

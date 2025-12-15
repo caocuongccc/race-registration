@@ -9,7 +9,7 @@ export async function GET() {
       where: {
         isPublished: true,
         status: {
-          in: ["PUBLISHED", "REGISTRATION_OPEN"],
+          in: ["PUBLISHED", "REGISTRATION_OPEN", "REGISTRATION_CLOSED"],
         },
       },
       include: {
@@ -40,6 +40,7 @@ export async function GET() {
         coverImageUrl: event.coverImageUrl, // NEW
         hasShirt: event.hasShirt,
         distances: event.distances,
+        allowRegistration: event.allowRegistration, // NEW: Send to frontend
       })),
     });
   } catch (error) {

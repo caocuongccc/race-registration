@@ -8,6 +8,7 @@ import { Prisma } from "@prisma/client";
 
 import { generateCheckinQR } from "@/lib/imgbb";
 import { sendPaymentConfirmedEmail } from "@/lib/email";
+import { sendPaymentConfirmationEmail } from "@/lib/email-service";
 
 /**
  * Generate BIB number for manual confirmation
@@ -119,36 +120,16 @@ export async function POST(
       }
     );
 
-    // Send confirmation email
+    // Send confirmation email (with or without BIB based on event config)
     try {
-      await sendPaymentConfirmedEmail({
+      await sendPaymentConfirmationEmail({
         registration: updatedRegistration,
         event: registration.event,
       });
 
-      // Log email sent
-      await prisma.emailLog.create({
-        data: {
-          registrationId: registrationId,
-          emailType: "PAYMENT_CONFIRMED",
-          subject: `Thanh toán thành công - Số BIB ${bibNumber}`,
-          status: "SENT",
-        },
-      });
-
-      console.log(`✅ Manual confirmation email sent for ${bibNumber}`);
+      console.log(`✅ Payment confirmation email sent for ${bibNumber}`);
     } catch (emailError) {
       console.error("Failed to send confirmation email:", emailError);
-
-      await prisma.emailLog.create({
-        data: {
-          registrationId: registrationId,
-          emailType: "PAYMENT_CONFIRMED",
-          subject: `Thanh toán thành công - Số BIB ${bibNumber}`,
-          status: "FAILED",
-          errorMessage: (emailError as Error).message,
-        },
-      });
     }
 
     return NextResponse.json({

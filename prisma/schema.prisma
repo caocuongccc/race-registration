@@ -51,7 +51,8 @@ model Event {
   // Status
   status              EventStatus @default(DRAFT)
   isPublished         Boolean     @default(false)
-  
+  allowRegistration   Boolean     @default(false)  // NEW: Cho phép đăng ký
+
   // Race pack info
   racePackLocation    String?
   racePackTime        String?
@@ -78,7 +79,8 @@ model Event {
   
   // Payment configuration
   requireOnlinePayment Boolean    @default(true)  // NEW: Bật/tắt thanh toán online
-  
+  sendBibImmediately   Boolean    @default(true)   // Gửi BIB ngay hay chờ admin công bố
+
   // Payment info (only if requireOnlinePayment = true)
   bankName            String?
   bankAccount         String?
@@ -242,7 +244,7 @@ model Registration {
   phone                   String
   dob                     DateTime
   gender                  Gender
-  idCard                  String    // CCCD/CMND
+  idCard                  String?    // CCCD/CMND
   address                 String?
   city                    String?
   
@@ -348,9 +350,16 @@ model EmailConfig {
   fromEmail                       String    // "noreply@giaichay.com" hoặc email BTC
   replyTo                         String?
   
+  // NEW: Email provider configuration
+  useGmailFallback                Boolean   @default(false)  // Tự động chuyển Gmail khi Resend fail
+  gmailUser                       String?   // Gmail account (nếu dùng fallback)
+  gmailAppPassword                String?   // Gmail App Password (encrypted)
+  
   // Email subject lines
   subjectRegistrationPending      String    @default("Xác nhận đăng ký - {{eventName}}")
   subjectPaymentConfirmed         String    @default("Thanh toán thành công - Số BIB {{bibNumber}}")
+  subjectPaymentReceivedNoBib     String    @default("Đã nhận thanh toán - {{eventName}}")  // NEW
+  subjectBibAnnouncement          String    @default("Thông báo số BIB - {{eventName}}")    // NEW
   subjectRacePackInfo             String    @default("Thông tin quan trọng - {{eventName}}")
   subjectReminder                 String    @default("Nhắc nhở - {{eventName}}")
   
@@ -358,6 +367,8 @@ model EmailConfig {
   // Placeholders: {{fullName}}, {{eventName}}, {{bibNumber}}, {{distance}}, {{amount}}, etc.
   bodyRegistrationPending         String    @db.Text
   bodyPaymentConfirmed            String    @db.Text
+  bodyPaymentReceivedNoBib        String    @db.Text  // NEW: Email xác nhận đã nhận tiền (chưa có BIB)
+  bodyBibAnnouncement             String    @db.Text  // NEW: Email công bố BIB sau
   bodyRacePackInfo                String    @db.Text
   bodyReminder                    String    @db.Text
   
@@ -391,6 +402,8 @@ model EmailLog {
 enum EmailType {
   REGISTRATION_PENDING
   PAYMENT_CONFIRMED
+  PAYMENT_RECEIVED_NO_BIB      // NEW
+  BIB_ANNOUNCEMENT             // NEW
   RACE_PACK_INFO
   REMINDER
   CUSTOM

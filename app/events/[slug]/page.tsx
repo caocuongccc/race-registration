@@ -152,12 +152,28 @@ export default function EventDetailPage() {
               </div>
             </div>
 
-            <Link href={`/events/${event.slug}/register`}>
-              <Button size="lg">
-                Đăng ký ngay
-                <ArrowRight className="w-5 h-5 ml-2" />
-              </Button>
-            </Link>
+            {/* CẬP NHẬT: Conditional Register Button */}
+            {event.allowRegistration ? (
+              <Link href={`/events/${event.slug}/register`}>
+                <Button size="lg">
+                  Đăng ký ngay
+                  <ArrowRight className="w-5 h-5 ml-2" />
+                </Button>
+              </Link>
+            ) : (
+              <div className="text-center">
+                <Button
+                  size="lg"
+                  disabled
+                  className="opacity-50 cursor-not-allowed"
+                >
+                  Chưa mở đăng ký
+                </Button>
+                <p className="text-xs text-gray-500 mt-1">
+                  Vui lòng quay lại sau
+                </p>
+              </div>
+            )}
           </div>
         </div>
       </section>
@@ -382,12 +398,32 @@ export default function EventDetailPage() {
                   <div className="text-4xl font-bold text-blue-600 mb-4">
                     {formatCurrency(Math.min(...distances.map((d) => d.price)))}
                   </div>
-                  <Link href={`/events/${event.slug}/register`}>
-                    <Button size="lg" className="w-full">
-                      Đăng ký ngay
-                      <ArrowRight className="w-5 h-5 ml-2" />
-                    </Button>
-                  </Link>
+                  {/* CẬP NHẬT: Conditional Button */}
+                  {event.allowRegistration ? (
+                    <Link href={`/events/${event.slug}/register`}>
+                      <Button size="lg" className="w-full">
+                        Đăng ký ngay
+                        <ArrowRight className="w-5 h-5 ml-2" />
+                      </Button>
+                    </Link>
+                  ) : (
+                    <div>
+                      <Button
+                        size="lg"
+                        className="w-full opacity-50 cursor-not-allowed"
+                        disabled
+                      >
+                        Chưa mở đăng ký
+                      </Button>
+                      <p className="text-xs text-gray-500 mt-2 text-center">
+                        {event.status === "PUBLISHED"
+                          ? "Sự kiện sẽ mở đăng ký sớm"
+                          : event.status === "REGISTRATION_CLOSED"
+                            ? "Đã đóng đăng ký"
+                            : "Vui lòng quay lại sau"}
+                      </p>
+                    </div>
+                  )}
                 </div>
 
                 <div className="border-t pt-4 space-y-2 text-sm text-gray-600">

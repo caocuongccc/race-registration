@@ -441,8 +441,7 @@ export default function HomePage() {
             <span className="text-blue-600">Cùng Cộng Đồng Runners</span>
           </h2>
           <p className="text-xl text-gray-600 max-w-2xl mx-auto mb-8">
-            Đăng ký tham gia các giải chạy tại địa phương. Nhận số BIB ngay sau
-            khi thanh toán. Đơn giản, nhanh chóng, an toàn.
+            Đăng ký tham gia các giải chạy. Đơn giản, nhanh chóng, an toàn.
           </p>
 
           {/* Features */}
@@ -624,14 +623,32 @@ export default function HomePage() {
                         <Eye className="w-4 h-4 mr-2" />
                         Chi tiết
                       </Button>
-                      <Link href={`/events/${event.slug}/register`}>
-                        <Button className="w-full" size="sm">
-                          Đăng ký
-                          <ArrowRight className="w-4 h-4 ml-2" />
+                      {/* CẬP NHẬT: Conditional Register Button */}
+                      {event.allowRegistration ? (
+                        <Link href={`/events/${event.slug}/register`}>
+                          <Button className="w-full" size="sm">
+                            Đăng ký
+                            <ArrowRight className="w-4 h-4 ml-2" />
+                          </Button>
+                        </Link>
+                      ) : (
+                        <Button
+                          className="w-full opacity-50 cursor-not-allowed"
+                          size="sm"
+                          disabled
+                        >
+                          Chưa mở ĐK
                         </Button>
-                      </Link>
+                      )}
                     </div>
-
+                    {/* Status badge */}
+                    {!event.allowRegistration && (
+                      <p className="text-xs text-center text-orange-600 pt-2 border-t">
+                        {event.status === "PUBLISHED"
+                          ? "🔔 Sắp mở đăng ký"
+                          : "🚫 Đã đóng đăng ký"}
+                      </p>
+                    )}
                     {event.hasShirt && (
                       <p className="text-xs text-center text-gray-500 pt-2 border-t">
                         🎽 Có bán kèm áo kỷ niệm
