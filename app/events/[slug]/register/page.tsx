@@ -379,7 +379,6 @@ export default function RegistrationPage() {
                     required: "Vui lòng nhập CCCD/CMND",
                   })}
                   error={errors.idCard?.message}
-                  required
                 />
               </div>
 
@@ -495,7 +494,7 @@ export default function RegistrationPage() {
                       </div>
                     </label>
 
-                    <label className="relative">
+                    {/* <label className="relative">
                       <input
                         type="radio"
                         value="KID"
@@ -510,7 +509,7 @@ export default function RegistrationPage() {
                       <div className="p-3 border-2 rounded-lg text-center cursor-pointer transition-all peer-checked:border-blue-600 peer-checked:bg-blue-50 hover:border-blue-300">
                         <div className="text-sm font-medium">Áo Trẻ Em</div>
                       </div>
-                    </label>
+                    </label> */}
                   </div>
                 </div>
 
@@ -537,7 +536,7 @@ export default function RegistrationPage() {
                         </div>
                       </label>
 
-                      <label className="relative">
+                      {/* <label className="relative">
                         <input
                           type="radio"
                           value="TANK_TOP"
@@ -551,7 +550,7 @@ export default function RegistrationPage() {
                         <div className="p-4 border-2 rounded-lg text-center cursor-pointer transition-all peer-checked:border-blue-600 peer-checked:bg-blue-50 hover:border-blue-300">
                           <div className="text-base font-medium">Áo 3 lỗ</div>
                         </div>
-                      </label>
+                      </label> */}
                     </div>
                   </div>
                 )}
