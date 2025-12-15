@@ -89,16 +89,6 @@ function AdminLoginForm() {
               Đăng nhập
             </Button>
           </form>
-
-          <div className="mt-6 p-4 bg-blue-50 rounded-lg">
-            <p className="text-sm text-gray-600 text-center">
-              Demo credentials:
-              <br />
-              Email: <strong>admin@giaichay.com</strong>
-              <br />
-              Password: <strong>admin123</strong>
-            </p>
-          </div>
         </CardContent>
       </Card>
     </div>
