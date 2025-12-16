@@ -212,7 +212,7 @@ export function RegistrationPendingEmail({
                   Nội dung:{" "}
                   <strong>
                     {registration.phone} {registration.shirtCategory}{" "}
-                    {registration.shirtType} {registration.shirtSize}
+                    {registration.shirtSize}
                   </strong>
                 </Text>
 
@@ -220,7 +220,7 @@ export function RegistrationPendingEmail({
                   ⚠️ Vui lòng ghi CHÍNH XÁC nội dung chuyển khoản:{" "}
                   <strong>
                     {registration.phone} {registration.shirtCategory}{" "}
-                    {registration.shirtType} {registration.shirtSize}
+                    {registration.shirtSize}
                   </strong>
                 </Text>
               </Section>

@@ -2,7 +2,6 @@
 // Alternative email service using Gmail SMTP with Nodemailer
 
 import nodemailer from "nodemailer";
-import { renderToStaticMarkup } from "react-dom/server";
 import { RegistrationPendingEmail } from "@/emails/registration-pending";
 import { PaymentConfirmedEmail } from "@/emails/payment-confirmed";
 
@@ -22,6 +21,7 @@ export async function sendRegistrationPendingEmailGmail(data: any) {
   const { registration, event, bankInfo } = data;
 
   try {
+    const { renderToStaticMarkup } = await import("react-dom/server");
     // Render React component to HTML
     const emailHtml = renderToStaticMarkup(
       RegistrationPendingEmail({ registration, event, bankInfo })

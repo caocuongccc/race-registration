@@ -288,7 +288,7 @@ export default function PaymentPage() {
                     <span className="text-gray-600">Nội dung CK:</span>
                     <span className="font-mono font-bold bg-yellow-100 px-2 py-1 rounded">
                       {registration.phone} {registration.shirtCategory}{" "}
-                      {registration.shirtType} {registration.shirtSize}
+                      {registration.shirtSize}
                     </span>
                   </div>
                 </div>
@@ -300,7 +300,7 @@ export default function PaymentPage() {
                   chuyển khoản{" "}
                   <strong>
                     {registration.phone} {registration.shirtCategory}{" "}
-                    {registration.shirtType} {registration.shirtSize}
+                    {registration.shirtSize}
                   </strong>{" "}
                   để hệ thống tự động xác nhận thanh toán.
                 </p>

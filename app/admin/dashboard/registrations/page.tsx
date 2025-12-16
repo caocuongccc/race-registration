@@ -150,7 +150,6 @@ export default function RegistrationsPage() {
   // CONFIRM PAYMENT
   const handleConfirmPayment = async (registrationId: string) => {
     setConfirming(registrationId);
-    toast.error("registrationId " + registrationId);
     try {
       const res = await fetch(
         `/api/admin/registrations/${registrationId}/confirm-payment`,
@@ -164,7 +163,6 @@ export default function RegistrationsPage() {
       );
 
       const result = await res.json();
-      toast.error("result " + result);
       if (result.success) {
         toast.success(`Đã xác nhận! BIB: ${result.bibNumber}`);
         loadRegistrations();
