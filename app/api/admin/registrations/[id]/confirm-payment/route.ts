@@ -201,7 +201,7 @@ export async function DELETE(
       where: { id: registrationId },
       data: {
         paymentStatus: "FAILED",
-        notes: "Hủy bởi admin",
+        notes: "Hủy bởi admin nhan viên",
       },
     });
 
