@@ -373,13 +373,7 @@ export default function RegistrationPage() {
                   <option value="FEMALE">Nữ</option>
                   <option value="OTHER">Khác</option>
                 </Select>
-                <Input
-                  label="CCCD/CMND"
-                  {...register("idCard", {
-                    required: "Vui lòng nhập CCCD/CMND",
-                  })}
-                  error={errors.idCard?.message}
-                />
+                <Input label="CCCD/CMND" {...register("idCard")} />
               </div>
 
               <Input label="Địa chỉ" {...register("address")} />

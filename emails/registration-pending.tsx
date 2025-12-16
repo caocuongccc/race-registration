@@ -209,12 +209,19 @@ export function RegistrationPendingEmail({
                   Số tiền:{" "}
                   <strong>{formatCurrency(registration.totalAmount)}</strong>
                   <br />
-                  Nội dung: <strong>DK {registration.id}</strong>
+                  Nội dung:{" "}
+                  <strong>
+                    {registration.phone} {registration.shirtCategory}{" "}
+                    {registration.shirtType} {registration.shirtSize}
+                  </strong>
                 </Text>
 
                 <Text style={warningText}>
                   ⚠️ Vui lòng ghi CHÍNH XÁC nội dung chuyển khoản:{" "}
-                  <strong>DK {registration.id}</strong>
+                  <strong>
+                    {registration.phone} {registration.shirtCategory}{" "}
+                    {registration.shirtType} {registration.shirtSize}
+                  </strong>
                 </Text>
               </Section>
             )}

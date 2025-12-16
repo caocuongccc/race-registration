@@ -189,7 +189,7 @@ export async function POST(req: NextRequest) {
 
     // ✅ FIX: Send email with proper error handling
     console.log(`📧 Sending registration email to ${registration.email}...`);
-
+    var emailError = null;
     try {
       await sendRegistrationPendingEmail({
         registration: {
@@ -212,9 +212,9 @@ export async function POST(req: NextRequest) {
           status: "SENT",
         },
       });
-    } catch (emailError: any) {
-      console.error("❌ Email sending error:", emailError);
-
+    } catch (emailErrors: any) {
+      console.error("❌ Email sending error:", emailErrors);
+      emailError = emailErrors;
       // Log email failure but don't fail the registration
       await prisma.emailLog.create({
         data: {
@@ -222,7 +222,7 @@ export async function POST(req: NextRequest) {
           emailType: "REGISTRATION_PENDING",
           subject: `Xác nhận đăng ký - ${event.name}`,
           status: "FAILED",
-          errorMessage: emailError.message || "Unknown error",
+          errorMessage: emailErrors.message || "Unknown error",
         },
       });
 
