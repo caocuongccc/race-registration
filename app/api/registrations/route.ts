@@ -1,8 +1,8 @@
-// app/api/registrations/route.ts - FIX EMAIL SENDING
+// app/api/registrations/route.ts - NO ACCOUNT CREATION
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { generatePaymentQR } from "@/lib/imgbb";
-import { sendRegistrationPendingEmail } from "@/lib/email";
+import { sendRegistrationPendingEmailGmailFirst } from "@/lib/email-service-gmail-first";
 
 export async function POST(req: NextRequest) {
   try {
@@ -77,39 +77,8 @@ export async function POST(req: NextRequest) {
 
     const totalAmount = raceFee + shirtFee;
 
-    // Check if user exists
-    let user = await prisma.user.findUnique({
-      where: { email: body.email },
-    });
-
-    let isNewUser = false;
-    let temporaryPassword = "";
-
-    // Create user account if not exists
-    if (!user) {
-      const bcrypt = require("bcryptjs");
-
-      // Generate random password
-      temporaryPassword =
-        Math.random().toString(36).slice(-4).toUpperCase() +
-        Math.random().toString(36).slice(-4) +
-        "!@" +
-        Math.floor(Math.random() * 100);
-
-      const hashedPassword = await bcrypt.hash(temporaryPassword, 10);
-
-      user = await prisma.user.create({
-        data: {
-          email: body.email,
-          password: hashedPassword,
-          name: body.fullName,
-          role: "MEMBER",
-        },
-      });
-
-      isNewUser = false;
-      console.log(`✅ Created user account for ${body.email}`);
-    }
+    // ❌ REMOVED: No user account creation
+    // Just create registration directly
 
     // Create registration in transaction
     const registration = await prisma.$transaction(async (tx) => {
@@ -118,7 +87,7 @@ export async function POST(req: NextRequest) {
           eventId: body.eventId,
           distanceId: body.distanceId,
           shirtId: body.shirtId || null,
-          userId: user!.id,
+          // ❌ REMOVED: userId field
 
           fullName: body.fullName,
           email: body.email,
@@ -187,18 +156,21 @@ export async function POST(req: NextRequest) {
       data: { qrPaymentUrl },
     });
 
-    // ✅ FIX: Send email with proper error handling
-    console.log(`📧 Sending registration email to ${registration.email}...`);
-    var emailError = null;
+    // ✅ Send email (no account info)
+    console.log(
+      `📧 [GMAIL FIRST] Sending registration email to ${registration.email}...`
+    );
+
+    let emailError: any = null;
+
     try {
-      await sendRegistrationPendingEmail({
+      await sendRegistrationPendingEmailGmailFirst({
         registration: {
           ...registration,
           qrPaymentUrl,
         },
         event,
-        isNewUser,
-        temporaryPassword: isNewUser ? temporaryPassword : undefined,
+        // ❌ REMOVED: isNewUser, temporaryPassword
       });
 
       console.log(`✅ Email sent successfully to ${registration.email}`);
@@ -212,9 +184,10 @@ export async function POST(req: NextRequest) {
           status: "SENT",
         },
       });
-    } catch (emailErrors: any) {
-      console.error("❌ Email sending error:", emailErrors);
-      emailError = emailErrors;
+    } catch (error: any) {
+      emailError = error;
+      console.error("❌ Email sending error:", error);
+
       // Log email failure but don't fail the registration
       await prisma.emailLog.create({
         data: {
@@ -222,11 +195,10 @@ export async function POST(req: NextRequest) {
           emailType: "REGISTRATION_PENDING",
           subject: `Xác nhận đăng ký - ${event.name}`,
           status: "FAILED",
-          errorMessage: emailErrors.message || "Unknown error",
+          errorMessage: error.message || "Unknown error",
         },
       });
 
-      // Show warning to user but still return success
       console.warn(
         `⚠️ Registration created but email failed for ${registration.email}`
       );
@@ -241,13 +213,7 @@ export async function POST(req: NextRequest) {
         totalAmount: registration.totalAmount,
         qrPaymentUrl,
       },
-      accountInfo: isNewUser
-        ? {
-            message:
-              "Tài khoản đã được tạo. Thông tin đăng nhập đã gửi qua email.",
-            email: body.email,
-          }
-        : null,
+      // ❌ REMOVED: accountInfo
       emailWarning: emailError
         ? "Email có thể gửi chậm, vui lòng kiểm tra sau."
         : null,

@@ -1,4 +1,4 @@
-// emails/registration-pending.tsx
+// emails/registration-pending.tsx - WITH TRACKING LINK, NO ACCOUNT INFO
 import {
   Html,
   Head,
@@ -8,8 +8,7 @@ import {
   Text,
   Img,
   Hr,
-  Row,
-  Column,
+  Button,
 } from "@react-email/components";
 
 interface RegistrationPendingEmailProps {
@@ -20,16 +19,13 @@ interface RegistrationPendingEmailProps {
     accountNumber: string;
     accountHolder: string;
   };
-  isNewUser?: boolean;
-  temporaryPassword?: string;
+  // ❌ REMOVED: isNewUser, temporaryPassword
 }
 
 export function RegistrationPendingEmail({
   registration,
   event,
   bankInfo,
-  isNewUser,
-  temporaryPassword,
 }: RegistrationPendingEmailProps) {
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat("vi-VN", {
@@ -41,6 +37,9 @@ export function RegistrationPendingEmail({
   const formatDate = (date: Date) => {
     return new Intl.DateTimeFormat("vi-VN").format(new Date(date));
   };
+
+  // ✅ NEW: Generate tracking link
+  const trackingUrl = `${process.env.NEXTAUTH_URL || "https://dangkygiaichay.vercel.app"}/registrations/${registration.id}/payment`;
 
   return (
     <Html>
@@ -66,31 +65,21 @@ export function RegistrationPendingEmail({
             Cảm ơn bạn đã đăng ký tham gia <strong>{event.name}</strong>. Dưới
             đây là thông tin đăng ký của bạn:
           </Text>
-          {/* NEW: Account Information Section */}
-          {isNewUser && temporaryPassword && (
-            <Section style={accountBox}>
-              <Text style={accountTitle}>🔐 THÔNG TIN TÀI KHOẢN</Text>
-              <Text style={accountText}>
-                Chúng tôi đã tạo tài khoản để bạn theo dõi thông tin đăng ký:
-              </Text>
-              <table style={accountTable}>
-                <tbody>
-                  <tr>
-                    <td style={accountLabel}>Email đăng nhập:</td>
-                    <td style={accountValue}>{registration.email}</td>
-                  </tr>
-                  <tr>
-                    <td style={accountLabel}>Mật khẩu tạm thời:</td>
-                    <td style={accountPassword}>{temporaryPassword}</td>
-                  </tr>
-                </tbody>
-              </table>
-              <Text style={accountNote}>
-                ⚠️ Vui lòng đổi mật khẩu sau lần đăng nhập đầu tiên tại:{" "}
-                <strong>{process.env.NEXTAUTH_URL}/login</strong>
-              </Text>
-            </Section>
-          )}
+
+          {/* ✅ NEW: Tracking Link Card */}
+          <Section style={trackingBox}>
+            <Text style={trackingTitle}>🔍 THEO DÕI ĐĂNG KÝ CỦA BẠN</Text>
+            <Text style={trackingText}>
+              Truy cập link dưới đây để xem chi tiết và trạng thái thanh toán:
+            </Text>
+            <a href={trackingUrl} style={trackingButton}>
+              📋 Xem Thông Tin Đăng Ký
+            </a>
+            <Text style={trackingNote}>
+              Lưu lại link này để theo dõi trạng thái thanh toán và số BIB
+            </Text>
+          </Section>
+
           {/* Registration Info */}
           <Section style={infoBox}>
             <Text style={infoTitle}>📋 THÔNG TIN ĐĂNG KÝ</Text>
@@ -154,7 +143,7 @@ export function RegistrationPendingEmail({
             </table>
           </Section>
 
-          {/* Payment Info - Always show */}
+          {/* Payment Info */}
           <Section style={paymentBox}>
             <Text style={infoTitle}>💳 THÔNG TIN THANH TOÁN</Text>
 
@@ -185,7 +174,7 @@ export function RegistrationPendingEmail({
               </tbody>
             </table>
 
-            {/* QR Code - Always show */}
+            {/* QR Code */}
             {registration.qrPaymentUrl && (
               <Section style={qrSection}>
                 <Text style={qrText}>Quét mã QR để thanh toán:</Text>
@@ -235,6 +224,13 @@ export function RegistrationPendingEmail({
                 Sau khi chuyển khoản thành công, bạn sẽ nhận email xác nhận kèm
                 số BIB trong vòng 5-10 phút (nếu tự động) hoặc sau khi BTC xác
                 nhận.
+              </li>
+              <li>
+                <strong>Theo dõi trạng thái:</strong> Truy cập{" "}
+                <a href={trackingUrl} style={linkStyle}>
+                  link theo dõi
+                </a>{" "}
+                để xem trạng thái thanh toán và số BIB
               </li>
               <li>
                 Nếu không nhận được email, vui lòng kiểm tra hộp thư spam hoặc
@@ -304,6 +300,52 @@ const paragraph = {
   lineHeight: "24px",
   color: "#374151",
   margin: "16px 0",
+};
+
+// ✅ NEW: Tracking box styles
+const trackingBox = {
+  backgroundColor: "#dbeafe",
+  padding: "24px",
+  borderRadius: "12px",
+  margin: "24px 0",
+  border: "2px solid #3b82f6",
+  textAlign: "center" as const,
+};
+
+const trackingTitle = {
+  fontSize: "18px",
+  fontWeight: "bold" as const,
+  color: "#1e40af",
+  margin: "0 0 12px",
+};
+
+const trackingText = {
+  fontSize: "14px",
+  color: "#1e3a8a",
+  margin: "0 0 16px",
+};
+
+const trackingButton = {
+  display: "inline-block",
+  backgroundColor: "#2563eb",
+  color: "#ffffff",
+  padding: "12px 32px",
+  borderRadius: "8px",
+  textDecoration: "none",
+  fontWeight: "bold" as const,
+  fontSize: "16px",
+  margin: "8px 0",
+};
+
+const trackingNote = {
+  fontSize: "12px",
+  color: "#64748b",
+  margin: "12px 0 0",
+};
+
+const linkStyle = {
+  color: "#2563eb",
+  textDecoration: "underline",
 };
 
 const infoBox = {
@@ -438,67 +480,4 @@ const footer = {
   color: "#6b7280",
   textAlign: "center" as const,
   margin: "20px 0",
-};
-
-// Add new styles
-const accountBox = {
-  backgroundColor: "#eff6ff",
-  padding: "20px",
-  borderRadius: "8px",
-  margin: "20px 0",
-  border: "2px solid #3b82f6",
-};
-
-const accountTitle = {
-  fontSize: "18px",
-  fontWeight: "bold" as const,
-  color: "#1e40af",
-  margin: "0 0 12px",
-  textAlign: "center" as const,
-};
-
-const accountText = {
-  fontSize: "14px",
-  color: "#374151",
-  margin: "0 0 16px",
-  textAlign: "center" as const,
-};
-
-const accountTable = {
-  width: "100%",
-  backgroundColor: "#ffffff",
-  borderRadius: "6px",
-  padding: "16px",
-};
-
-const accountLabel = {
-  fontSize: "14px",
-  color: "#6b7280",
-  padding: "8px 0",
-};
-
-const accountValue = {
-  fontSize: "14px",
-  color: "#111827",
-  fontWeight: "600" as const,
-  padding: "8px 0",
-};
-
-const accountPassword = {
-  fontSize: "18px",
-  color: "#2563eb",
-  fontWeight: "bold" as const,
-  fontFamily: "monospace",
-  padding: "8px 0",
-  letterSpacing: "2px",
-};
-
-const accountNote = {
-  fontSize: "13px",
-  color: "#dc2626",
-  backgroundColor: "#fef2f2",
-  padding: "12px",
-  borderRadius: "6px",
-  marginTop: "12px",
-  border: "1px solid #fca5a5",
 };

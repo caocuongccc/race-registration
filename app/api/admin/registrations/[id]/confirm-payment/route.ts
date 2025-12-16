@@ -1,14 +1,12 @@
-// app/api/admin/registrations/[id]/confirm-payment/route.ts
+// app/api/admin/registrations/[id]/confirm-payment/route.ts - GMAIL FIRST
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-// import { generateCheckinQR } from "@/lib/google-drive";
 import { Prisma } from "@prisma/client";
-
 import { generateCheckinQR } from "@/lib/imgbb";
-import { sendPaymentConfirmedEmail } from "@/lib/email";
-import { sendPaymentConfirmationEmail } from "@/lib/email-service";
+// ✅ CHANGE: Import Gmail-first service
+import { sendPaymentConfirmationEmailGmailFirst } from "@/lib/email-service-gmail-first";
 
 /**
  * Generate BIB number for manual confirmation
@@ -53,9 +51,13 @@ export async function POST(
     }
 
     const { notes } = await req.json();
-    console.log("Manual confirmation notes:", notes);
     const registrationId = (await context.params).id;
-    console.log("Manual confirming payment for registration:", registrationId);
+
+    console.log(
+      "✅ Manual confirming payment for registration:",
+      registrationId
+    );
+
     // Get registration
     const registration = await prisma.registration.findUnique({
       where: { id: registrationId },
@@ -65,7 +67,7 @@ export async function POST(
         shirt: true,
       },
     });
-    console.log("Registration data:", registration);
+
     if (!registration) {
       return NextResponse.json(
         { error: "Registration not found" },
@@ -83,10 +85,12 @@ export async function POST(
       registrationId,
       registration.distanceId
     );
-    console.log("Generated BIB number:", bibNumber);
+    console.log("📋 Generated BIB number:", bibNumber);
+
     // Generate check-in QR code
     const qrCheckinUrl = await generateCheckinQR(registrationId, bibNumber);
-    console.log("Generated check-in QR URL:", qrCheckinUrl);
+    console.log("🎫 Generated check-in QR URL:", qrCheckinUrl);
+
     // Update registration
     const updatedRegistration = await prisma.$transaction(
       async (tx: Prisma.TransactionClient) => {
@@ -120,16 +124,35 @@ export async function POST(
       }
     );
 
-    // Send confirmation email (with or without BIB based on event config)
+    console.log("💾 Registration updated successfully");
+
+    // ✅ GMAIL FIRST: Send confirmation email with Gmail priority
+    console.log(
+      `📧 [GMAIL FIRST] Sending payment confirmation email to ${updatedRegistration.email}...`
+    );
+
     try {
-      await sendPaymentConfirmationEmail({
+      await sendPaymentConfirmationEmailGmailFirst({
         registration: updatedRegistration,
         event: registration.event,
       });
 
       console.log(`✅ Payment confirmation email sent for ${bibNumber}`);
-    } catch (emailError) {
-      console.error("Failed to send confirmation email:", emailError);
+    } catch (emailError: any) {
+      console.error("❌ Failed to send confirmation email:", emailError);
+
+      // Log email failure but don't fail the payment confirmation
+      await prisma.emailLog.create({
+        data: {
+          registrationId: registrationId,
+          emailType: "PAYMENT_CONFIRMED",
+          subject: `Thanh toán thành công - Số BIB ${bibNumber}`,
+          status: "FAILED",
+          errorMessage: emailError.message || "Unknown error",
+        },
+      });
+
+      console.warn(`⚠️ Payment confirmed but email failed for ${bibNumber}`);
     }
 
     return NextResponse.json({
@@ -138,7 +161,7 @@ export async function POST(
       registration: updatedRegistration,
     });
   } catch (error) {
-    console.error("Manual confirmation error:", error);
+    console.error("❌ Manual confirmation error:", error);
     return NextResponse.json(
       { error: "Failed to confirm payment" },
       { status: 500 }
