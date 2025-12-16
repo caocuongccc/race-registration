@@ -1,4 +1,4 @@
-// app/api/registrations/route.ts
+// app/api/registrations/route.ts - FIX EMAIL SENDING
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { generatePaymentQR } from "@/lib/imgbb";
@@ -107,7 +107,7 @@ export async function POST(req: NextRequest) {
         },
       });
 
-      isNewUser = true;
+      isNewUser = false;
       console.log(`✅ Created user account for ${body.email}`);
     }
 
@@ -118,7 +118,7 @@ export async function POST(req: NextRequest) {
           eventId: body.eventId,
           distanceId: body.distanceId,
           shirtId: body.shirtId || null,
-          userId: user!.id, // Link to user account
+          userId: user!.id,
 
           fullName: body.fullName,
           email: body.email,
@@ -187,7 +187,9 @@ export async function POST(req: NextRequest) {
       data: { qrPaymentUrl },
     });
 
-    // Send email with account info if new user
+    // ✅ FIX: Send email with proper error handling
+    console.log(`📧 Sending registration email to ${registration.email}...`);
+
     try {
       await sendRegistrationPendingEmail({
         registration: {
@@ -199,6 +201,9 @@ export async function POST(req: NextRequest) {
         temporaryPassword: isNewUser ? temporaryPassword : undefined,
       });
 
+      console.log(`✅ Email sent successfully to ${registration.email}`);
+
+      // Log email success
       await prisma.emailLog.create({
         data: {
           registrationId: registration.id,
@@ -207,18 +212,24 @@ export async function POST(req: NextRequest) {
           status: "SENT",
         },
       });
-    } catch (emailError) {
-      console.error("Email sending error:", emailError);
+    } catch (emailError: any) {
+      console.error("❌ Email sending error:", emailError);
 
+      // Log email failure but don't fail the registration
       await prisma.emailLog.create({
         data: {
           registrationId: registration.id,
           emailType: "REGISTRATION_PENDING",
           subject: `Xác nhận đăng ký - ${event.name}`,
           status: "FAILED",
-          errorMessage: (emailError as Error).message,
+          errorMessage: emailError.message || "Unknown error",
         },
       });
+
+      // Show warning to user but still return success
+      console.warn(
+        `⚠️ Registration created but email failed for ${registration.email}`
+      );
     }
 
     return NextResponse.json({
@@ -236,6 +247,9 @@ export async function POST(req: NextRequest) {
               "Tài khoản đã được tạo. Thông tin đăng nhập đã gửi qua email.",
             email: body.email,
           }
+        : null,
+      emailWarning: emailError
+        ? "Email có thể gửi chậm, vui lòng kiểm tra sau."
         : null,
     });
   } catch (error) {

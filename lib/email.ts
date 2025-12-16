@@ -29,7 +29,10 @@ export async function sendRegistrationPendingEmail(
   // Use default template if no custom config
   const fromName = emailConfig?.fromName || process.env.FROM_NAME;
   const fromEmail = emailConfig?.fromEmail || process.env.FROM_EMAIL;
-
+  console.log("Preparing to send registration pending email:", {
+    fromName,
+    fromEmail,
+  });
   // Generate QR attachment if needed (always attach for both modes)
   let attachments: any[] = [];
 
