@@ -138,22 +138,18 @@ export async function generateCheckinQR(
   shirtType: string | null,
   shirtSize: string | null
 ): Promise<string> {
-  //create a more detailed QR data
-  const imput = `type: checkin
-                Tên VDV: ${fullName}
-                Giới tính: ${gender}
-                Ngày sinh: ${dob.toISOString().split("T")[0]}
-                Số bib: ${bibNumber}
-                Số điện thoại: ${phone}
-                Loại áo: ${shirtCategory}
-                Loại áo: ${shirtType}
-                Kích thước áo: ${shirtSize}`;
-  // JSON format for easy parsing when scanning
-  const qrData = JSON.stringify({
-    imput,
-  });
-
-  console.log(`Generating checkin QR for BIB ${bibNumber}`);
+  const qrData = [
+    "type: checkin",
+    `Tên VDV: ${fullName}`,
+    `Giới tính: ${gender}`,
+    `Ngày sinh: ${dob.toISOString().split("T")[0]}`,
+    `Số bib: ${bibNumber}`,
+    `Số điện thoại: ${phone}`,
+    `Loại áo: ${shirtCategory}`,
+    `Loại áo: ${shirtType}`,
+    `Kích thước áo: ${shirtSize}`,
+  ].join("\n");
+  console.log(`Generating checkin QR for BIB ${qrData}`);
 
   return await generateAndUploadQR(qrData, `checkin-qr-${bibNumber}`);
 }
