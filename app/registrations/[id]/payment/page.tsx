@@ -287,8 +287,10 @@ export default function PaymentPage() {
                   <div className="flex justify-between">
                     <span className="text-gray-600">Nội dung CK:</span>
                     <span className="font-mono font-bold bg-yellow-100 px-2 py-1 rounded">
-                      {registration.phone} {registration.shirtCategory}{" "}
-                      {registration.shirtSize}
+                      {registration.phone}
+                      {registration.shirtCategory &&
+                        ` ${registration.shirtCategory}`}
+                      {registration.shirtSize && ` ${registration.shirtSize}`}
                     </span>
                   </div>
                 </div>
@@ -299,8 +301,10 @@ export default function PaymentPage() {
                   ⚠️ <strong>Lưu ý:</strong> Vui lòng ghi CHÍNH XÁC nội dung
                   chuyển khoản{" "}
                   <strong>
-                    {registration.phone} {registration.shirtCategory}{" "}
-                    {registration.shirtSize}
+                    {registration.phone}
+                    {registration.shirtCategory &&
+                      ` ${registration.shirtCategory}`}
+                    {registration.shirtSize && ` ${registration.shirtSize}`}
                   </strong>{" "}
                   để hệ thống tự động xác nhận thanh toán.
                 </p>

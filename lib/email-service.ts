@@ -33,7 +33,6 @@ export async function sendEmailWithFallback(
       attachments,
     });
 
-    console.log(`✅ Email sent via Resend to ${to}`);
     return { success: true, provider: "resend" };
   } catch (resendError: any) {
     console.error("Resend failed:", resendError.message);
@@ -73,8 +72,6 @@ export async function sendEmailWithFallback(
         attachments,
       });
 
-      console.log(`✅ Email sent via Gmail SMTP to ${to}`);
-
       // Update EmailConfig to use Gmail by default if this happens often
       if (emailConfigId) {
         await prisma.emailConfig.update({
@@ -85,7 +82,6 @@ export async function sendEmailWithFallback(
 
       return { success: true, provider: "gmail" };
     } catch (gmailError: any) {
-      console.error("Gmail SMTP also failed:", gmailError.message);
       return {
         success: false,
         provider: "gmail",
@@ -121,9 +117,8 @@ export async function sendPaymentConfirmationEmail(data: {
 
   if (sendBibNow) {
     // CASE 1: Send full confirmation with BIB
-    const { PaymentConfirmedEmail } = await import(
-      "@/emails/payment-confirmed"
-    );
+    const { PaymentConfirmedEmail } =
+      await import("@/emails/payment-confirmed");
     emailReact = PaymentConfirmedEmail({ registration, event });
     subject =
       emailConfig?.subjectPaymentConfirmed ||
@@ -138,9 +133,8 @@ export async function sendPaymentConfirmationEmail(data: {
     }
   } else {
     // CASE 2: Send payment received without BIB
-    const { PaymentReceivedNoBibEmail } = await import(
-      "@/emails/payment-received-no-bib"
-    );
+    const { PaymentReceivedNoBibEmail } =
+      await import("@/emails/payment-received-no-bib");
     emailReact = PaymentReceivedNoBibEmail({ registration, event });
     subject =
       emailConfig?.subjectPaymentReceivedNoBib ||
@@ -210,9 +204,8 @@ export async function sendBibAnnouncementEmails(eventId: string): Promise<{
     await Promise.all(
       batch.map(async (registration: any) => {
         try {
-          const { BibAnnouncementEmail } = await import(
-            "@/emails/bib-announcement"
-          );
+          const { BibAnnouncementEmail } =
+            await import("@/emails/bib-announcement");
 
           const result = await sendEmailWithFallback(
             {

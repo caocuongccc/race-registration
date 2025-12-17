@@ -53,8 +53,6 @@ export async function PUT(
     const body = await req.json();
     const eventId = (await context.params).id;
 
-    console.log("Updating event:", eventId, body);
-
     // Update event with all fields including images
     const event = await prisma.event.update({
       where: { id: eventId },
@@ -92,8 +90,6 @@ export async function PUT(
         coverImageUrl: body.coverImageUrl,
       },
     });
-
-    console.log("Event updated successfully:", event.id);
 
     return NextResponse.json({ success: true, event });
   } catch (error) {

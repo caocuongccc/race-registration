@@ -146,7 +146,13 @@ export async function POST(req: NextRequest) {
 
       return newRegistration;
     });
-    let description = `${registration.phone} ${registration.shirtCategory} ${registration.shirtSize}`;
+    const description = [
+      registration.phone,
+      registration.shirtCategory,
+      registration.shirtSize,
+    ]
+      .filter(Boolean)
+      .join(" ");
     // Generate Payment QR Code
     const qrPaymentUrl = await generatePaymentQR(description, totalAmount);
 
@@ -157,9 +163,6 @@ export async function POST(req: NextRequest) {
     });
 
     // ✅ Send email (no account info)
-    console.log(
-      `📧 [GMAIL FIRST] Sending registration email to ${registration.email}...`
-    );
 
     let emailError: any = null;
 
@@ -172,8 +175,6 @@ export async function POST(req: NextRequest) {
         event,
         // ❌ REMOVED: isNewUser, temporaryPassword
       });
-
-      console.log(`✅ Email sent successfully to ${registration.email}`);
 
       // Log email success
       await prisma.emailLog.create({

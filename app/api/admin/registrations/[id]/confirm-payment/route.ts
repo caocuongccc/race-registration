@@ -53,11 +53,6 @@ export async function POST(
     const { notes } = await req.json();
     const registrationId = (await context.params).id;
 
-    console.log(
-      "✅ Manual confirming payment for registration:",
-      registrationId
-    );
-
     // Get registration
     const registration = await prisma.registration.findUnique({
       where: { id: registrationId },
@@ -85,7 +80,6 @@ export async function POST(
       registrationId,
       registration.distanceId
     );
-    console.log("📋 Generated BIB number:", bibNumber);
 
     // Generate check-in QR code
     const qrCheckinUrl = await generateCheckinQR(
@@ -99,7 +93,6 @@ export async function POST(
       registration.shirtType,
       registration.shirtSize
     );
-    console.log("🎫 Generated check-in QR URL:", qrCheckinUrl);
 
     // Update registration
     const updatedRegistration = await prisma.$transaction(
@@ -134,20 +127,13 @@ export async function POST(
       }
     );
 
-    console.log("💾 Registration updated successfully");
-
     // ✅ GMAIL FIRST: Send confirmation email with Gmail priority
-    console.log(
-      `📧 [GMAIL FIRST] Sending payment confirmation email to ${updatedRegistration.email}...`
-    );
 
     try {
       await sendPaymentConfirmationEmailGmailFirst({
         registration: updatedRegistration,
         event: registration.event,
       });
-
-      console.log(`✅ Payment confirmation email sent for ${bibNumber}`);
     } catch (emailError: any) {
       console.error("❌ Failed to send confirmation email:", emailError);
 

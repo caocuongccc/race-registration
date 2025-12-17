@@ -120,9 +120,8 @@ export async function sendRegistrationPendingEmailGmailFirst(data: {
   }
 
   // Import email template
-  const { RegistrationPendingEmail } = await import(
-    "@/emails/registration-pending"
-  );
+  const { RegistrationPendingEmail } =
+    await import("@/emails/registration-pending");
 
   const result = await sendEmailGmailFirst(
     {
@@ -182,9 +181,8 @@ export async function sendPaymentConfirmationEmailGmailFirst(data: {
 
   if (sendBibNow) {
     // CASE 1: Send full confirmation with BIB
-    const { PaymentConfirmedEmail } = await import(
-      "@/emails/payment-confirmed"
-    );
+    const { PaymentConfirmedEmail } =
+      await import("@/emails/payment-confirmed");
     emailReact = PaymentConfirmedEmail({ registration, event });
     subject =
       emailConfig?.subjectPaymentConfirmed ||
@@ -199,9 +197,8 @@ export async function sendPaymentConfirmationEmailGmailFirst(data: {
     }
   } else {
     // CASE 2: Send payment received without BIB
-    const { PaymentReceivedNoBibEmail } = await import(
-      "@/emails/payment-received-no-bib"
-    );
+    const { PaymentReceivedNoBibEmail } =
+      await import("@/emails/payment-received-no-bib");
     emailReact = PaymentReceivedNoBibEmail({ registration, event });
     subject =
       emailConfig?.subjectPaymentReceivedNoBib ||
@@ -234,6 +231,4 @@ export async function sendPaymentConfirmationEmailGmailFirst(data: {
       status: "SENT",
     },
   });
-
-  console.log(`📨 Payment email sent via ${result.provider.toUpperCase()}`);
 }

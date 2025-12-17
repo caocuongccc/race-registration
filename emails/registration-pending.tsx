@@ -200,16 +200,20 @@ export function RegistrationPendingEmail({
                   <br />
                   Nội dung:{" "}
                   <strong>
-                    {registration.phone} {registration.shirtCategory}{" "}
-                    {registration.shirtSize}
+                    {registration.phone}
+                    {registration.shirtCategory &&
+                      ` ${registration.shirtCategory}`}
+                    {registration.shirtSize && ` ${registration.shirtSize}`}
                   </strong>
                 </Text>
 
                 <Text style={warningText}>
                   ⚠️ Vui lòng ghi CHÍNH XÁC nội dung chuyển khoản:{" "}
                   <strong>
-                    {registration.phone} {registration.shirtCategory}{" "}
-                    {registration.shirtSize}
+                    {registration.phone}
+                    {registration.shirtCategory &&
+                      ` ${registration.shirtCategory}`}
+                    {registration.shirtSize && ` ${registration.shirtSize}`}
                   </strong>
                 </Text>
               </Section>
@@ -221,9 +225,8 @@ export function RegistrationPendingEmail({
             <Text style={noteTitle}>📌 LƯU Ý QUAN TRỌNG</Text>
             <ul style={noteList}>
               <li>
-                Sau khi chuyển khoản thành công, bạn sẽ nhận email xác nhận kèm
-                số BIB trong vòng 5-10 phút (nếu tự động) hoặc sau khi BTC xác
-                nhận.
+                Sau khi chuyển khoản thành công, bạn sẽ nhận email xác nhận sau
+                khi BTC xác nhận.
               </li>
               <li>
                 <strong>Theo dõi trạng thái:</strong> Truy cập{" "}
@@ -231,6 +234,12 @@ export function RegistrationPendingEmail({
                   link theo dõi
                 </a>{" "}
                 để xem trạng thái thanh toán và số BIB
+              </li>
+              <li>
+                <strong>Tham gia nhóm zalo:</strong> Truy cập{" "}
+                <a href="https://zalo.me/g/skuiph901" style={linkStyle}>
+                  Tham gia nhóm Zalo sự kiện
+                </a>{" "}
               </li>
               <li>
                 Nếu không nhận được email, vui lòng kiểm tra hộp thư spam hoặc

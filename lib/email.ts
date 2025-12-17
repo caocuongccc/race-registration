@@ -29,10 +29,7 @@ export async function sendRegistrationPendingEmail(
   // Use default template if no custom config
   const fromName = emailConfig?.fromName || process.env.FROM_NAME;
   const fromEmail = emailConfig?.fromEmail || process.env.FROM_EMAIL;
-  console.log("Preparing to send registration pending email:", {
-    fromName,
-    fromEmail,
-  });
+
   // Generate QR attachment if needed (always attach for both modes)
   let attachments: any[] = [];
 
@@ -64,8 +61,6 @@ export async function sendRegistrationPendingEmail(
       }),
       attachments: attachments.length > 0 ? attachments : undefined,
     });
-
-    console.log(`✅ Email sent to ${registration.email}`);
   } catch (error) {
     console.error("Email sending failed:", error);
     throw error;
@@ -77,15 +72,12 @@ export async function sendRegistrationPendingEmail(
  */
 export async function sendPaymentConfirmedEmail(data: RegistrationEmailData) {
   const { registration, event } = data;
-  console.log("Sending payment confirmed email for registration:", data);
   // Get email config
   const emailConfig = await prisma.emailConfig.findUnique({
     where: { eventId: event.id },
   });
-  console.log("Email config:", emailConfig);
   const fromName = emailConfig?.fromName || process.env.FROM_NAME;
   const fromEmail = emailConfig?.fromEmail || process.env.FROM_EMAIL;
-  console.log("From name/email:", fromName, fromEmail);
   // Attach QR checkin if enabled
   let attachments: any[] = [];
 
@@ -107,8 +99,6 @@ export async function sendPaymentConfirmedEmail(data: RegistrationEmailData) {
       }),
       attachments: attachments.length > 0 ? attachments : undefined,
     });
-
-    console.log(`✅ Payment confirmation email sent to ${registration.email}`);
   } catch (error) {
     console.error("Email sending failed:", error);
     throw error;

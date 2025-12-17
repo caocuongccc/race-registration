@@ -48,7 +48,6 @@ async function uploadToImgBB(
     }
 
     // Return direct image URL
-    console.log(`✅ Uploaded to ImgBB: ${data.data.url}`);
     return data.data.url;
   } catch (error) {
     console.error("ImgBB upload error:", error);
@@ -149,7 +148,6 @@ export async function generateCheckinQR(
     `Loại áo: ${shirtType}`,
     `Kích thước áo: ${shirtSize}`,
   ].join("\n");
-  console.log(`Generating checkin QR for BIB ${qrData}`);
 
   return await generateAndUploadQR(qrData, `checkin-qr-${bibNumber}`);
 }
@@ -196,8 +194,6 @@ export async function generatePaymentQR(
 
   // VietQR API
   const vietqrUrl = `https://img.vietqr.io/image/${bankId}-${accountNo}-${template}.png?amount=${amount}&addInfo=${encodeURIComponent(description)}&accountName=${encodeURIComponent(accountName)}`;
-
-  console.log(`Generated VietQR URL: ${vietqrUrl}`);
 
   // Return URL directly (no need to upload)
   return vietqrUrl;
