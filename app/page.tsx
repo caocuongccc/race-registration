@@ -510,31 +510,48 @@ export default function HomePage() {
                   key={event.id}
                   className="hover:shadow-xl transition-all duration-300 overflow-hidden group"
                 >
-                  {/* Cover Image */}
-                  <div className="h-48 overflow-hidden relative">
+                  {/* ✅ FIX: Improved Cover Image */}
+                  <div className="relative h-48 overflow-hidden bg-gradient-to-br from-blue-500 to-indigo-600">
                     {event.coverImageUrl || event.bannerUrl ? (
-                      <img
-                        src={event.coverImageUrl || event.bannerUrl}
-                        alt={event.name}
-                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                      />
+                      <>
+                        {/* Background image */}
+                        <img
+                          src={event.coverImageUrl || event.bannerUrl}
+                          alt={event.name}
+                          className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                          loading="lazy"
+                          // ✅ KEY FIXES:
+                          style={{
+                            imageRendering: "high-quality",
+                            objectFit: "cover",
+                          }}
+                          onError={(e) => {
+                            // Fallback if image fails to load
+                            e.currentTarget.style.display = "none";
+                          }}
+                        />
+                        {/* Gradient overlay for better text visibility */}
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent" />
+                      </>
                     ) : (
-                      <div className="h-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center">
+                      <div className="absolute inset-0 flex items-center justify-center">
                         <Award className="w-20 h-20 text-white opacity-50" />
                       </div>
                     )}
 
                     {/* Logo overlay */}
                     {event.logoUrl && (
-                      <div className="absolute bottom-4 left-4">
+                      <div className="absolute bottom-4 left-4 z-10">
                         <img
                           src={event.logoUrl}
                           alt={event.name}
-                          className="w-16 h-16 object-contain bg-white rounded-lg p-2 shadow-lg"
+                          className="w-16 h-16 object-contain bg-white/90 rounded-lg p-2 shadow-lg backdrop-blur-sm"
+                          loading="lazy"
                         />
                       </div>
                     )}
                   </div>
+
                   <CardHeader>
                     <CardTitle className="text-xl line-clamp-2 group-hover:text-blue-600 transition-colors">
                       {event.name}
