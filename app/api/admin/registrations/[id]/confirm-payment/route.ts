@@ -88,7 +88,17 @@ export async function POST(
     console.log("📋 Generated BIB number:", bibNumber);
 
     // Generate check-in QR code
-    const qrCheckinUrl = await generateCheckinQR(registrationId, bibNumber);
+    const qrCheckinUrl = await generateCheckinQR(
+      registrationId,
+      bibNumber,
+      registration.fullName,
+      registration.gender,
+      registration.dob,
+      registration.phone,
+      registration.shirtCategory,
+      registration.shirtType,
+      registration.shirtSize
+    );
     console.log("🎫 Generated check-in QR URL:", qrCheckinUrl);
 
     // Update registration

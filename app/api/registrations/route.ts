@@ -146,9 +146,9 @@ export async function POST(req: NextRequest) {
 
       return newRegistration;
     });
-
+    let description = `${registration.phone} ${registration.shirtCategory} ${registration.shirtSize}`;
     // Generate Payment QR Code
-    const qrPaymentUrl = await generatePaymentQR(registration.id, totalAmount);
+    const qrPaymentUrl = await generatePaymentQR(description, totalAmount);
 
     // Update registration with QR URL
     await prisma.registration.update({

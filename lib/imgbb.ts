@@ -129,13 +129,28 @@ export async function generateAndUploadQR(
  */
 export async function generateCheckinQR(
   registrationId: string,
-  bibNumber: string
+  bibNumber: string,
+  fullName: string,
+  gender: string,
+  dob: Date,
+  phone: string,
+  shirtCategory: string | null,
+  shirtType: string | null,
+  shirtSize: string | null
 ): Promise<string> {
+  //create a more detailed QR data
+  const imput = `type: checkin
+                Tên VDV: ${fullName}
+                Giới tính: ${gender}
+                Ngày sinh: ${dob.toISOString().split("T")[0]}
+                Số bib: ${bibNumber}
+                Số điện thoại: ${phone}
+                Loại áo: ${shirtCategory}
+                Loại áo: ${shirtType}
+                Kích thước áo: ${shirtSize}`;
   // JSON format for easy parsing when scanning
   const qrData = JSON.stringify({
-    type: "checkin",
-    registrationId: registrationId,
-    bibNumber: bibNumber,
+    imput,
   });
 
   console.log(`Generating checkin QR for BIB ${bibNumber}`);
@@ -181,7 +196,7 @@ export async function generatePaymentQR(
   const accountName = process.env.SEPAY_BANK_HOLDER || "NGUYEN VAN A";
   const bankId = process.env.SEPAY_BANK_CODE || "MB"; // Mã ngân hàng (MB, VCB, TCB...)
   const template = "compact"; // compact, compact2, qr_only, print
-  const description = `DK ${registrationId}`;
+  const description = `${registrationId}`;
 
   // VietQR API
   const vietqrUrl = `https://img.vietqr.io/image/${bankId}-${accountNo}-${template}.png?amount=${amount}&addInfo=${encodeURIComponent(description)}&accountName=${encodeURIComponent(accountName)}`;
