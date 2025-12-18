@@ -147,7 +147,9 @@ export async function generateCheckinQR(
     `Loại áo: ${shirtCategory}`,
     `Loại áo: ${shirtType}`,
     `Kích thước áo: ${shirtSize}`,
-  ].join("\n");
+  ]
+    .filter(Boolean)
+    .join(" | "); // Dùng | thay vì \n
 
   return await generateAndUploadQR(qrData, `checkin-qr-${bibNumber}`);
 }
