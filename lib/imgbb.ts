@@ -138,11 +138,11 @@ export async function generateCheckinQR(
   shirtSize: string | null
 ): Promise<string> {
   const qrData = [
-    "type: checkin",
+    "THÔNG TIN ĐĂNG KÝ CHECK-IN",
+    `Số bib: ${bibNumber}`,
     `Tên VDV: ${fullName}`,
     `Giới tính: ${gender}`,
     `Ngày sinh: ${dob.toISOString().split("T")[0]}`,
-    `Số bib: ${bibNumber}`,
     `Số điện thoại: ${phone}`,
     `Loại áo: ${shirtCategory}`,
     `Loại áo: ${shirtType}`,
