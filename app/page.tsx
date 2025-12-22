@@ -618,7 +618,7 @@ export default function HomePage() {
                     </div>
 
                     {/* Participants */}
-                    <div className="flex items-center gap-2 text-sm text-gray-600">
+                    {/* <div className="flex items-center gap-2 text-sm text-gray-600">
                       <Users className="w-4 h-4" />
                       <span>
                         {event.distances.reduce(
@@ -627,7 +627,7 @@ export default function HomePage() {
                         )}{" "}
                         người đã đăng ký
                       </span>
-                    </div>
+                    </div> */}
 
                     {/* CTA Buttons */}
                     <div className="grid grid-cols-2 gap-3 pt-2">
