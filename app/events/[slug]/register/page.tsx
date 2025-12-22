@@ -680,6 +680,13 @@ export default function RegistrationPage() {
 
               <p className="text-xs text-gray-500 text-center mt-3">
                 💳 Sau khi đăng ký, bạn sẽ nhận email với QR Code thanh toán
+                theo thông tin bên dưới <br></br>
+                <ul>
+                  <li>Ngân hàng: VietinBank</li>
+                  <li> Số tài khoản: 1028 8478 5041</li>
+                  <li> Chủ tài khoản: Nguyễn Thanh Hoài Linh</li>
+                </ul>
+                <br></br>
               </p>
             </CardContent>
           </Card>
