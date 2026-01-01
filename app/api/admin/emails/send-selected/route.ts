@@ -6,6 +6,7 @@ import { prisma } from "@/lib/prisma";
 import { sendEmailGmailFirst } from "@/lib/email-service-gmail-first";
 import { BibAnnouncementEmail } from "@/emails/bib-announcement";
 import { RacePackInfoEmail } from "@/emails/race-pack-info";
+import { generateCheckinQRBuffer } from "@/lib/qr-inline";
 
 export async function POST(req: NextRequest) {
   try {
@@ -16,20 +17,14 @@ export async function POST(req: NextRequest) {
 
     const { registrationIds, emailType } = await req.json();
 
-    if (
-      !registrationIds ||
-      !Array.isArray(registrationIds) ||
-      registrationIds.length === 0
-    ) {
+    if (!registrationIds || !Array.isArray(registrationIds) || registrationIds.length === 0) {
       return NextResponse.json(
         { error: "Registration IDs required" },
         { status: 400 }
       );
     }
 
-    console.log(
-      `📧 Sending ${emailType} to ${registrationIds.length} registrations...`
-    );
+    console.log(`📧 Sending ${emailType} to ${registrationIds.length} registrations...`);
 
     // Get registrations with full data
     const registrations = await prisma.registration.findMany({
@@ -59,11 +54,41 @@ export async function POST(req: NextRequest) {
       try {
         let emailReact;
         let subject;
+        let attachments: any[] = [];
 
         switch (emailType) {
           case "BIB_ANNOUNCEMENT":
             emailReact = BibAnnouncementEmail({ registration });
             subject = `Thông báo số BIB - ${registration.event.name}`;
+            
+            // ✅ GEN QR CHECK-IN INLINE (không upload)
+            if (registration.bibNumber) {
+              try {
+                const qrBuffer = await generateCheckinQRBuffer(
+                  registration.id,
+                  registration.bibNumber,
+                  registration.fullName,
+                  registration.gender,
+                  registration.dob,
+                  registration.phone,
+                  registration.shirtCategory,
+                  registration.shirtType,
+                  registration.shirtSize
+                );
+
+                attachments.push({
+                  filename: `qr-checkin-${registration.bibNumber}.png`,
+                  content: qrBuffer,
+                  contentType: "image/png",
+                  cid: `qr-checkin-${registration.bibNumber}`, // ✅ Content-ID for inline display
+                });
+
+                console.log(`✅ Generated QR for BIB ${registration.bibNumber}`);
+              } catch (qrError) {
+                console.warn(`⚠️ Failed to generate QR for ${registration.bibNumber}:`, qrError);
+                // Continue sending email without QR
+              }
+            }
             break;
 
           case "RACE_PACK_INFO":
@@ -85,6 +110,7 @@ export async function POST(req: NextRequest) {
           to: registration.email,
           subject,
           react: emailReact,
+          attachments: attachments.length > 0 ? attachments : undefined,
           fromName: registration.event.name || process.env.FROM_NAME,
           fromEmail: process.env.FROM_EMAIL,
         });
@@ -101,20 +127,16 @@ export async function POST(req: NextRequest) {
           });
 
           sent++;
-          console.log(
-            `✅ Sent to ${registration.email} via ${result.provider}`
-          );
+          console.log(`✅ Sent to ${registration.email} via ${result.provider}`);
         } else {
           throw new Error(result.error || "Failed to send");
         }
 
         // Small delay between emails to avoid rate limits
-        await new Promise((resolve) => setTimeout(resolve, 1000));
+        await new Promise(resolve => setTimeout(resolve, 1000));
+
       } catch (error: any) {
-        console.error(
-          `❌ Failed to send to ${registration.email}:`,
-          error.message
-        );
+        console.error(`❌ Failed to send to ${registration.email}:`, error.message);
 
         // Log failure
         await prisma.emailLog.create({
@@ -137,6 +159,7 @@ export async function POST(req: NextRequest) {
       failed,
       total: registrations.length,
     });
+
   } catch (error) {
     console.error("Send selected emails error:", error);
     return NextResponse.json(

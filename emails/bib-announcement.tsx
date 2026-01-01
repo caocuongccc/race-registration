@@ -1,4 +1,4 @@
-// emails/payment-received-no-bib.tsx
+// emails/bib-announcement-inline.tsx
 import {
   Html,
   Head,
@@ -10,152 +10,14 @@ import {
   Hr,
 } from "@react-email/components";
 
-interface PaymentReceivedNoBibEmailProps {
-  registration: any;
-  event: any;
-}
-
-export function PaymentReceivedNoBibEmail({
-  registration,
-  event,
-}: PaymentReceivedNoBibEmailProps) {
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat("vi-VN", {
-      style: "currency",
-      currency: "VND",
-    }).format(amount);
-  };
-
-  return (
-    <Html>
-      <Head />
-      <Body style={main}>
-        <Container style={container}>
-          {event.logoUrl && (
-            <Img
-              src={event.logoUrl}
-              alt={event.name}
-              width="200"
-              style={logo}
-            />
-          )}
-
-          <Section style={successBadge}>
-            <Text style={successIcon}>✅</Text>
-            <Text style={successTitle}>ĐÃ NHẬN THANH TOÁN!</Text>
-          </Section>
-
-          <Text style={paragraph}>
-            Xin chào <strong>{registration.fullName}</strong>,
-          </Text>
-
-          <Text style={paragraph}>
-            Chúng tôi đã nhận được thanh toán của bạn cho sự kiện{" "}
-            <strong>{event.name}</strong>.
-          </Text>
-
-          <Section style={infoBox}>
-            <Text style={infoTitle}>💰 THÔNG TIN THANH TOÁN</Text>
-            <table style={infoTable}>
-              <tbody>
-                <tr>
-                  <td style={labelCell}>Họ tên:</td>
-                  <td style={valueCell}>{registration.fullName}</td>
-                </tr>
-                <tr>
-                  <td style={labelCell}>Cự ly:</td>
-                  <td style={valueCell}>{registration.distance.name}</td>
-                </tr>
-                <tr>
-                  <td style={labelCell}>Số tiền:</td>
-                  <td style={valueCell}>
-                    <strong>{formatCurrency(registration.totalAmount)}</strong>
-                  </td>
-                </tr>
-                <tr>
-                  <td style={labelCell}>Trạng thái:</td>
-                  <td style={paidStatus}>Đã thanh toán ✓</td>
-                </tr>
-              </tbody>
-            </table>
-          </Section>
-
-          <Section style={bibPendingBox}>
-            <Text style={bibPendingTitle}>📋 THÔNG BÁO VỀ SỐ BIB</Text>
-            <Text style={bibPendingText}>
-              Số BIB (số áo) của bạn sẽ được công bố trong thời gian tới.
-              <br />
-              <br />
-              Ban tổ chức sẽ gửi email thông báo số BIB khi đã hoàn tất việc
-              phân chia và sắp xếp.
-              <br />
-              <br />
-              Vui lòng theo dõi email để nhận thông tin số BIB của mình.
-            </Text>
-          </Section>
-
-          <Section style={noteBox}>
-            <Text style={noteTitle}>📌 LƯU Ý</Text>
-            <ul style={noteList}>
-              <li>Đăng ký của bạn đã được xác nhận thành công</li>
-              <li>Bạn sẽ nhận email thông báo số BIB trong thời gian tới</li>
-              <li>Khi nhận được số BIB, bạn sẽ có thể tải mã QR check-in</li>
-              <li>
-                Nếu có thắc mắc, vui lòng liên hệ hotline: {event.hotline}
-              </li>
-            </ul>
-          </Section>
-
-          <Hr style={hr} />
-
-          <Text style={footer}>
-            Cảm ơn bạn đã đăng ký tham gia! 🏃‍♂️
-            <br />
-            <br />
-            <strong>Ban tổ chức {event.name}</strong>
-          </Text>
-        </Container>
-      </Body>
-    </Html>
-  );
-}
-
-// Styles (giữ nguyên như payment-confirmed.tsx, thêm)
-const bibPendingBox = {
-  backgroundColor: "#fef3c7",
-  padding: "24px",
-  borderRadius: "12px",
-  margin: "24px 0",
-  border: "2px solid #f59e0b",
-  textAlign: "center" as const,
-};
-
-const bibPendingTitle = {
-  fontSize: "18px",
-  fontWeight: "bold" as const,
-  color: "#92400e",
-  margin: "0 0 16px",
-};
-
-const bibPendingText = {
-  fontSize: "16px",
-  lineHeight: "24px",
-  color: "#78350f",
-  margin: "0",
-};
-
-// ... (copy các styles khác từ payment-confirmed.tsx)
-
-// ============================================
-// emails/bib-announcement.tsx
-// ============================================
-
 interface BibAnnouncementEmailProps {
   registration: any;
+  qrCodeBase64?: string; // NEW: Optional inline QR
 }
 
 export function BibAnnouncementEmail({
   registration,
+  qrCodeBase64,
 }: BibAnnouncementEmailProps) {
   const event = registration.event;
 
@@ -194,21 +56,26 @@ export function BibAnnouncementEmail({
             </Text>
           </Section>
 
-          {registration.qrCheckinUrl && (
-            <Section style={qrSection}>
-              <Text style={qrTitle}>📱 MÃ QR CHECK-IN</Text>
-              <Img
-                src={registration.qrCheckinUrl}
-                alt="QR Check-in"
-                width="250"
-                height="250"
-                style={qrCode}
-              />
-              <Text style={qrInstruction}>
-                💡 Xuất trình mã này khi nhận race pack và check-in
-              </Text>
-            </Section>
-          )}
+          {/* QR CHECK-IN - CID attachment reference */}
+          <Section style={qrSection}>
+            <Text style={qrTitle}>📱 MÃ QR CHECK-IN</Text>
+            <Text style={qrSubtitle}>
+              Xuất trình mã này khi nhận race pack và check-in ngày thi đấu
+            </Text>
+            
+            {/* Reference attachment by CID */}
+            <Img
+              src={`cid:qr-checkin-${registration.bibNumber}`}
+              alt="QR Check-in"
+              width="250"
+              height="250"
+              style={qrCode}
+            />
+            
+            <Text style={qrInstruction}>
+              💡 <strong>Mã QR đã đính kèm</strong> - Tải file đính kèm để in ra hoặc lưu vào điện thoại
+            </Text>
+          </Section>
 
           <Section style={infoBox}>
             <Text style={infoTitle}>📋 THÔNG TIN CỦA BẠN</Text>
@@ -273,28 +140,7 @@ export function BibAnnouncementEmail({
   );
 }
 
-const bibAnnouncementBanner = {
-  backgroundColor: "#2563eb",
-  padding: "24px",
-  borderRadius: "12px",
-  textAlign: "center" as const,
-  margin: "20px 0",
-};
-
-const announcementIcon = {
-  fontSize: "48px",
-  margin: "0",
-};
-
-const announcementTitle = {
-  fontSize: "24px",
-  fontWeight: "bold" as const,
-  color: "#ffffff",
-  margin: "8px 0 0",
-  letterSpacing: "1px",
-};
-
-// ... (reuse styles từ payment-confirmed.tsx)
+// Styles (same as before)
 const main = { backgroundColor: "#f6f9fc", fontFamily: "sans-serif" };
 const container = {
   backgroundColor: "#ffffff",
@@ -309,6 +155,24 @@ const paragraph = {
   lineHeight: "24px",
   color: "#374151",
   margin: "16px 0",
+};
+const bibAnnouncementBanner = {
+  backgroundColor: "#2563eb",
+  padding: "24px",
+  borderRadius: "12px",
+  textAlign: "center" as const,
+  margin: "20px 0",
+};
+const announcementIcon = {
+  fontSize: "48px",
+  margin: "0",
+};
+const announcementTitle = {
+  fontSize: "24px",
+  fontWeight: "bold" as const,
+  color: "#ffffff",
+  margin: "8px 0 0",
+  letterSpacing: "1px",
 };
 const bibBox = {
   textAlign: "center" as const,
@@ -364,11 +228,6 @@ const valueCell = {
   fontWeight: "500" as const,
   verticalAlign: "top" as const,
 };
-const paidStatus = {
-  ...valueCell,
-  color: "#16a34a",
-  fontWeight: "bold" as const,
-};
 const qrSection = {
   textAlign: "center" as const,
   backgroundColor: "#f9fafb",
@@ -383,6 +242,11 @@ const qrTitle = {
   color: "#1f2937",
   margin: "0 0 8px",
 };
+const qrSubtitle = {
+  fontSize: "14px",
+  color: "#6b7280",
+  margin: "0 0 20px",
+};
 const qrCode = {
   margin: "0 auto 20px",
   border: "2px solid #e5e7eb",
@@ -396,41 +260,6 @@ const qrInstruction = {
   backgroundColor: "#fef3c7",
   padding: "12px",
   borderRadius: "6px",
-  margin: "0",
-};
-const successBadge = {
-  textAlign: "center" as const,
-  backgroundColor: "#dcfce7",
-  padding: "24px",
-  borderRadius: "12px",
-  margin: "20px 0",
-  border: "2px solid #16a34a",
-};
-const successIcon = { fontSize: "48px", margin: "0" };
-const successTitle = {
-  fontSize: "24px",
-  fontWeight: "bold" as const,
-  color: "#15803d",
-  margin: "8px 0 0",
-};
-const noteBox = {
-  backgroundColor: "#fef2f2",
-  padding: "20px",
-  borderRadius: "8px",
-  margin: "20px 0",
-  border: "2px solid #fca5a5",
-};
-const noteTitle = {
-  fontSize: "16px",
-  fontWeight: "bold" as const,
-  color: "#991b1b",
-  margin: "0 0 12px",
-};
-const noteList = {
-  fontSize: "14px",
-  lineHeight: "24px",
-  color: "#7f1d1d",
-  paddingLeft: "20px",
   margin: "0",
 };
 const hr = { borderColor: "#e5e7eb", margin: "24px 0" };
