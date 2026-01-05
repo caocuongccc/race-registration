@@ -124,17 +124,20 @@ export default function ImportExcelPage() {
     }
   };
 
-  const handleDownloadTemplate = () => {
-    // Create and download Excel template
-    const template = `Họ tên,Email,Số điện thoại,Ngày sinh (DD/MM/YYYY),Giới tính (Nam/Nữ),CCCD,Địa chỉ,Cự ly,Loại áo (Nam/Nữ/Trẻ em),Kiểu áo (Có tay/3 lỗ),Size áo,Số BIB (tùy chọn)
-Nguyễn Văn A,email@example.com,0912345678,01/01/1990,Nam,001234567890,123 Đường ABC,5km,Nam,Có tay,L,
-Trần Thị B,email2@example.com,0987654321,15/03/1995,Nữ,009876543210,456 Đường XYZ,10km,Nữ,3 lỗ,M,`;
-
-    const blob = new Blob([template], { type: "text/csv;charset=utf-8;" });
-    const link = document.createElement("a");
-    link.href = URL.createObjectURL(blob);
-    link.download = "mau-import-dang-ky.csv";
-    link.click();
+  const handleDownloadTemplate = async () => {
+    try {
+      const res = await fetch("/api/admin/import/template");
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `mau-import-${Date.now()}.xlsx`;
+      a.click();
+      URL.revokeObjectURL(url);
+      toast.success("✅ Đã tải mẫu Excel");
+    } catch (error) {
+      toast.error("❌ Không thể tải mẫu");
+    }
   };
 
   const handlePayBatch = async (batchId: string) => {

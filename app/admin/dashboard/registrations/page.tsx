@@ -295,7 +295,6 @@ export default function RegistrationsPage() {
                 </option>
               ))}
             </Select>
-
             {/* <div className="relative md:col-span-2"> */}
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
             <Input
@@ -311,7 +310,6 @@ export default function RegistrationsPage() {
               }`}
             />
             {/* </div> */}
-
             <Select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
@@ -321,7 +319,6 @@ export default function RegistrationsPage() {
               <option value="PENDING">Chờ thanh toán</option>
               <option value="FAILED">Thất bại</option>
             </Select>
-
             <Select
               value={distanceFilter}
               onChange={(e) => setDistanceFilter(e.target.value)}
@@ -332,6 +329,17 @@ export default function RegistrationsPage() {
                   {d}
                 </option>
               ))}
+            </Select>
+            // Thêm vào phần filters
+            <Select
+              value={batchFilter}
+              onChange={(e) => setBatchFilter(e.target.value)}
+              label="Import Batch"
+            >
+              <option value="all">Tất cả nguồn</option>
+              <option value="ONLINE">Đăng ký online</option>
+              <option value="EXCEL">Import từ Excel</option>
+              <option value="MANUAL">Thủ công</option>
             </Select>
           </div>
         </CardContent>
@@ -352,6 +360,7 @@ export default function RegistrationsPage() {
                   <th className="px-6 py-3 text-left text-xs">Số tiền</th>
                   <th className="px-6 py-3 text-left text-xs">Trạng thái</th>
                   <th className="px-6 py-3 text-left text-xs">Ngày ĐK</th>
+                  <th className="px-6 py-3 text-left text-xs">Nguồn</th>
                   <th className="px-6 py-3 text-left text-xs">Thao tác</th>
                 </tr>
               </thead>
@@ -393,7 +402,23 @@ export default function RegistrationsPage() {
                     <td className="px-6 py-4">
                       {formatDate(r.registrationDate)}
                     </td>
-
+                    <td className="px-6 py-4">
+                      <span
+                        className={`px-2 py-1 text-xs rounded-full ${
+                          r.registrationSource === "ONLINE"
+                            ? "bg-green-100 text-green-700"
+                            : r.registrationSource === "EXCEL"
+                              ? "bg-blue-100 text-blue-700"
+                              : "bg-gray-100 text-gray-700"
+                        }`}
+                      >
+                        {r.registrationSource === "ONLINE"
+                          ? "🌐 Online"
+                          : r.registrationSource === "EXCEL"
+                            ? "📊 Excel"
+                            : "✏️ Thủ công"}
+                      </span>
+                    </td>
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-2">
                         <Button
