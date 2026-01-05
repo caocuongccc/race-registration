@@ -1,4 +1,4 @@
-// app/events/[slug]/register/page.tsx
+// app/events/[slug]/register/page.tsx - WITH BANK INFO DISPLAY
 "use client";
 
 import { useEffect, useState } from "react";
@@ -10,7 +10,14 @@ import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { formatCurrency, formatDate } from "@/lib/utils";
-import { Calendar, MapPin, Shirt, Award } from "lucide-react";
+import {
+  Calendar,
+  MapPin,
+  Shirt,
+  Award,
+  CreditCard,
+  AlertCircle,
+} from "lucide-react";
 
 interface EventData {
   event: any;
@@ -19,10 +26,7 @@ interface EventData {
 }
 
 interface FormData {
-  // Distance
   distanceId: string;
-
-  // Personal Info
   fullName: string;
   email: string;
   phone: string;
@@ -31,16 +35,10 @@ interface FormData {
   idCard: string;
   address: string;
   city: string;
-
-  // Emergency Contact
   emergencyContactName: string;
   emergencyContactPhone: string;
-
-  // Health
   healthDeclaration: boolean;
   bloodType: string;
-
-  // Shirt
   shirtId: string;
   shirtCategory: string;
   shirtType: string;
@@ -54,7 +52,6 @@ export default function RegistrationPage() {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
 
-  // Form state
   const [selectedDistance, setSelectedDistance] = useState<any>(null);
   const [selectedShirt, setSelectedShirt] = useState<any>(null);
   const [availableSizes, setAvailableSizes] = useState<any[]>([]);
@@ -68,14 +65,12 @@ export default function RegistrationPage() {
     formState: { errors },
   } = useForm<FormData>();
 
-  // Extract slug from params
   useEffect(() => {
     if (params?.slug) {
       setEventSlug(params.slug as string);
     }
   }, [params]);
 
-  // Load event data
   useEffect(() => {
     if (!eventSlug) return;
 
@@ -84,6 +79,14 @@ export default function RegistrationPage() {
         const res = await fetch(`/api/events/${eventSlug}`);
         if (!res.ok) throw new Error("Không tìm thấy sự kiện");
         const data = await res.json();
+        console.log("Event data:", data);
+        // ✅ Check if registration is allowed
+        if (!data.event.allowRegistration) {
+          toast.error("Sự kiện này chưa mở đăng ký");
+          router.push("/");
+          return;
+        }
+
         setEventData(data);
       } catch (error) {
         toast.error("Không thể tải thông tin sự kiện");
@@ -95,11 +98,9 @@ export default function RegistrationPage() {
     loadEvent();
   }, [eventSlug, router]);
 
-  // Watch shirt selection changes
   const watchShirtCategory = watch("shirtCategory");
   const watchShirtType = watch("shirtType");
 
-  // Update available sizes when category/type changes
   useEffect(() => {
     if (!eventData?.shirts || !watchShirtCategory || !watchShirtType) {
       setAvailableSizes([]);
@@ -111,11 +112,10 @@ export default function RegistrationPage() {
     );
 
     setAvailableSizes(shirtGroup?.sizes || []);
-    setValue("shirtId", ""); // Reset size selection
+    setValue("shirtId", "");
     setSelectedShirt(null);
   }, [watchShirtCategory, watchShirtType, eventData, setValue]);
 
-  // Update price when shirt selection changes
   useEffect(() => {
     if (watchShirtCategory && watchShirtType && eventData?.shirts) {
       const shirtGroup = eventData.shirts.find(
@@ -126,7 +126,7 @@ export default function RegistrationPage() {
       setSelectedShirtPrice(0);
     }
   }, [watchShirtCategory, watchShirtType, eventData]);
-  // Calculate total amount
+
   const calculateTotal = () => {
     let total = selectedDistance?.price || 0;
     if (selectedShirtPrice) {
@@ -151,7 +151,6 @@ export default function RegistrationPage() {
           eventId: eventData?.event.id,
           distanceId: data.distanceId,
           shirtId: data.shirtId || null,
-
           fullName: data.fullName,
           email: data.email,
           phone: data.phone,
@@ -160,13 +159,10 @@ export default function RegistrationPage() {
           idCard: data.idCard,
           address: data.address,
           city: data.city,
-
           emergencyContactName: data.emergencyContactName,
           emergencyContactPhone: data.emergencyContactPhone,
-
           healthDeclaration: data.healthDeclaration,
           bloodType: data.bloodType || null,
-
           shirtCategory: watchShirtCategory || null,
           shirtType: watchShirtType || null,
         }),
@@ -178,26 +174,9 @@ export default function RegistrationPage() {
         throw new Error(result.error || "Đăng ký thất bại");
       }
 
-      // Show success message with account info
-      if (result.accountInfo) {
-        toast.success(
-          <div>
-            <div className="font-bold">Đăng ký thành công! 🎉</div>
-            <div className="text-sm mt-1">{result.accountInfo.message}</div>
-            <div className="text-xs mt-2 p-2 bg-blue-50 rounded">
-              📧 Thông tin đăng nhập đã được gửi đến:{" "}
-              <strong>{result.accountInfo.email}</strong>
-            </div>
-          </div>,
-          { duration: 6000 }
-        );
-      } else {
-        toast.success(
-          "Đăng ký thành công! Vui lòng kiểm tra email để thanh toán."
-        );
-      }
-
-      // Redirect to payment page
+      toast.success(
+        "Đăng ký thành công! Vui lòng kiểm tra email để thanh toán."
+      );
       router.push(`/registrations/${result.registration.id}/payment`);
     } catch (error: any) {
       toast.error(error.message || "Đã có lỗi xảy ra");
@@ -377,7 +356,6 @@ export default function RegistrationPage() {
               </div>
 
               <Input label="Địa chỉ" {...register("address")} />
-
               <Input label="Tỉnh/Thành phố" {...register("city")} />
 
               <div className="border-t pt-4 mt-4">
@@ -421,7 +399,7 @@ export default function RegistrationPage() {
             </CardContent>
           </Card>
 
-          {/* Step 3: Chọn áo (nếu có) */}
+          {/* Step 3: Chọn áo */}
           {eventData.event.hasShirt && (
             <Card>
               <CardHeader>
@@ -431,7 +409,6 @@ export default function RegistrationPage() {
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
-                {/* Category Selection */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Loại áo
@@ -487,27 +464,9 @@ export default function RegistrationPage() {
                         <div className="text-sm font-medium">Áo Nữ</div>
                       </div>
                     </label>
-
-                    {/* <label className="relative">
-                      <input
-                        type="radio"
-                        value="KID"
-                        {...register("shirtCategory")}
-                        onChange={(e) => {
-                          setValue("shirtCategory", e.target.value);
-                          setValue("shirtType", "");
-                          setValue("shirtId", "");
-                        }}
-                        className="sr-only peer"
-                      />
-                      <div className="p-3 border-2 rounded-lg text-center cursor-pointer transition-all peer-checked:border-blue-600 peer-checked:bg-blue-50 hover:border-blue-300">
-                        <div className="text-sm font-medium">Áo Trẻ Em</div>
-                      </div>
-                    </label> */}
                   </div>
                 </div>
 
-                {/* Type Selection */}
                 {watchShirtCategory && watchShirtCategory !== "" && (
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -529,27 +488,10 @@ export default function RegistrationPage() {
                           <div className="text-base font-medium">Áo có tay</div>
                         </div>
                       </label>
-
-                      {/* <label className="relative">
-                        <input
-                          type="radio"
-                          value="TANK_TOP"
-                          {...register("shirtType")}
-                          onChange={(e) => {
-                            setValue("shirtType", e.target.value);
-                            setValue("shirtId", "");
-                          }}
-                          className="sr-only peer"
-                        />
-                        <div className="p-4 border-2 rounded-lg text-center cursor-pointer transition-all peer-checked:border-blue-600 peer-checked:bg-blue-50 hover:border-blue-300">
-                          <div className="text-base font-medium">Áo 3 lỗ</div>
-                        </div>
-                      </label> */}
                     </div>
                   </div>
                 )}
 
-                {/* Size Selection */}
                 {watchShirtType && availableSizes.length > 0 && (
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -599,7 +541,7 @@ export default function RegistrationPage() {
             </Card>
           )}
 
-          {/* Summary & Submit */}
+          {/* Summary */}
           <Card>
             <CardHeader>
               <CardTitle>Tổng Kết Đơn Hàng</CardTitle>
@@ -656,11 +598,6 @@ export default function RegistrationPage() {
                       <div className="text-3xl font-bold text-blue-600">
                         {formatCurrency(calculateTotal())}
                       </div>
-                      {selectedShirtPrice > 0 && (
-                        <div className="text-xs text-gray-500">
-                          (Tiết kiệm so với mua riêng)
-                        </div>
-                      )}
                     </div>
                   </div>
                 </div>
@@ -680,16 +617,57 @@ export default function RegistrationPage() {
 
               <p className="text-xs text-gray-500 text-center mt-3">
                 💳 Sau khi đăng ký, bạn sẽ nhận email với QR Code thanh toán
-                theo thông tin bên dưới <br></br>
-                <ul>
-                  <li>Ngân hàng: VietinBank</li>
-                  <li> Số tài khoản: 1028 8478 5041</li>
-                  <li> Chủ tài khoản: Nguyễn Thanh Hoài Linh</li>
-                </ul>
-                <br></br>
               </p>
             </CardContent>
           </Card>
+          {/* ✅ NEW: Bank Info Card */}
+          {eventData.event.bankAccount && (
+            <Card className="mb-6 border-2 border-yellow-300 bg-yellow-50">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-lg flex items-center gap-2 text-yellow-900">
+                  <CreditCard className="w-5 h-5" />
+                  Thông tin chuyển khoản
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-4 text-sm">
+                  <div>
+                    <div className="text-gray-600 text-xs mb-1">Ngân hàng</div>
+                    <div className="font-bold text-gray-900">
+                      {eventData.event.bankName || "MB Bank"}
+                    </div>
+                  </div>
+
+                  <div>
+                    <div className="text-gray-600 text-xs mb-1">
+                      Số tài khoản
+                    </div>
+                    <div className="font-bold text-blue-600 font-mono">
+                      {eventData.event.bankAccount}
+                    </div>
+                  </div>
+
+                  <div className="col-span-2 md:col-span-1">
+                    <div className="text-gray-600 text-xs mb-1">
+                      Chủ tài khoản
+                    </div>
+                    <div className="font-bold text-gray-900">
+                      {eventData.event.bankHolder}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="mt-3 pt-3 border-t border-yellow-300 flex items-start gap-2">
+                  <AlertCircle className="w-4 h-4 text-yellow-700 mt-0.5 flex-shrink-0" />
+                  <p className="text-xs text-yellow-900">
+                    Sau khi đăng ký, bạn sẽ nhận email với QR code thanh toán.
+                    Vui lòng chuyển khoản đúng nội dung để hệ thống tự động xác
+                    nhận.
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+          )}
         </form>
       </div>
     </div>

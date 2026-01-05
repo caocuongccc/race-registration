@@ -68,6 +68,7 @@ export async function GET(
         bankName: event.bankName,
         bankAccount: event.bankAccount,
         bankHolder: event.bankHolder,
+        allowRegistration: event.allowRegistration,
       },
       distances: event.distances.map((d) => ({
         id: d.id,

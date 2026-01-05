@@ -9,7 +9,12 @@ export async function GET() {
       where: {
         isPublished: true,
         status: {
-          in: ["PUBLISHED", "REGISTRATION_OPEN", "REGISTRATION_CLOSED"],
+          in: [
+            "PUBLISHED",
+            "REGISTRATION_OPEN",
+            "REGISTRATION_CLOSED",
+            "COMPLETED",
+          ],
         },
       },
       include: {
