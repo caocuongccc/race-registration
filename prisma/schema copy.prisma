@@ -1,0 +1,471 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================
+// USER & AUTHENTICATION
+// ============================================
+
+model User {
+  id            String    @id @default(cuid())
+  email         String    @unique
+  password      String
+  name          String?
+  role          UserRole  @default(ADMIN)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  
+  events        Event[]
+  registrations Registration[]  // ⬅️ RELATION NÀY
+  importBatches     ImportBatch[]
+  @@map("users")
+}
+
+enum UserRole {
+  ADMIN       // Quản trị tất cả
+  ORGANIZER   // Tạo và quản lý sự kiện riêng
+  MEMBER      // VĐV - Chỉ xem thông tin đăng ký của mình
+}
+
+// ============================================
+// EVENT MANAGEMENT
+// ============================================
+
+model Event {
+  id                  String    @id @default(cuid())
+  name                String
+  slug                String    @unique
+  description         String?   @db.Text
+  date                DateTime
+  location            String
+  address             String?
+  city                String?
+  
+  // Status
+  status              EventStatus @default(DRAFT)
+  isPublished         Boolean     @default(false)
+  allowRegistration   Boolean     @default(false)  // NEW: Cho phép đăng ký
+
+  // Race pack info
+  racePackLocation    String?
+  racePackTime        String?
+  racePackSchedule    String?     @db.Text
+  
+  // Race day info
+  raceDaySchedule     String?     @db.Text
+  parkingInfo         String?     @db.Text
+  checkinProcedure    String?     @db.Text
+  
+  // Contact info
+  hotline             String?
+  emailSupport        String?
+  facebookUrl         String?
+  websiteUrl          String?
+  
+  // Media
+  logoUrl             String?
+  bannerUrl           String?
+  coverImageUrl       String?     // NEW: Cover image for event detail page
+
+  // Shirt configuration
+  hasShirt            Boolean     @default(false)
+  
+  // Payment configuration
+  requireOnlinePayment Boolean    @default(true)  // NEW: Bật/tắt thanh toán online
+  sendBibImmediately   Boolean    @default(true)   // Gửi BIB ngay hay chờ admin công bố
+
+  // Payment info (only if requireOnlinePayment = true)
+  bankName            String?
+  bankAccount         String?
+  bankHolder          String?
+  bankCode            String?
+  
+  // Metadata
+  createdById         String
+  createdBy           User        @relation(fields: [createdById], references: [id])
+  createdAt           DateTime    @default(now())
+  updatedAt           DateTime    @updatedAt
+  
+  distances           Distance[]
+  shirts              EventShirt[]
+  registrations       Registration[]
+  emailConfig         EmailConfig?
+  // Image gallery
+  eventImages         EventImage[]
+  importBatches     ImportBatch[]
+
+  @@map("events")
+}
+
+// NEW: Event Image Gallery
+model EventImage {
+  id                  String    @id @default(cuid())
+  eventId             String
+  event               Event     @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  
+  imageUrl            String
+  cloudinaryPublicId  String?   // For deletion
+  imageType           EventImageType // banner, gallery, shirt_preview
+  title               String?
+  description         String?
+  sortOrder           Int       @default(0)
+  
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+  
+  @@index([eventId, imageType])
+  @@map("event_images")
+}
+
+enum EventImageType {
+  BANNER              // Banner image
+  COVER               // Cover image (hero)
+  GALLERY             // Event gallery
+  SHIRT_MALE          // Shirt preview - Male
+  SHIRT_FEMALE        // Shirt preview - Female
+  SHIRT_KID           // Shirt preview - Kid
+  VENUE               // Venue photos
+  COURSE_MAP          // Course map
+}
+
+enum EventStatus {
+  DRAFT
+  PUBLISHED
+  REGISTRATION_OPEN
+  REGISTRATION_CLOSED
+  COMPLETED
+  CANCELLED
+}
+
+// ============================================
+// DISTANCE CONFIGURATION
+// ============================================
+
+model Distance {
+  id                  String    @id @default(cuid())
+  eventId             String
+  event               Event     @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  
+  name                String    // "5km", "10km", "21km", "42km"
+  price               Int       // Giá vé (VNĐ)
+  bibPrefix           String    // "FM" (Full Marathon), "HM" (Half), "10K", "5K"
+  
+  maxParticipants     Int?      // Giới hạn số người (nullable = unlimited)
+  currentParticipants Int       @default(0)
+  
+  isAvailable         Boolean   @default(true)
+  sortOrder           Int       @default(0)
+  
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+  
+  registrations       Registration[]
+  
+  @@unique([eventId, name])
+  @@map("distances")
+}
+
+// ============================================
+// SHIRT CONFIGURATION
+// ============================================
+
+model EventShirt {
+  id                String    @id @default(cuid())
+  eventId           String
+  event             Event     @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  
+  category          ShirtCategory   // male, female, kid
+  type              ShirtType       // short_sleeve, tank_top
+  size              ShirtSize       // S, M, L, XL, 2XL
+  
+  price             Int             // Giá áo (VNĐ)
+  stockQuantity     Int             // Số lượng tồn kho
+  soldQuantity      Int             @default(0)
+  
+  isAvailable       Boolean         @default(true)
+  
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+  
+  registrations     Registration[]
+  previewImageUrl     String?   // NEW: Preview image for shirt
+  cloudinaryPublicId  String?
+
+  @@unique([eventId, category, type, size])
+  @@index([eventId, isAvailable])
+  @@map("event_shirts")
+}
+
+enum ShirtCategory {
+  MALE      // Nam
+  FEMALE    // Nữ
+  KID       // Trẻ em
+}
+
+enum ShirtType {
+  SHORT_SLEEVE  // Áo có tay
+  TANK_TOP      // Áo 3 lỗ
+}
+
+enum ShirtSize {
+  XS
+  S
+  M
+  L
+  XL
+  XXL
+  XXXL
+}
+
+// ============================================
+// REGISTRATION
+// ============================================
+
+model Registration {
+  id                      String    @id @default(cuid())
+  
+  // Relations
+  eventId                 String
+  event                   Event     @relation(fields: [eventId], references: [id])
+  distanceId              String
+  distance                Distance  @relation(fields: [distanceId], references: [id])
+  shirtId                 String?
+  shirt                   EventShirt? @relation(fields: [shirtId], references: [id])
+  
+  // Personal Info
+  fullName                String
+  email                   String
+  phone                   String
+  dob                     DateTime
+  gender                  Gender
+  idCard                  String?    // CCCD/CMND
+  address                 String?
+  city                    String?
+  
+  // Emergency Contact
+  emergencyContactName    String?
+  emergencyContactPhone   String?
+  
+  // Health
+  healthDeclaration       Boolean   @default(false)
+  bloodType               String?
+  
+  // Shirt Info (denormalized for reporting)
+  shirtCategory           ShirtCategory?
+  shirtType               ShirtType?
+  shirtSize               ShirtSize?
+  
+  // Payment
+  raceFee                 Int       // Phí đăng ký
+  shirtFee                Int       @default(0)
+  totalAmount             Int       // Tổng tiền
+  paymentStatus           PaymentStatus @default(PENDING)
+  
+  // BIB Number
+  bibNumber               String?   @unique
+  
+  // QR Codes
+  qrPaymentUrl            String?   // QR thanh toán
+  qrCheckinUrl            String?   // QR checkin ngày thi đấu
+  
+  // Tracking
+  confirmationToken       String?   @unique
+  utmSource               String?   // Tracking source
+  notes                   String?   @db.Text
+  
+  // Timestamps
+  registrationDate        DateTime  @default(now())
+  paymentDate             DateTime?
+  
+  createdAt               DateTime  @default(now())
+  updatedAt               DateTime  @updatedAt
+  
+  payments                Payment[]
+  emailLogs               EmailLog[]
+  
+  // Link to User account ⬅️ FIELD NÀY
+  userId                  String?
+  user                    User?     @relation(fields: [userId], references: [id])
+  // ✅ NEW: Track registration source
+  registrationSource  RegistrationSource @default(ONLINE)
+  importBatchId       String?
+  importBatch         ImportBatch?  @relation(fields: [importBatchId], references: [id])
+
+
+  @@index([importBatchId])
+  @@index([eventId, paymentStatus])
+  @@index([distanceId])
+  @@index([email])
+  @@map("registrations")
+}
+
+enum RegistrationSource {
+  ONLINE      // Đăng ký qua website
+  EXCEL       // Import từ Excel
+  MANUAL      // Admin tạo thủ công
+}
+
+enum Gender {
+  MALE
+  FEMALE
+}
+
+enum PaymentStatus {
+  PENDING
+  PAID
+  FAILED
+  REFUNDED
+}
+
+// ============================================
+// PAYMENT TRACKING
+// ============================================
+
+model Payment {
+  id                String    @id @default(cuid())
+  
+  registrationId    String
+  registration      Registration @relation(fields: [registrationId], references: [id])
+  
+  transactionId     String?   @unique // Transaction ID từ SePay
+  amount            Int
+  status            PaymentStatus @default(PENDING)
+  paymentMethod     String?   // "bank_transfer", "qr_code"
+  
+  // Webhook data from SePay
+  webhookData       Json?
+  
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+  
+  @@index([registrationId])
+  @@map("payments")
+}
+
+// ============================================
+// EMAIL CONFIGURATION & LOGS
+// ============================================
+
+model EmailConfig {
+  id                              String    @id @default(cuid())
+  eventId                         String    @unique
+  event                           Event     @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  
+  // Email settings
+  fromName                        String    // "Ban Tổ Chức Giải Chạy XYZ"
+  fromEmail                       String    // "noreply@giaichay.com" hoặc email BTC
+  replyTo                         String?
+  
+  // NEW: Email provider configuration
+  useGmailFallback                Boolean   @default(false)  // Tự động chuyển Gmail khi Resend fail
+  gmailUser                       String?   // Gmail account (nếu dùng fallback)
+  gmailAppPassword                String?   // Gmail App Password (encrypted)
+  
+  // Email subject lines
+  subjectRegistrationPending      String    @default("Xác nhận đăng ký - {{eventName}}")
+  subjectPaymentConfirmed         String    @default("Thanh toán thành công - Số BIB {{bibNumber}}")
+  subjectPaymentReceivedNoBib     String    @default("Đã nhận thanh toán - {{eventName}}")  // NEW
+  subjectBibAnnouncement          String    @default("Thông báo số BIB - {{eventName}}")    // NEW
+  subjectRacePackInfo             String    @default("Thông tin quan trọng - {{eventName}}")
+  subjectReminder                 String    @default("Nhắc nhở - {{eventName}}")
+  
+  // Email body content (plain text, có thể dùng placeholders)
+  // Placeholders: {{fullName}}, {{eventName}}, {{bibNumber}}, {{distance}}, {{amount}}, etc.
+  bodyRegistrationPending         String    @db.Text
+  bodyPaymentConfirmed            String    @db.Text
+  bodyPaymentReceivedNoBib        String    @db.Text  // NEW: Email xác nhận đã nhận tiền (chưa có BIB)
+  bodyBibAnnouncement             String    @db.Text  // NEW: Email công bố BIB sau
+  bodyRacePackInfo                String    @db.Text
+  bodyReminder                    String    @db.Text
+  
+  // QR Code attachment settings
+  attachQrPayment                 Boolean   @default(true)  // Đính kèm QR thanh toán
+  attachQrCheckin                 Boolean   @default(true)  // Đính kèm QR checkin
+  
+  createdAt                       DateTime  @default(now())
+  updatedAt                       DateTime  @updatedAt
+  
+  @@map("email_configs")
+}
+
+model EmailLog {
+  id                String    @id @default(cuid())
+  
+  registrationId    String
+  registration      Registration @relation(fields: [registrationId], references: [id])
+    // ✅ NEW: Thêm thông tin để dễ tìm kiếm
+  bibNumber         String?   // Số BIB (nếu có lúc gửi email)
+  emailProvider     String?   // "resend" | "gmail" | "failed"
+  recipientEmail    String    // Email người nhận
+
+  emailType         EmailType
+  subject           String?
+  sentAt            DateTime  @default(now())
+  status            EmailStatus @default(SENT)
+  errorMessage      String?   @db.Text
+  resendCount       Int       @default(0)
+  
+  @@index([registrationId, emailType])
+  @@index([bibNumber]) // ✅ NEW: Index for search by BIB
+  @@index([recipientEmail]) // ✅ NEW: Index for search by email
+  @@index([emailProvider, status]) // ✅ NEW: Index for filtering
+  @@map("email_logs")
+}
+// prisma/schema.prisma - ADD new models
+
+model ImportBatch {
+  id                String    @id @default(cuid())
+  
+  eventId           String
+  event             Event     @relation(fields: [eventId], references: [id])
+  
+  fileName          String    // Original Excel filename
+  uploadedBy        String    // User ID
+  uploadedByUser    User      @relation(fields: [uploadedBy], references: [id])
+  
+  totalRows         Int       // Total records in Excel
+  successCount      Int       @default(0)
+  failedCount       Int       @default(0)
+  
+  status            ImportStatus @default(PROCESSING)
+  errorLog          Json?     // Array of errors for failed rows
+  
+  createdAt         DateTime  @default(now())
+  completedAt       DateTime?
+  
+  registrations     Registration[]
+  
+  @@map("import_batches")
+}
+
+enum ImportStatus {
+  PROCESSING
+  COMPLETED
+  FAILED
+  PARTIAL // Some succeeded, some failed
+}
+enum EmailType {
+  REGISTRATION_PENDING
+  PAYMENT_CONFIRMED
+  PAYMENT_RECEIVED_NO_BIB      // NEW
+  BIB_ANNOUNCEMENT             // NEW
+  RACE_PACK_INFO
+  REMINDER
+  CUSTOM
+}
+
+enum EmailStatus {
+  SENT
+  DELIVERED
+  OPENED
+  FAILED
+  BOUNCED
+}

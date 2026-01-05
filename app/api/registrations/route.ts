@@ -34,7 +34,13 @@ export async function POST(req: NextRequest) {
         { status: 404 }
       );
     }
-
+    // ✅ NEW: Check if registration is allowed
+    if (!event.allowRegistration) {
+      return NextResponse.json(
+        { error: "Sự kiện này đã đóng đăng ký hoặc chưa mở đăng ký" },
+        { status: 403 }
+      );
+    }
     // Check distance
     const distance = event.distances.find((d) => d.id === body.distanceId);
     if (!distance || !distance.isAvailable) {
