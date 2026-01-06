@@ -26,6 +26,7 @@ const navigationConfig = {
     { name: "Số BIB", href: "/admin/dashboard/bibs", icon: Award }, // NEW
     { name: "Thống kê", href: "/admin/dashboard/statistics", icon: BarChart3 },
     { name: "Email", href: "/admin/dashboard/emails", icon: Mail },
+    { name: "Upload Excel", href: "/admin/dashboard/import", icon: Mail },
   ],
   ORGANIZER: [
     { name: "Tổng quan", href: "/admin/dashboard", icon: LayoutDashboard },

@@ -11,6 +11,16 @@ import { Select } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { formatCurrency, formatDate } from "@/lib/utils";
 import {
+  sanitizeEmail,
+  sanitizePhone,
+  validateEmail,
+  validatePhone,
+  sanitizeName,
+  sanitizeText,
+  sanitizeIdCard,
+} from "@/lib/validation";
+
+import {
   Calendar,
   MapPin,
   Shirt,
@@ -56,6 +66,10 @@ export default function RegistrationPage() {
   const [selectedShirt, setSelectedShirt] = useState<any>(null);
   const [availableSizes, setAvailableSizes] = useState<any[]>([]);
   const [selectedShirtPrice, setSelectedShirtPrice] = useState(0);
+  // Real-time validation states
+  const [emailError, setEmailError] = useState<string>("");
+  const [phoneError, setPhoneError] = useState<string>("");
+  const [emergencyPhoneError, setEmergencyPhoneError] = useState<string>("");
 
   const {
     register,
@@ -101,6 +115,73 @@ export default function RegistrationPage() {
   const watchShirtCategory = watch("shirtCategory");
   const watchShirtType = watch("shirtType");
 
+  // Email validation with auto-fix
+  const handleEmailChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const cleaned = sanitizeEmail(e.target.value);
+    setValue("email", cleaned);
+
+    // Validate
+    if (cleaned) {
+      const validation = validateEmail(cleaned);
+      setEmailError(validation.valid ? "" : validation.error || "");
+    } else {
+      setEmailError("");
+    }
+  };
+
+  // Phone validation
+  const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const cleaned = sanitizePhone(e.target.value);
+    setValue("phone", cleaned);
+
+    // Validate
+    if (cleaned) {
+      const validation = validatePhone(cleaned);
+      setPhoneError(validation.valid ? "" : validation.error || "");
+    } else {
+      setPhoneError("");
+    }
+  };
+
+  // Emergency phone validation
+  const handleEmergencyPhoneChange = (
+    e: React.ChangeEvent<HTMLInputElement>
+  ) => {
+    const cleaned = sanitizePhone(e.target.value);
+    setValue("emergencyContactPhone", cleaned);
+
+    // Validate
+    if (cleaned) {
+      const validation = validatePhone(cleaned);
+      setEmergencyPhoneError(validation.valid ? "" : validation.error || "");
+    } else {
+      setEmergencyPhoneError("");
+    }
+  };
+
+  // Name sanitization
+  const handleNameChange = (
+    e: React.ChangeEvent<HTMLInputElement>,
+    field: "fullName" | "emergencyContactName"
+  ) => {
+    const cleaned = sanitizeName(e.target.value);
+    setValue(field, cleaned);
+  };
+
+  // Text sanitization
+  const handleTextChange = (
+    e: React.ChangeEvent<HTMLInputElement>,
+    field: "address" | "city"
+  ) => {
+    const cleaned = sanitizeText(e.target.value);
+    setValue(field, cleaned);
+  };
+
+  // ID card sanitization
+  const handleIdCardChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const cleaned = sanitizeIdCard(e.target.value);
+    setValue("idCard", cleaned);
+  };
   useEffect(() => {
     if (!eventData?.shirts || !watchShirtCategory || !watchShirtType) {
       setAvailableSizes([]);
@@ -140,7 +221,11 @@ export default function RegistrationPage() {
       toast.error("Vui lòng chọn cự ly");
       return;
     }
-
+    // Final validation
+    if (emailError || phoneError || emergencyPhoneError) {
+      toast.error("Vui lòng kiểm tra lại thông tin đã nhập");
+      return;
+    }
     setSubmitting(true);
 
     try {
@@ -292,43 +377,55 @@ export default function RegistrationPage() {
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="grid md:grid-cols-2 gap-4">
-                <Input
-                  label="Họ và tên"
-                  {...register("fullName", {
-                    required: "Vui lòng nhập họ tên",
-                  })}
-                  error={errors.fullName?.message}
-                  required
-                />
-                <Input
-                  label="Email"
-                  type="email"
-                  {...register("email", {
-                    required: "Vui lòng nhập email",
-                    pattern: {
-                      value: /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i,
-                      message: "Email không hợp lệ",
-                    },
-                  })}
-                  error={errors.email?.message}
-                  required
-                />
+                <div>
+                  <Input
+                    label="Họ và tên"
+                    {...register("fullName", {
+                      required: "Vui lòng nhập họ tên",
+                    })}
+                    onChange={(e) => handleNameChange(e, "fullName")}
+                    error={errors.fullName?.message}
+                    required
+                  />
+                  <p className="text-xs text-gray-500 mt-1">
+                    ✨ Tự động viết hoa chữ cái đầu
+                  </p>
+                </div>
+                <div>
+                  <Input
+                    label="Email"
+                    type="email"
+                    {...register("email", {
+                      required: "Vui lòng nhập email",
+                    })}
+                    onChange={handleEmailChange}
+                    error={emailError || errors.email?.message}
+                    required
+                  />
+                  <p className="text-xs text-gray-500 mt-1">
+                    ✨ Tự động sửa .con → .com
+                  </p>
+                </div>
               </div>
 
               <div className="grid md:grid-cols-2 gap-4">
-                <Input
-                  label="Số điện thoại"
-                  type="tel"
-                  {...register("phone", {
-                    required: "Vui lòng nhập số điện thoại",
-                    pattern: {
-                      value: /^[0-9]{10}$/,
-                      message: "Số điện thoại không hợp lệ",
-                    },
-                  })}
-                  error={errors.phone?.message}
-                  required
-                />
+                <div>
+                  <Input
+                    label="Số điện thoại"
+                    type="tel"
+                    {...register("phone", {
+                      required: "Vui lòng nhập số điện thoại",
+                    })}
+                    onChange={handlePhoneChange}
+                    error={phoneError || errors.phone?.message}
+                    placeholder="0912345678"
+                    required
+                  />
+                  <p className="text-xs text-gray-500 mt-1">
+                    ✨ Tự động format số VN (10 số)
+                  </p>
+                </div>
+
                 <Input
                   label="Ngày sinh"
                   type="date"
@@ -350,13 +447,31 @@ export default function RegistrationPage() {
                   <option value="">-- Chọn giới tính --</option>
                   <option value="MALE">Nam</option>
                   <option value="FEMALE">Nữ</option>
-                  <option value="OTHER">Khác</option>
                 </Select>
-                <Input label="CCCD/CMND" {...register("idCard")} />
+
+                <div>
+                  <Input
+                    label="CCCD/CMND"
+                    {...register("idCard")}
+                    onChange={handleIdCardChange}
+                    placeholder="001234567890"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">
+                    ✨ Tự động xóa ký tự đặc biệt
+                  </p>
+                </div>
               </div>
 
-              <Input label="Địa chỉ" {...register("address")} />
-              <Input label="Tỉnh/Thành phố" {...register("city")} />
+              <Input
+                label="Địa chỉ"
+                {...register("address")}
+                onChange={(e) => handleTextChange(e, "address")}
+              />
+              <Input
+                label="Tỉnh/Thành phố"
+                {...register("city")}
+                onChange={(e) => handleTextChange(e, "city")}
+              />
 
               <div className="border-t pt-4 mt-4">
                 <h4 className="font-medium text-gray-900 mb-3">
@@ -366,12 +481,20 @@ export default function RegistrationPage() {
                   <Input
                     label="Tên người liên hệ"
                     {...register("emergencyContactName")}
+                    onChange={(e) =>
+                      handleNameChange(e, "emergencyContactName")
+                    }
                   />
-                  <Input
-                    label="Số điện thoại"
-                    type="tel"
-                    {...register("emergencyContactPhone")}
-                  />
+                  <div>
+                    <Input
+                      label="Số điện thoại"
+                      type="tel"
+                      {...register("emergencyContactPhone")}
+                      onChange={handleEmergencyPhoneChange}
+                      error={emergencyPhoneError}
+                      placeholder="0912345678"
+                    />
+                  </div>
                 </div>
               </div>
 
@@ -608,13 +731,26 @@ export default function RegistrationPage() {
                 size="lg"
                 className="w-full mt-6"
                 isLoading={submitting}
-                disabled={submitting || !selectedDistance}
+                // disabled={submitting || !selectedDistance}
+                disabled={
+                  submitting ||
+                  !selectedDistance ||
+                  !!emailError ||
+                  !!phoneError ||
+                  !!emergencyPhoneError
+                }
               >
                 {submitting
                   ? "Đang xử lý..."
                   : `Đăng ký - ${formatCurrency(calculateTotal())}`}
               </Button>
-
+              {(emailError || phoneError || emergencyPhoneError) && (
+                <div className="mt-3 p-3 bg-red-50 border border-red-200 rounded-lg">
+                  <p className="text-sm text-red-700">
+                    ⚠️ Vui lòng sửa lỗi trước khi đăng ký
+                  </p>
+                </div>
+              )}
               <p className="text-xs text-gray-500 text-center mt-3">
                 💳 Sau khi đăng ký, bạn sẽ nhận email với QR Code thanh toán
               </p>

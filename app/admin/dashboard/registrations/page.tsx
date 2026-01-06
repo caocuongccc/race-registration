@@ -330,8 +330,7 @@ export default function RegistrationsPage() {
                 </option>
               ))}
             </Select>
-            // Thêm vào phần filters
-            <Select
+            {/* <Select
               value={batchFilter}
               onChange={(e) => setBatchFilter(e.target.value)}
               label="Import Batch"
@@ -340,7 +339,7 @@ export default function RegistrationsPage() {
               <option value="ONLINE">Đăng ký online</option>
               <option value="EXCEL">Import từ Excel</option>
               <option value="MANUAL">Thủ công</option>
-            </Select>
+            </Select> */}
           </div>
         </CardContent>
       </Card>

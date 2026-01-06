@@ -9,6 +9,8 @@ import { Select } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { ImageUploader } from "@/components/ImageUploader";
 import { ImageGallery } from "@/components/ImageGallery";
+import DistanceShirtManager from "@/components/DistanceShirtManager";
+
 import { toast } from "sonner";
 import {
   Save,
@@ -178,6 +180,7 @@ export default function EditEventPage() {
             { id: "media", label: "Hình ảnh", icon: ImageIcon },
             { id: "payment", label: "Thanh toán", icon: Settings },
             { id: "contact", label: "Liên hệ", icon: Settings },
+            { id: "config", label: "Cự ly & Áo", icon: Settings },
           ].map((tab) => (
             <button
               key={tab.id}
@@ -789,6 +792,7 @@ export default function EditEventPage() {
             </CardContent>
           </Card>
         )}
+        {activeTab === "config" && <DistanceShirtManager eventId={id} />}
 
         {/* Save Button - Always visible */}
         <div className="flex justify-end gap-3 sticky bottom-6 bg-white p-4 rounded-lg shadow-lg border border-gray-200">
