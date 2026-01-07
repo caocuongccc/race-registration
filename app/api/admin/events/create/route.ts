@@ -70,6 +70,11 @@ export async function POST(req: NextRequest) {
         bodyReminder: "Nhắc nhở về giải {{eventName}}",
         attachQrPayment: true,
         attachQrCheckin: true,
+        bodyPaymentReceivedNoBib: "Chúng tôi đã nhận được thanh toán của bạn.",
+        subjectPaymentReceivedNoBib: "Xác nhận thanh toán - {{eventName}}",
+        bodyBibAnnouncement:
+          "Số BIB của bạn là {{bibNumber}}. Hẹn gặp bạn tại sự kiện!",
+        subjectBibAnnouncement: "Số BIB của bạn cho {{eventName}}",
       },
     });
 

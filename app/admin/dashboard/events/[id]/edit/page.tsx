@@ -18,6 +18,8 @@ import {
   Image as ImageIcon,
   Info,
   Settings,
+  Contact,
+  Settings2,
 } from "lucide-react";
 
 export default function EditEventPage() {
@@ -27,7 +29,7 @@ export default function EditEventPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [activeTab, setActiveTab] = useState<
-    "basic" | "media" | "payment" | "contact"
+    "basic" | "media" | "payment" | "contact" | "config"
   >("basic");
   const [eventImages, setEventImages] = useState<any[]>([]);
 
@@ -178,8 +180,8 @@ export default function EditEventPage() {
           {[
             { id: "basic", label: "Thông tin cơ bản", icon: Info },
             { id: "media", label: "Hình ảnh", icon: ImageIcon },
-            { id: "payment", label: "Thanh toán", icon: Settings },
-            { id: "contact", label: "Liên hệ", icon: Settings },
+            { id: "payment", label: "Thanh toán", icon: Settings2 },
+            { id: "contact", label: "Liên hệ", icon: Contact },
             { id: "config", label: "Cự ly & Áo", icon: Settings },
           ].map((tab) => (
             <button
@@ -494,98 +496,6 @@ export default function EditEventPage() {
           </>
         )}
 
-        {/* Payment Tab */}
-        {/* {activeTab === "payment" && (
-          <Card className="border-2 border-blue-200">
-            <CardHeader className="bg-blue-50">
-              <CardTitle className="text-blue-900">
-                ⚙️ Cấu hình thanh toán 
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4 pt-6">
-              <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-                <label className="flex items-start gap-3">
-                  <input
-                    type="checkbox"
-                    checked={formData.requireOnlinePayment}
-                    onChange={(e) =>
-                      setFormData({
-                        ...formData,
-                        requireOnlinePayment: e.target.checked,
-                      })
-                    }
-                    className="mt-1 h-5 w-5 text-blue-600 rounded border-gray-300"
-                  />
-                  <div>
-                    <span className="text-sm font-semibold text-gray-900 block mb-1">
-                      Bật webhook tự động xác nhận thanh toán
-                    </span>
-                    <span className="text-sm text-gray-600">
-                      {formData.requireOnlinePayment ? (
-                        <>
-                          ✅ <strong>BẬT:</strong> Khi VĐV chuyển khoản, webhook
-                          sẽ tự động đánh dấu đã thanh toán và sinh số BIB ngay
-                          lập tức.
-                        </>
-                      ) : (
-                        <>
-                          ⚠️ <strong>TẮT:</strong> VĐV vẫn nhận QR thanh toán
-                          qua email, nhưng bạn phải vào trang Registrations và
-                          tìm theo SĐT để bấm nút <strong>✓ Xác nhận</strong>{" "}
-                          thủ công sau khi họ chuyển khoản.
-                        </>
-                      )}
-                    </span>
-                  </div>
-                </label>
-              </div>
-
-              <div className="space-y-4 border-t pt-4">
-                <h4 className="font-medium text-gray-900">
-                  Thông tin tài khoản ngân hàng
-                </h4>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <Input
-                    label="Tên ngân hàng"
-                    placeholder="MB Bank"
-                    value={formData.bankName}
-                    onChange={(e) =>
-                      setFormData({ ...formData, bankName: e.target.value })
-                    }
-                  />
-
-                  <Input
-                    label="Mã ngân hàng"
-                    placeholder="MB"
-                    value={formData.bankCode}
-                    onChange={(e) =>
-                      setFormData({ ...formData, bankCode: e.target.value })
-                    }
-                  />
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <Input
-                    label="Số tài khoản"
-                    value={formData.bankAccount}
-                    onChange={(e) =>
-                      setFormData({ ...formData, bankAccount: e.target.value })
-                    }
-                  />
-
-                  <Input
-                    label="Chủ tài khoản"
-                    value={formData.bankHolder}
-                    onChange={(e) =>
-                      setFormData({ ...formData, bankHolder: e.target.value })
-                    }
-                  />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        )} */}
         {activeTab === "payment" && (
           <Card className="border-2 border-blue-200">
             <CardHeader className="bg-blue-50">

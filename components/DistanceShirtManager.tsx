@@ -1,13 +1,16 @@
+// components/DistanceShirtManager.tsx - FIXED SAVE ISSUE
 import React, { useState, useEffect } from "react";
 import { Plus, Trash2, Save, ArrowUp, ArrowDown, Loader2 } from "lucide-react";
 
 const DistanceShirtManagerIntegrated = ({ eventId }) => {
   const [distances, setDistances] = useState([]);
   const [shirts, setShirts] = useState([]);
-  const [activeTab, setActiveTab] = useState("distances");
+  //   const [activeTab, setActiveTab] = useState("distances");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-
+  const [activeTab, setActiveTab] = useState<"distances" | "shirts">(
+    "distances"
+  );
   // Load data on mount
   useEffect(() => {
     if (eventId) {
@@ -135,7 +138,13 @@ const DistanceShirtManagerIntegrated = ({ eventId }) => {
     }
   };
 
-  const handleSave = async () => {
+  const handleSave = async (e) => {
+    // Prevent default if this is triggered by event
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+
     // Validate
     const emptyDistances = distances.filter((d) => !d.name || !d.bibPrefix);
     if (emptyDistances.length > 0) {
@@ -148,6 +157,9 @@ const DistanceShirtManagerIntegrated = ({ eventId }) => {
     setSaving(true);
 
     try {
+      console.log("Saving distances:", distances);
+      console.log("Saving shirts:", shirts);
+
       // Save distances
       const distancesRes = await fetch(
         `/api/admin/events/${eventId}/distances`,
@@ -168,11 +180,18 @@ const DistanceShirtManagerIntegrated = ({ eventId }) => {
       const distancesResult = await distancesRes.json();
       const shirtsResult = await shirtsRes.json();
 
+      console.log("Distances result:", distancesResult);
+      console.log("Shirts result:", shirtsResult);
+
       if (distancesResult.success && shirtsResult.success) {
         alert("✅ Đã lưu thành công!");
         loadData(); // Reload fresh data
       } else {
         alert("❌ Có lỗi xảy ra khi lưu");
+        console.error("Save errors:", {
+          distances: distancesResult.error,
+          shirts: shirtsResult.error,
+        });
       }
     } catch (error) {
       console.error("Save error:", error);
@@ -196,6 +215,7 @@ const DistanceShirtManagerIntegrated = ({ eventId }) => {
       <div className="flex items-center justify-between">
         <h2 className="text-2xl font-bold">Quản lý Cự Ly & Áo</h2>
         <button
+          type="button"
           onClick={handleSave}
           disabled={saving}
           className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
@@ -217,6 +237,7 @@ const DistanceShirtManagerIntegrated = ({ eventId }) => {
       {/* Tabs */}
       <div className="flex gap-2 border-b">
         <button
+          type="button"
           onClick={() => setActiveTab("distances")}
           className={`px-6 py-3 font-medium transition-colors ${
             activeTab === "distances"
@@ -227,6 +248,7 @@ const DistanceShirtManagerIntegrated = ({ eventId }) => {
           🏃 Cự Ly ({distances.length})
         </button>
         <button
+          type="button"
           onClick={() => setActiveTab("shirts")}
           className={`px-6 py-3 font-medium transition-colors ${
             activeTab === "shirts"
@@ -244,6 +266,7 @@ const DistanceShirtManagerIntegrated = ({ eventId }) => {
           <div className="flex justify-between items-center">
             <p className="text-gray-600">Quản lý các cự ly của sự kiện</p>
             <button
+              type="button"
               onClick={addDistance}
               className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
             >
@@ -257,6 +280,7 @@ const DistanceShirtManagerIntegrated = ({ eventId }) => {
               <div className="text-center py-12 bg-gray-50 rounded-lg">
                 <p className="text-gray-500">Chưa có cự ly nào</p>
                 <button
+                  type="button"
                   onClick={addDistance}
                   className="mt-4 text-blue-600 hover:underline"
                 >
@@ -273,6 +297,7 @@ const DistanceShirtManagerIntegrated = ({ eventId }) => {
                     {/* Sort buttons */}
                     <div className="col-span-1 flex flex-col gap-1">
                       <button
+                        type="button"
                         onClick={() => moveDistance(index, "up")}
                         disabled={index === 0}
                         className="p-1 hover:bg-gray-100 rounded disabled:opacity-30"
@@ -280,6 +305,7 @@ const DistanceShirtManagerIntegrated = ({ eventId }) => {
                         <ArrowUp className="w-4 h-4" />
                       </button>
                       <button
+                        type="button"
                         onClick={() => moveDistance(index, "down")}
                         disabled={index === distances.length - 1}
                         className="p-1 hover:bg-gray-100 rounded disabled:opacity-30"
@@ -383,6 +409,7 @@ const DistanceShirtManagerIntegrated = ({ eventId }) => {
                     {/* Delete */}
                     <div className="col-span-1 flex justify-end pt-5">
                       <button
+                        type="button"
                         onClick={() => deleteDistance(distance.id)}
                         className="p-2 text-red-600 hover:bg-red-50 rounded"
                       >
@@ -404,12 +431,14 @@ const DistanceShirtManagerIntegrated = ({ eventId }) => {
             <p className="text-gray-600">Quản lý các mẫu áo kỷ niệm</p>
             <div className="flex gap-2">
               <button
+                type="button"
                 onClick={bulkCreateShirts}
                 className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 text-sm"
               >
                 Tạo tất cả size
               </button>
               <button
+                type="button"
                 onClick={addShirt}
                 className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
               >
@@ -424,6 +453,7 @@ const DistanceShirtManagerIntegrated = ({ eventId }) => {
               <div className="text-center py-12 bg-gray-50 rounded-lg">
                 <p className="text-gray-500">Chưa có mẫu áo nào</p>
                 <button
+                  type="button"
                   onClick={addShirt}
                   className="mt-4 text-blue-600 hover:underline"
                 >
@@ -534,6 +564,7 @@ const DistanceShirtManagerIntegrated = ({ eventId }) => {
                     {/* Delete */}
                     <div className="col-span-1 flex justify-end pt-5">
                       <button
+                        type="button"
                         onClick={() => deleteShirt(shirt.id)}
                         className="p-2 text-red-600 hover:bg-red-50 rounded"
                       >

@@ -1,4 +1,4 @@
-// app/admin/dashboard/events/create/page.tsx
+// app/admin/dashboard/events/create/page.tsx - UPDATED WITH TABS
 "use client";
 
 import { useState } from "react";
@@ -8,14 +8,25 @@ import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import { Save, ArrowLeft, Info, Settings } from "lucide-react";
+import DistanceShirtManager from "@/components/DistanceShirtManager";
+
+import {
+  Save,
+  ArrowLeft,
+  Info,
+  Settings,
+  CreditCard,
+  ImageIcon,
+  Settings2,
+  Contact,
+} from "lucide-react";
 
 export default function CreateEventPage() {
   const router = useRouter();
   const [saving, setSaving] = useState(false);
-  const [activeTab, setActiveTab] = useState<"basic" | "payment" | "contact">(
-    "basic"
-  );
+  const [activeTab, setActiveTab] = useState<
+    "basic" | "payment" | "contact" | "config"
+  >("basic");
 
   const [formData, setFormData] = useState({
     name: "",
@@ -29,6 +40,8 @@ export default function CreateEventPage() {
     isPublished: false,
     hasShirt: true,
     requireOnlinePayment: true,
+    sendBibImmediately: true,
+    allowRegistration: false,
 
     // Bank info
     bankName: "MB Bank",
@@ -81,11 +94,10 @@ export default function CreateEventPage() {
 
       if (result.success) {
         toast.success("Đã tạo sự kiện thành công!");
-        // Redirect to images page to upload photos
         toast.info("📸 Tiếp theo: Upload hình ảnh cho sự kiện", {
           duration: 3000,
         });
-        router.push(`/admin/dashboard/events/${result.event.id}/images`);
+        router.push(`/admin/dashboard/events/${result.event.id}/edit#media`);
       } else {
         toast.error(result.error || "Có lỗi xảy ra");
       }
@@ -119,8 +131,8 @@ export default function CreateEventPage() {
       <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
         <p className="text-sm text-blue-900">
           💡 <strong>Lưu ý:</strong> Sau khi tạo sự kiện, bạn sẽ được chuyển đến
-          trang upload hình ảnh. Hãy chuẩn bị sẵn ảnh bìa, logo và ảnh mẫu áo để
-          upload.
+          trang chỉnh sửa để upload hình ảnh và cấu hình cự ly/áo. Hãy chuẩn bị
+          sẵn thông tin cơ bản trước.
         </p>
       </div>
 
@@ -129,8 +141,9 @@ export default function CreateEventPage() {
         <div className="flex gap-1 p-1">
           {[
             { id: "basic", label: "Thông tin cơ bản", icon: Info },
-            { id: "payment", label: "Thanh toán", icon: Settings },
-            { id: "contact", label: "Liên hệ", icon: Settings },
+            { id: "payment", label: "Thanh toán", icon: Settings2 },
+            { id: "contact", label: "Liên hệ", icon: Contact },
+            // { id: "config", label: "Cự ly & Áo", icon: Settings },
           ].map((tab) => (
             <button
               key={tab.id}
@@ -212,6 +225,7 @@ export default function CreateEventPage() {
                     <option value="PUBLISHED">Đã công bố</option>
                     <option value="REGISTRATION_OPEN">Mở đăng ký</option>
                     <option value="REGISTRATION_CLOSED">Đóng đăng ký</option>
+                    <option value="COMPLETED">Hoàn thành</option>
                   </Select>
                 </div>
 
@@ -316,10 +330,11 @@ export default function CreateEventPage() {
           <Card className="border-2 border-blue-200">
             <CardHeader className="bg-blue-50">
               <CardTitle className="text-blue-900">
-                ⚙️ Cấu hình thanh toán
+                ⚙️ Cấu hình thanh toán & Email
               </CardTitle>
             </CardHeader>
-            <CardContent className="space-y-4 pt-6">
+            <CardContent className="space-y-6 pt-6">
+              {/* PAYMENT MODE */}
               <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
                 <label className="flex items-start gap-3">
                   <input
@@ -353,7 +368,86 @@ export default function CreateEventPage() {
                 </label>
               </div>
 
-              <div className="space-y-4 border-t pt-4">
+              {/* EMAIL BIB CONFIGURATION */}
+              <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
+                <label className="flex items-start gap-3">
+                  <input
+                    type="checkbox"
+                    checked={formData.sendBibImmediately}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        sendBibImmediately: e.target.checked,
+                      })
+                    }
+                    className="mt-1 h-5 w-5 text-purple-600 rounded border-gray-300"
+                  />
+                  <div>
+                    <span className="text-sm font-semibold text-gray-900 block mb-1">
+                      Gửi số BIB ngay khi thanh toán thành công
+                    </span>
+                    <span className="text-sm text-gray-600">
+                      {formData.sendBibImmediately ? (
+                        <>
+                          ✅ <strong>BẬT:</strong> Email có số BIB ngay khi
+                          thanh toán
+                          <br />→ VĐV nhận số BIB và mã QR check-in ngay lập tức
+                        </>
+                      ) : (
+                        <>
+                          📋 <strong>TẮT:</strong> Email xác nhận thanh toán
+                          (không có BIB)
+                          <br />
+                          → Admin phải vào trang "Gửi số BIB" để công bố sau
+                          <br />→ Thích hợp khi cần xếp BIB theo đội, theo tuổi,
+                          v.v.
+                        </>
+                      )}
+                    </span>
+                  </div>
+                </label>
+              </div>
+
+              {/* REGISTRATION STATUS */}
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <label className="flex items-start gap-3">
+                  <input
+                    type="checkbox"
+                    checked={formData.allowRegistration}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        allowRegistration: e.target.checked,
+                      })
+                    }
+                    className="mt-1 h-5 w-5 text-blue-600 rounded border-gray-300"
+                  />
+                  <div>
+                    <span className="text-sm font-semibold text-gray-900 block mb-1">
+                      Cho phép đăng ký online
+                    </span>
+                    <span className="text-sm text-gray-600">
+                      {formData.allowRegistration ? (
+                        <>
+                          ✅ <strong>BẬT:</strong> Hiển thị nút "Đăng ký ngay"
+                          trên trang sự kiện
+                        </>
+                      ) : (
+                        <>
+                          🚫 <strong>TẮT:</strong> Chỉ hiển thị thông tin, không
+                          cho đăng ký
+                          <br />
+                          (Thích hợp khi: hết chỗ, chưa mở đăng ký, hoặc chỉ
+                          muốn công bố thông tin)
+                        </>
+                      )}
+                    </span>
+                  </div>
+                </label>
+              </div>
+
+              {/* BANK INFO */}
+              <div className="space-y-4">
                 <h4 className="font-medium text-gray-900">
                   Thông tin tài khoản ngân hàng
                 </h4>
@@ -438,6 +532,7 @@ export default function CreateEventPage() {
             </CardContent>
           </Card>
         )}
+        {/* {activeTab === "config" && <DistanceShirtManager eventId={id} />} */}
 
         {/* Save Button - Always visible */}
         <div className="flex justify-end gap-3 sticky bottom-6 bg-white p-4 rounded-lg shadow-lg border border-gray-200">

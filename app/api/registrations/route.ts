@@ -1,4 +1,4 @@
-// app/api/registrations/route.ts - NO ACCOUNT CREATION
+// app/api/registrations/route.ts - REMOVED GOALS
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { generatePaymentQR } from "@/lib/imgbb";
@@ -10,7 +10,7 @@ export async function POST(req: NextRequest) {
     const {
       eventId,
       distanceId,
-      distanceGoalId, // NEW: Optional goal selection
+      // distanceGoalId, // REMOVED
       shirtId,
       fullName,
       email,
@@ -29,13 +29,7 @@ export async function POST(req: NextRequest) {
       shirtSize,
       utmSource,
     } = body;
-    // // Validate required fields
-    // if (!body.eventId || !body.distanceId || !body.fullName || !body.email) {
-    //   return NextResponse.json(
-    //     { error: "Thiếu thông tin bắt buộc" },
-    //     { status: 400 }
-    //   );
-    // }
+
     // Validate required fields
     if (
       !eventId ||
@@ -70,13 +64,15 @@ export async function POST(req: NextRequest) {
         { status: 404 }
       );
     }
-    // ✅ NEW: Check if registration is allowed
+
+    // Check if registration is allowed
     if (!event.allowRegistration) {
       return NextResponse.json(
         { error: "Sự kiện này đã đóng đăng ký hoặc chưa mở đăng ký" },
         { status: 403 }
       );
     }
+
     // Check distance
     const distance = event.distances.find((d) => d.id === distanceId);
     if (!distance || !distance.isAvailable) {
@@ -85,42 +81,9 @@ export async function POST(req: NextRequest) {
         { status: 400 }
       );
     }
-    // NEW: Load goal if specified
-    let distanceGoal = null;
-    if (distanceGoalId) {
-      distanceGoal = await prisma.distanceGoal.findUnique({
-        where: { id: distanceGoalId },
-      });
 
-      if (!distanceGoal || distanceGoal.distanceId !== distanceId) {
-        return NextResponse.json(
-          { error: "Invalid distance goal" },
-          { status: 400 }
-        );
-      }
-
-      // Check goal availability and capacity
-      if (!distanceGoal.isAvailable) {
-        return NextResponse.json(
-          { error: "This goal is no longer available" },
-          { status: 400 }
-        );
-      }
-
-      if (
-        distanceGoal.maxParticipants &&
-        distanceGoal.currentParticipants >= distanceGoal.maxParticipants
-      ) {
-        return NextResponse.json(
-          { error: "This goal has reached maximum capacity" },
-          { status: 400 }
-        );
-      }
-    }
-
-    // Check distance capacity (if no goal specified)
+    // Check distance capacity
     if (
-      !distanceGoalId &&
       distance.maxParticipants &&
       distance.currentParticipants >= distance.maxParticipants
     ) {
@@ -130,35 +93,10 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // // Calculate fees
-    // let raceFee = distance.price;
-    // let shirtFee = 0;
-    // let shirt: any = null;
-
-    // if (body.shirtId) {
-    //   shirt = event.shirts.find((s) => s.id === body.shirtId);
-    //   if (!shirt || !shirt.isAvailable) {
-    //     return NextResponse.json(
-    //       { error: "Áo không khả dụng" },
-    //       { status: 400 }
-    //     );
-    //   }
-
-    //   if (shirt.soldQuantity >= shirt.stockQuantity) {
-    //     return NextResponse.json({ error: "Áo đã hết hàng" }, { status: 400 });
-    //   }
-
-    //   shirtFee = shirt.price;
-    // }
-
-    // const totalAmount = raceFee + shirtFee;
     // Calculate fees
     let raceFee = distance.price;
-    if (distanceGoal && distanceGoal.priceAdjustment) {
-      raceFee += distanceGoal.priceAdjustment;
-    }
-
     let shirtFee = 0;
+
     if (shirtId) {
       const shirt = await prisma.eventShirt.findUnique({
         where: { id: shirtId },
@@ -171,19 +109,15 @@ export async function POST(req: NextRequest) {
 
     const totalAmount = raceFee + shirtFee;
 
-    // ❌ REMOVED: No user account creation
-    // Just create registration directly
-
     // Create registration in transaction
     const registration = await prisma.$transaction(async (tx) => {
       const newRegistration = await tx.registration.create({
         data: {
           eventId: body.eventId,
           distanceId: body.distanceId,
-          distanceGoalId: distanceGoalId || null, // NEW
+          // distanceGoalId: null, // REMOVED
 
           shirtId: body.shirtId || null,
-          // ❌ REMOVED: userId field
 
           fullName: body.fullName,
           email: body.email,
@@ -202,7 +136,7 @@ export async function POST(req: NextRequest) {
 
           shirtCategory: body.shirtCategory || null,
           shirtType: body.shirtType || null,
-          shirtSize: shirt?.size || null,
+          shirtSize: body.shirtSize || null,
 
           raceFee: raceFee,
           shirtFee: shirtFee,
@@ -219,15 +153,7 @@ export async function POST(req: NextRequest) {
           event: true,
         },
       });
-      // Update participant counts
-      if (distanceGoalId && distanceGoal) {
-        await prisma.distanceGoal.update({
-          where: { id: distanceGoalId },
-          data: {
-            currentParticipants: { increment: 1 },
-          },
-        });
-      }
+
       // Update distance participant count
       await tx.distance.update({
         where: { id: body.distanceId },
@@ -252,6 +178,7 @@ export async function POST(req: NextRequest) {
 
       return newRegistration;
     });
+
     const description = [
       registration.phone,
       registration.shirtCategory,
@@ -259,6 +186,7 @@ export async function POST(req: NextRequest) {
     ]
       .filter(Boolean)
       .join(" ");
+
     // Generate Payment QR Code
     const qrPaymentUrl = await generatePaymentQR(description, totalAmount);
 
@@ -268,8 +196,7 @@ export async function POST(req: NextRequest) {
       data: { qrPaymentUrl },
     });
 
-    // ✅ Send email (no account info)
-
+    // Send email
     let emailError: any = null;
 
     try {
@@ -279,7 +206,6 @@ export async function POST(req: NextRequest) {
           qrPaymentUrl,
         },
         event,
-        // ❌ REMOVED: isNewUser, temporaryPassword
       });
 
       // Log email success
@@ -320,7 +246,6 @@ export async function POST(req: NextRequest) {
         totalAmount: registration.totalAmount,
         qrPaymentUrl,
       },
-      // ❌ REMOVED: accountInfo
       emailWarning: emailError
         ? "Email có thể gửi chậm, vui lòng kiểm tra sau."
         : null,
