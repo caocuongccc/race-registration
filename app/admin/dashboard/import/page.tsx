@@ -1,4 +1,4 @@
-// app/admin/dashboard/import/page.tsx
+// app/admin/dashboard/import/page.tsx - COMPLETE WITH ERROR VIEWER
 "use client";
 
 import { useEffect, useState, useRef } from "react";
@@ -15,6 +15,7 @@ import {
   Clock,
   Eye,
 } from "lucide-react";
+import { ImportErrorViewer } from "@/components/ImportErrorViewer";
 
 interface ImportBatch {
   id: string;
@@ -35,6 +36,9 @@ export default function ImportExcelPage() {
   const [uploading, setUploading] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState("");
   const [events, setEvents] = useState<any[]>([]);
+  const [selectedBatchForErrors, setSelectedBatchForErrors] = useState<
+    string | null
+  >(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -74,13 +78,11 @@ export default function ImportExcelPage() {
       return;
     }
 
-    // Validate file type
     if (!file.name.match(/\.(xlsx|xls)$/)) {
       toast.error("Chỉ chấp nhận file Excel (.xlsx, .xls)");
       return;
     }
 
-    // Check file size (max 5MB)
     if (file.size > 5 * 1024 * 1024) {
       toast.error("File quá lớn (tối đa 5MB)");
       return;
@@ -104,11 +106,18 @@ export default function ImportExcelPage() {
         toast.success(
           `✅ Đã import ${result.batch.successCount}/${result.batch.totalRows} VĐV`
         );
+
+        // Show errors if any
+        if (result.batch.failedCount > 0) {
+          toast.warning(
+            `⚠️ ${result.batch.failedCount} dòng lỗi. Click để xem chi tiết.`
+          );
+          setSelectedBatchForErrors(result.batch.id);
+        }
+
         loadBatches();
       } else {
         toast.error(result.error || "Import thất bại");
-
-        // Show error details if available
         if (result.errors && result.errors.length > 0) {
           console.error("Import errors:", result.errors);
         }
@@ -117,7 +126,6 @@ export default function ImportExcelPage() {
       toast.error("Không thể upload file");
     } finally {
       setUploading(false);
-      // Reset file input
       if (fileInputRef.current) {
         fileInputRef.current.value = "";
       }
@@ -282,6 +290,14 @@ export default function ImportExcelPage() {
         </CardContent>
       </Card>
 
+      {/* Error Viewer */}
+      {selectedBatchForErrors && (
+        <ImportErrorViewer
+          batchId={selectedBatchForErrors}
+          onClose={() => setSelectedBatchForErrors(null)}
+        />
+      )}
+
       {/* Import History */}
       <Card>
         <CardHeader>
@@ -344,6 +360,19 @@ export default function ImportExcelPage() {
                           >
                             <Eye className="w-4 h-4" />
                           </Button>
+
+                          {batch.failedCount > 0 && (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() =>
+                                setSelectedBatchForErrors(batch.id)
+                              }
+                              className="text-red-600 hover:bg-red-50"
+                            >
+                              ⚠️ {batch.failedCount} lỗi
+                            </Button>
+                          )}
 
                           {batch.status === "COMPLETED" && (
                             <Button

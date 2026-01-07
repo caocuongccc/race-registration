@@ -1,395 +1,230 @@
-import React, { useState } from "react";
-import {
-  AlertCircle,
-  X,
-  Trash2,
-  Download,
-  ChevronDown,
-  ChevronUp,
-} from "lucide-react";
+import React, { useState, useEffect } from "react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { AlertCircle, ChevronDown, ChevronUp, X } from "lucide-react";
 
-const ImportErrorViewer = () => {
-  // Sample error data
-  const [batches, setBatches] = useState([
-    {
-      id: "1",
-      fileName: "dangky-5km-batch1.xlsx",
-      createdAt: "2025-01-06T10:30:00",
-      totalRows: 50,
-      successCount: 42,
-      failedCount: 8,
-      status: "PARTIAL",
-      errorLog: [
-        {
-          row: 5,
-          data: {
-            "Họ tên": "Nguyễn Văn A",
-            Email: "nguyenvana@gmail.con",
-            "Số điện thoại": "091234567",
-            "Cự ly": "5km",
-          },
-          error: "Số điện thoại không hợp lệ (phải có 10 chữ số)",
-        },
-        {
-          row: 12,
-          data: {
-            "Họ tên": "Trần Thị B",
-            Email: "tranthib@gmail",
-            "Số điện thoại": "0912345678",
-            "Cự ly": "3km",
-          },
-          error: "Không tìm thấy cự ly: 3km",
-        },
-        {
-          row: 18,
-          data: {
-            "Họ tên": "Lê Văn C",
-            Email: "levanc@example.com",
-            "Số điện thoại": "0987654321",
-            "Ngày sinh (DD/MM/YYYY)": "32/13/1990",
-          },
-          error: "Ngày sinh không hợp lệ (phải là DD/MM/YYYY)",
-        },
-        {
-          row: 23,
-          data: {
-            "Họ tên": "Phạm Thị D",
-            Email: "",
-            "Số điện thoại": "0901234567",
-            "Cự ly": "5km",
-          },
-          error: "Thiếu thông tin bắt buộc: Email",
-        },
-        {
-          row: 28,
-          data: {
-            "Họ tên": "Hoàng Văn E",
-            Email: "hoangvane@yahoo.com",
-            "Số điện thoại": "0912345678",
-            "Loại áo (Nam/Nữ/Trẻ em)": "Nam",
-            "Size áo": "XL",
-          },
-          error: "Không tìm thấy áo: Nam SHORT_SLEEVE XL",
-        },
-        {
-          row: 35,
-          data: {
-            "Họ tên": "Vũ Thị F",
-            Email: "vuthif@gmail.com",
-            "Số điện thoại": "09123",
-            "Cự ly": "5km",
-          },
-          error: "Số điện thoại không hợp lệ (phải có 10 chữ số)",
-        },
-        {
-          row: 41,
-          data: {
-            "Họ tên": "Đỗ Văn G",
-            Email: "dovang@hotmail.com",
-            "Số điện thoại": "0987654321",
-            "Giới tính (Nam/Nữ)": "Male",
-          },
-          error: "Giới tính không hợp lệ (phải là Nam hoặc Nữ)",
-        },
-        {
-          row: 47,
-          data: {
-            "Họ tên": "Bùi Thị H",
-            Email: "buithih@example.com.vn",
-            "Số điện thoại": "0901234567",
-            "Cự ly": "",
-          },
-          error: "Thiếu thông tin bắt buộc: Cự ly",
-        },
-      ],
-    },
-    {
-      id: "2",
-      fileName: "dangky-10km-batch2.xlsx",
-      createdAt: "2025-01-05T15:20:00",
-      totalRows: 30,
-      successCount: 30,
-      failedCount: 0,
-      status: "COMPLETED",
-      errorLog: null,
-    },
-  ]);
+interface ImportError {
+  row: number;
+  data: Record<string, any>;
+  error: string;
+}
 
-  const [expandedBatch, setExpandedBatch] = useState<string | null>(null);
+interface ImportErrorViewerProps {
+  batchId: string;
+  onClose?: () => void;
+}
 
-  const handleDeleteBatch = (batchId: string) => {
-    if (confirm("Xóa batch import này? Thao tác này không thể hoàn tác.")) {
-      setBatches(batches.filter((b) => b.id !== batchId));
-      alert("✅ Đã xóa batch");
+export function ImportErrorViewer({
+  batchId,
+  onClose,
+}: ImportErrorViewerProps) {
+  const [errors, setErrors] = useState<ImportError[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [expandedRows, setExpandedRows] = useState<Set<number>>(new Set());
+
+  useEffect(() => {
+    loadErrors();
+  }, [batchId]);
+
+  const loadErrors = async () => {
+    setLoading(true);
+    try {
+      const res = await fetch(`/api/admin/import/${batchId}/errors`);
+      const data = await res.json();
+      setErrors(data.errors || []);
+    } catch (error) {
+      console.error("Failed to load errors:", error);
+    } finally {
+      setLoading(false);
     }
   };
 
-  const handleClearErrors = (batchId: string) => {
-    if (confirm("Xóa log lỗi cho batch này?")) {
-      setBatches(
-        batches.map((b) => (b.id === batchId ? { ...b, errorLog: null } : b))
-      );
-      alert("✅ Đã xóa log lỗi");
+  const toggleRow = (row: number) => {
+    const newExpanded = new Set(expandedRows);
+    if (newExpanded.has(row)) {
+      newExpanded.delete(row);
+    } else {
+      newExpanded.add(row);
     }
+    setExpandedRows(newExpanded);
   };
 
-  const handleExportErrors = (batch: any) => {
-    if (!batch.errorLog) return;
-
-    // Convert to CSV
-    const headers = ["Dòng", "Lỗi", ...Object.keys(batch.errorLog[0].data)];
-    const rows = batch.errorLog.map((err: any) => [
-      err.row,
-      err.error,
-      ...Object.values(err.data),
-    ]);
-
-    const csv = [
-      headers.join(","),
-      ...rows.map((r) => r.map((c) => `"${c}"`).join(",")),
-    ].join("\n");
-
-    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = `errors-${batch.fileName}-${Date.now()}.csv`;
-    link.click();
-    URL.revokeObjectURL(url);
-
-    alert("✅ Đã xuất file lỗi");
-  };
-
-  const getStatusBadge = (status: string) => {
-    const styles = {
-      COMPLETED: "bg-green-100 text-green-700",
-      PARTIAL: "bg-orange-100 text-orange-700",
-      FAILED: "bg-red-100 text-red-700",
-      PROCESSING: "bg-blue-100 text-blue-700",
-    };
-
-    const labels = {
-      COMPLETED: "Hoàn thành",
-      PARTIAL: "Một phần",
-      FAILED: "Thất bại",
-      PROCESSING: "Đang xử lý",
-    };
-
+  if (loading) {
     return (
-      <span
-        className={`px-2 py-1 rounded-full text-xs font-medium ${styles[status] || "bg-gray-100 text-gray-700"}`}
-      >
-        {labels[status] || status}
-      </span>
+      <Card>
+        <CardContent className="py-12 text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
+        </CardContent>
+      </Card>
     );
-  };
+  }
 
-  const formatDate = (dateStr: string) => {
-    return new Date(dateStr).toLocaleString("vi-VN", {
-      day: "2-digit",
-      month: "2-digit",
-      year: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-    });
-  };
+  if (errors.length === 0) {
+    return null;
+  }
 
   return (
-    <div className="max-w-7xl mx-auto p-6 space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900">
-            Lịch sử Import & Lỗi
-          </h1>
-          <p className="text-gray-600 mt-1">
-            Xem chi tiết lỗi và quản lý batch import
-          </p>
+    <Card className="border-2 border-red-200 bg-red-50">
+      <CardHeader className="flex flex-row items-center justify-between">
+        <div className="flex items-center gap-3">
+          <AlertCircle className="w-6 h-6 text-red-600" />
+          <div>
+            <CardTitle className="text-red-900">
+              Chi tiết lỗi import ({errors.length} lỗi)
+            </CardTitle>
+            <p className="text-sm text-red-700 mt-1">
+              Các dòng dưới đây không được import thành công
+            </p>
+          </div>
         </div>
-      </div>
+        {onClose && (
+          <Button variant="ghost" size="sm" onClick={onClose}>
+            <X className="w-4 h-4" />
+          </Button>
+        )}
+      </CardHeader>
 
-      {/* Summary stats */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <div className="bg-blue-50 p-4 rounded-lg">
-          <div className="text-sm text-gray-600">Tổng batch</div>
-          <div className="text-3xl font-bold text-blue-600">
-            {batches.length}
-          </div>
-        </div>
-        <div className="bg-green-50 p-4 rounded-lg">
-          <div className="text-sm text-gray-600">Thành công</div>
-          <div className="text-3xl font-bold text-green-600">
-            {batches.reduce((sum, b) => sum + b.successCount, 0)}
-          </div>
-        </div>
-        <div className="bg-red-50 p-4 rounded-lg">
-          <div className="text-sm text-gray-600">Thất bại</div>
-          <div className="text-3xl font-bold text-red-600">
-            {batches.reduce((sum, b) => sum + b.failedCount, 0)}
-          </div>
-        </div>
-        <div className="bg-orange-50 p-4 rounded-lg">
-          <div className="text-sm text-gray-600">Có lỗi</div>
-          <div className="text-3xl font-bold text-orange-600">
-            {batches.filter((b) => b.errorLog && b.errorLog.length > 0).length}
-          </div>
-        </div>
-      </div>
-
-      {/* Batch list */}
-      <div className="space-y-4">
-        {batches.map((batch) => (
-          <div
-            key={batch.id}
-            className="bg-white border rounded-lg overflow-hidden"
-          >
-            {/* Batch header */}
-            <div className="p-4 bg-gray-50 border-b">
-              <div className="flex items-center justify-between">
-                <div className="flex-1">
-                  <div className="flex items-center gap-3">
-                    <h3 className="font-bold text-gray-900">
-                      {batch.fileName}
-                    </h3>
-                    {getStatusBadge(batch.status)}
+      <CardContent>
+        <div className="space-y-2">
+          {errors.map((error) => (
+            <div
+              key={error.row}
+              className="border border-red-300 rounded-lg bg-white overflow-hidden"
+            >
+              {/* Error Header */}
+              <div
+                onClick={() => toggleRow(error.row)}
+                className="flex items-center justify-between p-4 cursor-pointer hover:bg-red-50 transition-colors"
+              >
+                <div className="flex items-center gap-3 flex-1">
+                  <div className="flex items-center justify-center w-8 h-8 bg-red-100 text-red-700 rounded-full font-bold text-sm">
+                    {error.row}
                   </div>
-                  <div className="flex items-center gap-4 mt-2 text-sm text-gray-600">
-                    <span>📅 {formatDate(batch.createdAt)}</span>
-                    <span>📊 {batch.totalRows} dòng</span>
-                    <span className="text-green-600">
-                      ✓ {batch.successCount} thành công
-                    </span>
-                    {batch.failedCount > 0 && (
-                      <span className="text-red-600">
-                        ✗ {batch.failedCount} thất bại
-                      </span>
-                    )}
+                  <div className="flex-1">
+                    <div className="font-medium text-gray-900">
+                      Dòng {error.row} -{" "}
+                      {error.data["Họ tên"] || "Không có tên"}
+                    </div>
+                    <div className="text-sm text-red-600 mt-1">
+                      {error.error}
+                    </div>
                   </div>
                 </div>
-
-                <div className="flex items-center gap-2">
-                  {batch.errorLog && batch.errorLog.length > 0 && (
-                    <>
-                      <button
-                        onClick={() => handleExportErrors(batch)}
-                        className="px-3 py-1.5 text-sm bg-blue-600 text-white rounded hover:bg-blue-700 flex items-center gap-1"
-                      >
-                        <Download className="w-4 h-4" />
-                        Xuất lỗi
-                      </button>
-                      <button
-                        onClick={() => handleClearErrors(batch.id)}
-                        className="px-3 py-1.5 text-sm bg-yellow-600 text-white rounded hover:bg-yellow-700"
-                      >
-                        Xóa log
-                      </button>
-                    </>
-                  )}
-                  <button
-                    onClick={() => handleDeleteBatch(batch.id)}
-                    className="px-3 py-1.5 text-sm bg-red-600 text-white rounded hover:bg-red-700 flex items-center gap-1"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                    Xóa batch
-                  </button>
-                  {batch.errorLog && batch.errorLog.length > 0 && (
-                    <button
-                      onClick={() =>
-                        setExpandedBatch(
-                          expandedBatch === batch.id ? null : batch.id
-                        )
-                      }
-                      className="px-3 py-1.5 text-sm border border-gray-300 rounded hover:bg-gray-100"
-                    >
-                      {expandedBatch === batch.id ? (
-                        <ChevronUp className="w-4 h-4" />
-                      ) : (
-                        <ChevronDown className="w-4 h-4" />
-                      )}
-                    </button>
-                  )}
-                </div>
+                {expandedRows.has(error.row) ? (
+                  <ChevronUp className="w-5 h-5 text-gray-400" />
+                ) : (
+                  <ChevronDown className="w-5 h-5 text-gray-400" />
+                )}
               </div>
-            </div>
 
-            {/* Error details */}
-            {expandedBatch === batch.id &&
-              batch.errorLog &&
-              batch.errorLog.length > 0 && (
-                <div className="p-4 space-y-3 max-h-96 overflow-y-auto">
-                  <div className="flex items-center gap-2 text-sm font-medium text-red-700">
-                    <AlertCircle className="w-4 h-4" />
-                    Chi tiết {batch.errorLog.length} lỗi:
+              {/* Error Details (Expandable) */}
+              {expandedRows.has(error.row) && (
+                <div className="border-t border-red-200 bg-gray-50 p-4">
+                  <div className="text-sm font-medium text-gray-700 mb-3">
+                    📋 Dữ liệu trong file Excel:
+                  </div>
+                  <div className="grid grid-cols-2 gap-x-6 gap-y-2 text-sm">
+                    {Object.entries(error.data).map(([key, value]) => (
+                      <div key={key} className="flex">
+                        <span className="text-gray-600 w-32 flex-shrink-0">
+                          {key}:
+                        </span>
+                        <span className="font-medium text-gray-900">
+                          {value?.toString() || "(trống)"}
+                        </span>
+                      </div>
+                    ))}
                   </div>
 
-                  {batch.errorLog.map((error: any, index: number) => (
-                    <div
-                      key={index}
-                      className="bg-red-50 border border-red-200 rounded-lg p-3"
-                    >
-                      <div className="flex items-start gap-3">
-                        <div className="flex-shrink-0 w-12 h-12 bg-red-100 rounded-lg flex items-center justify-center">
-                          <span className="text-lg font-bold text-red-600">
-                            {error.row}
-                          </span>
+                  <div className="mt-4 p-3 bg-red-100 border border-red-300 rounded">
+                    <div className="flex items-start gap-2">
+                      <AlertCircle className="w-4 h-4 text-red-600 mt-0.5 flex-shrink-0" />
+                      <div>
+                        <div className="text-sm font-medium text-red-900">
+                          Lý do lỗi:
                         </div>
-
-                        <div className="flex-1">
-                          <div className="text-sm font-medium text-red-700 mb-2">
-                            ❌ {error.error}
-                          </div>
-
-                          <div className="bg-white rounded p-2 text-xs space-y-1">
-                            {Object.entries(error.data).map(
-                              ([key, value]: [string, any]) => (
-                                <div key={key} className="flex">
-                                  <span className="text-gray-600 w-40">
-                                    {key}:
-                                  </span>
-                                  <span className="font-medium text-gray-900">
-                                    {value || (
-                                      <span className="text-gray-400 italic">
-                                        trống
-                                      </span>
-                                    )}
-                                  </span>
-                                </div>
-                              )
-                            )}
-                          </div>
+                        <div className="text-sm text-red-800 mt-1">
+                          {error.error}
                         </div>
                       </div>
                     </div>
-                  ))}
+                  </div>
+
+                  <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded">
+                    <div className="text-xs text-blue-900">
+                      💡 <strong>Cách khắc phục:</strong>
+                      <ul className="mt-2 space-y-1 ml-4">
+                        {error.error.includes("Ngày sinh") && (
+                          <li>• Kiểm tra định dạng ngày sinh: DD/MM/YYYY</li>
+                        )}
+                        {error.error.includes("Giới tính") && (
+                          <li>• Giới tính phải là "Nam" hoặc "Nữ"</li>
+                        )}
+                        {error.error.includes("Cự ly") && (
+                          <li>
+                            • Tên cự ly phải khớp chính xác với tên trong sự
+                            kiện
+                          </li>
+                        )}
+                        {error.error.includes("Thiếu thông tin") && (
+                          <li>
+                            • Điền đầy đủ: Họ tên, Email, SĐT, Ngày sinh, Giới
+                            tính, Cự ly
+                          </li>
+                        )}
+                        {error.error.includes("Áo") && (
+                          <li>
+                            • Kiểm tra loại áo, kiểu áo và size có trong hệ
+                            thống
+                          </li>
+                        )}
+                      </ul>
+                    </div>
+                  </div>
                 </div>
               )}
-          </div>
-        ))}
+            </div>
+          ))}
+        </div>
 
-        {batches.length === 0 && (
-          <div className="text-center py-12 bg-gray-50 rounded-lg">
-            <p className="text-gray-500">Chưa có batch import nào</p>
-          </div>
-        )}
-      </div>
+        {/* Summary */}
+        <div className="mt-4 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+          <p className="text-sm text-yellow-900">
+            💡 <strong>Hướng dẫn:</strong> Sửa các lỗi trong file Excel theo gợi
+            ý trên, sau đó upload lại file. Các dòng đã import thành công sẽ
+            không bị trùng lặp.
+          </p>
+        </div>
 
-      {/* Info note */}
-      <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-        <p className="text-sm text-yellow-900">
-          💡 <strong>Gợi ý xử lý lỗi:</strong>
-        </p>
-        <ul className="text-sm text-yellow-800 mt-2 space-y-1">
-          <li>• Xuất file lỗi để xem chi tiết tất cả các dòng bị lỗi</li>
-          <li>• Sửa lỗi trong file Excel gốc theo thông báo lỗi</li>
-          <li>• Upload lại file đã sửa để import các dòng còn thiếu</li>
-          <li>• Xóa log lỗi sau khi đã xử lý xong để giữ giao diện gọn gàng</li>
-          <li>
-            • Các lỗi phổ biến: Email sai format, SĐT không đủ 10 số, cự ly
-            không tồn tại, ngày sinh sai format
-          </li>
-        </ul>
-      </div>
-    </div>
+        {/* Actions */}
+        <div className="mt-4 flex justify-end gap-3">
+          <Button
+            variant="outline"
+            onClick={() => {
+              // Download error log as CSV for fixing
+              const csv = [
+                Object.keys(errors[0].data).concat(["Lỗi"]).join(","),
+                ...errors.map((e) =>
+                  Object.values(e.data)
+                    .concat([e.error])
+                    .map((v) => `"${v}"`)
+                    .join(",")
+                ),
+              ].join("\n");
+
+              const blob = new Blob([csv], { type: "text/csv" });
+              const url = URL.createObjectURL(blob);
+              const a = document.createElement("a");
+              a.href = url;
+              a.download = `import-errors-${batchId}.csv`;
+              a.click();
+              URL.revokeObjectURL(url);
+            }}
+          >
+            📥 Tải file lỗi (CSV)
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
   );
-};
-
-export default ImportErrorViewer;
+}

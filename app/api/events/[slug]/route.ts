@@ -6,6 +6,9 @@ export async function GET(
   context: { params: Promise<{ slug: string }> }
 ) {
   try {
+    const { searchParams } = new URL(req.url);
+    const includeGoals = searchParams.get("includeGoals") === "true";
+
     const event = await prisma.event.findFirst({
       where: {
         slug: (await context.params).slug,
@@ -19,6 +22,10 @@ export async function GET(
         shirts: {
           where: { isAvailable: true },
           orderBy: [{ category: "asc" }, { type: "asc" }, { size: "asc" }],
+        },
+        goals: {
+          where: { isAvailable: true },
+          orderBy: { sortOrder: "asc" },
         },
       },
     });

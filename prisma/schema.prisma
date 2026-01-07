@@ -97,11 +97,35 @@ model Distance {
   sortOrder           Int            @default(0)
   createdAt           DateTime       @default(now())
   updatedAt           DateTime       @updatedAt
+  hasGoals            Boolean        @default(false)
+  distanceGoals       DistanceGoal[]
   event               Event          @relation(fields: [eventId], references: [id], onDelete: Cascade)
   registrations       Registration[]
 
   @@unique([eventId, name])
   @@map("distances")
+}
+
+model DistanceGoal {
+  id                  String         @id @default(cuid())
+  distanceId          String
+  name                String
+  description         String?
+  targetTime          Int?
+  bibPrefix           String
+  maxParticipants     Int?
+  currentParticipants Int            @default(0)
+  priceAdjustment     Int            @default(0)
+  isAvailable         Boolean        @default(true)
+  sortOrder           Int            @default(0)
+  createdAt           DateTime       @default(now())
+  updatedAt           DateTime       @updatedAt
+  distance            Distance       @relation(fields: [distanceId], references: [id], onDelete: Cascade)
+  registrations       Registration[]
+
+  @@unique([distanceId, name])
+  @@index([distanceId, isAvailable])
+  @@map("distance_goals")
 }
 
 model EventShirt {
@@ -163,8 +187,10 @@ model Registration {
   userId                String?
   registrationSource    RegistrationSource? @default(ONLINE)
   importBatchId         String?
+  distanceGoalId        String?
   emailLogs             EmailLog[]
   payments              Payment[]
+  distanceGoal          DistanceGoal?       @relation(fields: [distanceGoalId], references: [id])
   distance              Distance            @relation(fields: [distanceId], references: [id])
   event                 Event               @relation(fields: [eventId], references: [id])
   importBatch           ImportBatch?        @relation(fields: [importBatchId], references: [id])
@@ -174,6 +200,7 @@ model Registration {
   @@index([importBatchId])
   @@index([eventId, paymentStatus])
   @@index([distanceId])
+  @@index([distanceGoalId])
   @@index([email])
   @@map("registrations")
 }

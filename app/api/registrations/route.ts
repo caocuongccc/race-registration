@@ -7,11 +7,47 @@ import { sendRegistrationPendingEmailGmailFirst } from "@/lib/email-service-gmai
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-
+    const {
+      eventId,
+      distanceId,
+      distanceGoalId, // NEW: Optional goal selection
+      shirtId,
+      fullName,
+      email,
+      phone,
+      dob,
+      gender,
+      idCard,
+      address,
+      city,
+      emergencyContactName,
+      emergencyContactPhone,
+      healthDeclaration,
+      bloodType,
+      shirtCategory,
+      shirtType,
+      shirtSize,
+      utmSource,
+    } = body;
+    // // Validate required fields
+    // if (!body.eventId || !body.distanceId || !body.fullName || !body.email) {
+    //   return NextResponse.json(
+    //     { error: "Thiếu thông tin bắt buộc" },
+    //     { status: 400 }
+    //   );
+    // }
     // Validate required fields
-    if (!body.eventId || !body.distanceId || !body.fullName || !body.email) {
+    if (
+      !eventId ||
+      !distanceId ||
+      !fullName ||
+      !email ||
+      !phone ||
+      !dob ||
+      !gender
+    ) {
       return NextResponse.json(
-        { error: "Thiếu thông tin bắt buộc" },
+        { error: "Missing required fields" },
         { status: 400 }
       );
     }
@@ -19,7 +55,7 @@ export async function POST(req: NextRequest) {
     // Check event exists and is published
     const event = await prisma.event.findFirst({
       where: {
-        id: body.eventId,
+        id: eventId,
         isPublished: true,
       },
       include: {
@@ -42,15 +78,49 @@ export async function POST(req: NextRequest) {
       );
     }
     // Check distance
-    const distance = event.distances.find((d) => d.id === body.distanceId);
+    const distance = event.distances.find((d) => d.id === distanceId);
     if (!distance || !distance.isAvailable) {
       return NextResponse.json(
         { error: "Cự ly không khả dụng" },
         { status: 400 }
       );
     }
+    // NEW: Load goal if specified
+    let distanceGoal = null;
+    if (distanceGoalId) {
+      distanceGoal = await prisma.distanceGoal.findUnique({
+        where: { id: distanceGoalId },
+      });
 
+      if (!distanceGoal || distanceGoal.distanceId !== distanceId) {
+        return NextResponse.json(
+          { error: "Invalid distance goal" },
+          { status: 400 }
+        );
+      }
+
+      // Check goal availability and capacity
+      if (!distanceGoal.isAvailable) {
+        return NextResponse.json(
+          { error: "This goal is no longer available" },
+          { status: 400 }
+        );
+      }
+
+      if (
+        distanceGoal.maxParticipants &&
+        distanceGoal.currentParticipants >= distanceGoal.maxParticipants
+      ) {
+        return NextResponse.json(
+          { error: "This goal has reached maximum capacity" },
+          { status: 400 }
+        );
+      }
+    }
+
+    // Check distance capacity (if no goal specified)
     if (
+      !distanceGoalId &&
       distance.maxParticipants &&
       distance.currentParticipants >= distance.maxParticipants
     ) {
@@ -60,24 +130,42 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // // Calculate fees
+    // let raceFee = distance.price;
+    // let shirtFee = 0;
+    // let shirt: any = null;
+
+    // if (body.shirtId) {
+    //   shirt = event.shirts.find((s) => s.id === body.shirtId);
+    //   if (!shirt || !shirt.isAvailable) {
+    //     return NextResponse.json(
+    //       { error: "Áo không khả dụng" },
+    //       { status: 400 }
+    //     );
+    //   }
+
+    //   if (shirt.soldQuantity >= shirt.stockQuantity) {
+    //     return NextResponse.json({ error: "Áo đã hết hàng" }, { status: 400 });
+    //   }
+
+    //   shirtFee = shirt.price;
+    // }
+
+    // const totalAmount = raceFee + shirtFee;
     // Calculate fees
     let raceFee = distance.price;
+    if (distanceGoal && distanceGoal.priceAdjustment) {
+      raceFee += distanceGoal.priceAdjustment;
+    }
+
     let shirtFee = 0;
-    let shirt: any = null;
-
-    if (body.shirtId) {
-      shirt = event.shirts.find((s) => s.id === body.shirtId);
-      if (!shirt || !shirt.isAvailable) {
-        return NextResponse.json(
-          { error: "Áo không khả dụng" },
-          { status: 400 }
-        );
+    if (shirtId) {
+      const shirt = await prisma.eventShirt.findUnique({
+        where: { id: shirtId },
+      });
+      if (!shirt) {
+        return NextResponse.json({ error: "Áo đã hết hàng" }, { status: 404 });
       }
-
-      if (shirt.soldQuantity >= shirt.stockQuantity) {
-        return NextResponse.json({ error: "Áo đã hết hàng" }, { status: 400 });
-      }
-
       shirtFee = shirt.price;
     }
 
@@ -92,6 +180,8 @@ export async function POST(req: NextRequest) {
         data: {
           eventId: body.eventId,
           distanceId: body.distanceId,
+          distanceGoalId: distanceGoalId || null, // NEW
+
           shirtId: body.shirtId || null,
           // ❌ REMOVED: userId field
 
@@ -118,8 +208,10 @@ export async function POST(req: NextRequest) {
           shirtFee: shirtFee,
           totalAmount: totalAmount,
           paymentStatus: "PENDING",
+          registrationSource: "ONLINE",
 
           utmSource: body.utmSource || null,
+          confirmationToken: Math.random().toString(36).substring(7),
         },
         include: {
           distance: true,
@@ -127,7 +219,15 @@ export async function POST(req: NextRequest) {
           event: true,
         },
       });
-
+      // Update participant counts
+      if (distanceGoalId && distanceGoal) {
+        await prisma.distanceGoal.update({
+          where: { id: distanceGoalId },
+          data: {
+            currentParticipants: { increment: 1 },
+          },
+        });
+      }
       // Update distance participant count
       await tx.distance.update({
         where: { id: body.distanceId },
