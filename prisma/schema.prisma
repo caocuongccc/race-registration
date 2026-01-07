@@ -64,6 +64,7 @@ model Event {
   createdBy            User           @relation(fields: [createdById], references: [id])
   importBatches        ImportBatch[]
   registrations        Registration[]
+  shirtOrders          ShirtOrder[]
 
   @@map("events")
 }
@@ -129,21 +130,23 @@ model DistanceGoal {
 }
 
 model EventShirt {
-  id                 String         @id @default(cuid())
+  id                 String           @id @default(cuid())
   eventId            String
   category           ShirtCategory
   type               ShirtType
   size               ShirtSize
   price              Int
   stockQuantity      Int
-  soldQuantity       Int            @default(0)
-  isAvailable        Boolean        @default(true)
-  createdAt          DateTime       @default(now())
-  updatedAt          DateTime       @updatedAt
+  soldQuantity       Int              @default(0)
+  isAvailable        Boolean          @default(true)
+  createdAt          DateTime         @default(now())
+  updatedAt          DateTime         @updatedAt
   previewImageUrl    String?
   cloudinaryPublicId String?
-  event              Event          @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  standalonePrice    Int?
+  event              Event            @relation(fields: [eventId], references: [id], onDelete: Cascade)
   registrations      Registration[]
+  shirtOrders        ShirtOrderItem[]
 
   @@unique([eventId, category, type, size])
   @@index([eventId, isAvailable])
@@ -196,6 +199,7 @@ model Registration {
   importBatch           ImportBatch?        @relation(fields: [importBatchId], references: [id])
   shirt                 EventShirt?         @relation(fields: [shirtId], references: [id])
   user                  User?               @relation(fields: [userId], references: [id])
+  shirtOrders           ShirtOrder[]
 
   @@index([importBatchId])
   @@index([eventId, paymentStatus])
@@ -289,6 +293,46 @@ model ImportBatch {
   registrations  Registration[]
 
   @@map("import_batches")
+}
+
+model ShirtOrder {
+  id             String           @id @default(cuid())
+  registrationId String?
+  eventId        String
+  orderType      ShirtOrderType   @default(WITH_BIB)
+  totalAmount    Int
+  paymentStatus  PaymentStatus    @default(PENDING)
+  paymentDate    DateTime?
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @default(now()) @updatedAt
+  items          ShirtOrderItem[]
+  event          Event            @relation(fields: [eventId], references: [id])
+  registration   Registration?    @relation(fields: [registrationId], references: [id])
+
+  @@index([eventId, paymentStatus])
+  @@index([registrationId])
+  @@map("shirt_orders")
+}
+
+model ShirtOrderItem {
+  id         String     @id @default(cuid())
+  orderId    String
+  shirtId    String
+  quantity   Int        @default(1)
+  unitPrice  Int
+  totalPrice Int
+  createdAt  DateTime   @default(now())
+  order      ShirtOrder @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  shirt      EventShirt @relation(fields: [shirtId], references: [id])
+
+  @@index([orderId])
+  @@index([shirtId])
+  @@map("shirt_order_items")
+}
+
+enum ShirtOrderType {
+  WITH_BIB
+  STANDALONE
 }
 
 enum UserRole {
