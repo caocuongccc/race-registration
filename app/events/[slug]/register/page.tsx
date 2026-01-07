@@ -91,6 +91,8 @@ export default function RegistrationPage() {
     async function loadEvent() {
       try {
         const res = await fetch(`/api/events/${eventSlug}`);
+        console.log("Fetching event data for slug:", eventSlug);
+        console.log("Fetching event data for slug:", res);
         if (!res.ok) throw new Error("Không tìm thấy sự kiện");
         const data = await res.json();
         console.log("Event data:", data);

@@ -23,10 +23,6 @@ export async function GET(
           where: { isAvailable: true },
           orderBy: [{ category: "asc" }, { type: "asc" }, { size: "asc" }],
         },
-        goals: {
-          where: { isAvailable: true },
-          orderBy: { sortOrder: "asc" },
-        },
       },
     });
 
