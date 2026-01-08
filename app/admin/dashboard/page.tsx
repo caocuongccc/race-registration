@@ -110,11 +110,6 @@ export default function AdminDashboard() {
       </div>
       {/* Event Filter */}
       <div className="flex items-center gap-3 bg-white p-4 rounded-xl shadow-sm border border-gray-200 w-full max-w-md">
-        <div className="flex items-center gap-2 text-gray-600 font-medium whitespace-nowrap">
-          <Calendar className="w-4 h-4 text-blue-600" />
-          Chọn sự kiện:
-        </div>
-
         <select
           value={selectedEvent}
           onChange={(e) => setSelectedEvent(e.target.value)}
