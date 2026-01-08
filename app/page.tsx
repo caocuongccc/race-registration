@@ -1,5 +1,5 @@
 // app/page.tsx - WITH URL FOR POPUP
-"use client";
+// "use client";
 
 import { useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";

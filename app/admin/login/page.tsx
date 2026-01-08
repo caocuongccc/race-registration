@@ -1,5 +1,5 @@
 // app/admin/login/page.tsx
-"use client";
+// "use client";
 
 import { Suspense, useState } from "react";
 import { signIn } from "next-auth/react";
