@@ -12,6 +12,7 @@ import {
   Facebook,
   ArrowRight,
   CreditCard,
+  ShoppingBag,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { formatCurrency, formatDate } from "@/lib/utils";
@@ -255,6 +256,21 @@ export function EventDetailModal({
                           <p className="text-xs opacity-75 mt-2">
                             Vui lòng quay lại sau
                           </p>
+                        </div>
+                      )}
+                      {/* ✅ NEW: Shirt Purchase Button */}
+                      {event.hasShirt && (
+                        <div>
+                          <Link href={`/events/${event.slug}/order-shirt`}>
+                            <Button
+                              variant="outline"
+                              className="w-full bg-purple-50 border-purple-200 text-purple-700 hover:bg-purple-100 hover:border-purple-300 mt-2"
+                              size="lg"
+                            >
+                              <ShoppingBag className="w-5 h-5 mr-2" />
+                              Mua áo kỷ niệm riêng (không kèm BIB)
+                            </Button>
+                          </Link>
                         </div>
                       )}
                     </div>

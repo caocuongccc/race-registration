@@ -50,7 +50,7 @@ export function ShirtSelectorWithQuantity({
   const addToCart = (shirt: any) => {
     const price =
       orderType === "STANDALONE"
-        ? shirt.standalonePrice || shirt.price + 50000
+        ? shirt.standalonePrice || shirt.price
         : shirt.price;
 
     const newCart = new Map(cart);
@@ -198,7 +198,7 @@ export function ShirtSelectorWithQuantity({
               const available = shirt.stockQuantity - shirt.soldQuantity;
               const price =
                 orderType === "STANDALONE"
-                  ? shirt.standalonePrice || shirt.price + 50000
+                  ? shirt.standalonePrice || shirt.price
                   : shirt.price;
 
               return (

@@ -182,7 +182,7 @@ export default function EventDetailPage() {
                 <Button
                   variant="outline"
                   className="w-full bg-purple-50 border-purple-200 text-purple-700 hover:bg-purple-100 hover:border-purple-300"
-                  size="sm"
+                  size="lg"
                 >
                   <ShoppingBag className="w-4 h-4 mr-2" />
                   Mua áo riêng (không BIB)
@@ -284,14 +284,6 @@ export default function EventDetailPage() {
                       </div>
                     </div>
                   ))}
-                  <Button
-                    onClick={() =>
-                      router.push(`/events/${event.slug}/order-shirt`)
-                    }
-                  >
-                    <ShoppingBag className="w-4 h-4 mr-2" />
-                    Mua áo kỷ niệm
-                  </Button>
                 </div>
               </CardContent>
             </Card>

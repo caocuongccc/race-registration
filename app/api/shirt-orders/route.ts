@@ -5,6 +5,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { generatePaymentQR } from "@/lib/qr-generator";
+import { sendEmailGmailFirst } from "@/lib/email-service-gmail-first";
+import { ShirtOrderPendingEmail } from "@/emails/shirt-order-pending";
 
 export async function POST(req: NextRequest) {
   try {
@@ -145,6 +147,53 @@ export async function POST(req: NextRequest) {
       return newOrder;
     });
 
+    // ✅ NEW: Send email notification
+    try {
+      const fullOrder = await prisma.shirtOrder.findUnique({
+        where: { id: order.id },
+        include: {
+          registration: true,
+          event: true,
+          items: {
+            include: {
+              shirt: true,
+            },
+          },
+        },
+      });
+
+      if (customerInfo.email != null) {
+        const result = await sendEmailGmailFirst({
+          to: customerInfo.email,
+          subject: `Xác nhận đơn hàng áo - ${event.name}`,
+          react: ShirtOrderPendingEmail({
+            order: fullOrder,
+            event: fullOrder.event,
+            qrPaymentUrl,
+          }),
+          fromName: event.name || process.env.FROM_NAME,
+          fromEmail: process.env.FROM_EMAIL,
+        });
+
+        // Log email
+        await prisma.emailLog.create({
+          data: {
+            registrationId: finalRegistrationId,
+            recipientEmail: customerInfo.email,
+            emailType: "CUSTOM",
+            subject: `Xác nhận đơn hàng áo - ${event.name}`,
+            status: result.success ? "SENT" : "FAILED",
+            errorMessage: result.error,
+            emailProvider: result.provider,
+          },
+        });
+
+        console.log(`✅ Order email sent via ${result.provider.toUpperCase()}`);
+      }
+    } catch (emailError: any) {
+      console.error("❌ Failed to send order email:", emailError);
+      // Don't fail the order creation if email fails
+    }
     return NextResponse.json({
       success: true,
       order: {
