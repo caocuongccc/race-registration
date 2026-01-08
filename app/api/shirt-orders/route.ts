@@ -121,6 +121,7 @@ export async function POST(req: NextRequest) {
           orderType,
           totalAmount,
           paymentStatus: "PENDING",
+          email: customerInfo?.email || null,
         },
       });
 

@@ -52,12 +52,12 @@ export async function POST(
         paymentDate: new Date(),
       },
     });
-
+    console.log("Shirt order payment confirmed:", order);
     // ✅ Send confirmation email
     try {
-      if (order.registration?.email) {
+      if (order.email) {
         const result = await sendEmailGmailFirst({
-          to: order.registration.email,
+          to: order.email,
           subject: `Xác nhận đơn hàng áo - ${order.event.name}`,
           react: ShirtOrderConfirmedEmail({ order, event: order.event }),
           fromName: order.event.name || process.env.FROM_NAME,
@@ -68,7 +68,7 @@ export async function POST(
         await prisma.emailLog.create({
           data: {
             registrationId: order.registrationId!,
-            recipientEmail: order.registration.email,
+            recipientEmail: order.email,
             emailType: "CUSTOM",
             subject: `Xác nhận đơn hàng áo - ${order.event.name}`,
             status: result.success ? "SENT" : "FAILED",

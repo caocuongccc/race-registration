@@ -307,6 +307,7 @@ model ShirtOrder {
   paymentDate    DateTime?
   createdAt      DateTime         @default(now())
   updatedAt      DateTime         @default(now()) @updatedAt
+  email          String?
   items          ShirtOrderItem[]
   event          Event            @relation(fields: [eventId], references: [id])
   registration   Registration?    @relation(fields: [registrationId], references: [id])
