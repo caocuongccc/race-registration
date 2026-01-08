@@ -166,7 +166,7 @@ export default function RegistrationPage() {
     e: React.ChangeEvent<HTMLInputElement>,
     field: "fullName" | "emergencyContactName"
   ) => {
-    const cleaned = sanitizeName(e.target.value);
+    const cleaned = e.target.value;
     setValue(field, cleaned);
   };
 
@@ -175,7 +175,7 @@ export default function RegistrationPage() {
     e: React.ChangeEvent<HTMLInputElement>,
     field: "address" | "city"
   ) => {
-    const cleaned = sanitizeText(e.target.value);
+    const cleaned = e.target.value;
     setValue(field, cleaned);
   };
 
