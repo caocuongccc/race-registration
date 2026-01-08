@@ -4,6 +4,7 @@
 // app/api/shirt-orders/route.ts
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { generatePaymentQR } from "@/lib/qr-generator";
 
 export async function POST(req: NextRequest) {
   try {
@@ -13,12 +14,21 @@ export async function POST(req: NextRequest) {
       registrationId, // NULL for standalone purchase
       orderType, // "WITH_BIB" or "STANDALONE"
       items, // Array of { shirtId, quantity }
+      customerInfo, // ✅ NEW: For standalone orders { fullName, email, phone, address }
     } = body;
 
     // Validate
     if (!eventId || !items || items.length === 0) {
       return NextResponse.json(
         { error: "Missing required fields" },
+        { status: 400 }
+      );
+    }
+
+    // For standalone orders, require customer info
+    if (orderType === "STANDALONE" && !customerInfo) {
+      return NextResponse.json(
+        { error: "Customer info required for standalone orders" },
         { status: 400 }
       );
     }
@@ -73,6 +83,35 @@ export async function POST(req: NextRequest) {
       });
     }
 
+    // ✅ Create temporary registration for standalone orders
+    let finalRegistrationId = registrationId;
+    if (orderType === "STANDALONE" && customerInfo) {
+      // Create a placeholder registration to store customer info
+      const tempRegistration = await prisma.registration.create({
+        data: {
+          eventId,
+          distanceId: event.distances[0]?.id || "", // Use first distance as placeholder
+          fullName: customerInfo.fullName,
+          email: customerInfo.email,
+          phone: customerInfo.phone,
+          address: customerInfo.address,
+          dob: new Date("2000-01-01"), // Placeholder
+          gender: "MALE", // Placeholder
+          raceFee: 0,
+          totalAmount: 0,
+          paymentStatus: "PENDING",
+          registrationSource: "MANUAL",
+          notes: `Đặt mua áo riêng - Không có BIB`,
+        },
+      });
+
+      finalRegistrationId = tempRegistration.id;
+    }
+
+    // Generate Payment QR
+    const description = `${customerInfo?.phone || "SHIRT"} ${orderType}`;
+    const qrPaymentUrl = await generatePaymentQR(description, totalAmount);
+
     // Create order in transaction
     const order = await prisma.$transaction(async (tx) => {
       const newOrder = await tx.shirtOrder.create({
@@ -114,6 +153,7 @@ export async function POST(req: NextRequest) {
         id: order.id,
         totalAmount: order.totalAmount,
       },
+      qrPaymentUrl,
     });
   } catch (error) {
     console.error("Create shirt order error:", error);

@@ -14,7 +14,9 @@ import {
   LogOut,
   Menu,
   X,
-  Award, // NEW: For BIB icon
+  Award,
+  Upload,
+  ShoppingBag, // NEW: For BIB icon
 } from "lucide-react";
 import { useEffect, useState } from "react";
 
@@ -24,9 +26,16 @@ const navigationConfig = {
     { name: "Sự kiện", href: "/admin/dashboard/events", icon: Calendar },
     { name: "Đăng ký", href: "/admin/dashboard/registrations", icon: Users },
     { name: "Số BIB", href: "/admin/dashboard/bibs", icon: Award }, // NEW
+    // ✅ THÊM DÒNG NÀY
+    {
+      name: "Đơn hàng áo",
+      href: "/admin/dashboard/shirt-orders",
+      icon: ShoppingBag,
+    },
+
     { name: "Thống kê", href: "/admin/dashboard/statistics", icon: BarChart3 },
     { name: "Email", href: "/admin/dashboard/emails", icon: Mail },
-    { name: "Upload Excel", href: "/admin/dashboard/import", icon: Mail },
+    { name: "Upload Excel", href: "/admin/dashboard/import", icon: Upload },
   ],
   ORGANIZER: [
     { name: "Tổng quan", href: "/admin/dashboard", icon: LayoutDashboard },
@@ -36,6 +45,12 @@ const navigationConfig = {
       icon: Calendar,
     },
     { name: "Đăng ký", href: "/admin/dashboard/registrations", icon: Users },
+    // ✅ THÊM DÒNG NÀY
+    {
+      name: "Đơn hàng áo",
+      href: "/admin/dashboard/shirt-orders",
+      icon: ShoppingBag,
+    },
     { name: "Số BIB", href: "/admin/dashboard/bibs", icon: Award }, // NEW
     { name: "Thống kê", href: "/admin/dashboard/statistics", icon: BarChart3 },
   ],

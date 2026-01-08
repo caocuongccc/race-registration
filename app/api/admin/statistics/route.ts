@@ -15,6 +15,12 @@ export async function GET(req: NextRequest) {
 
     const whereFilter = eventId && eventId !== "all" ? { eventId } : {};
 
+    const shirtOrdersStats = await prisma.shirtOrder.groupBy({
+      by: ["paymentStatus"],
+      where: whereFilter,
+      _count: true,
+      _sum: { totalAmount: true },
+    });
     // --- SUMMARY COUNTS ---
     const [totalRegistrations, paidRegistrations, pendingRegistrations] =
       await Promise.all([
@@ -150,6 +156,14 @@ export async function GET(req: NextRequest) {
         byCategory: shirtsByCategory,
       },
       ageGroups,
+      shirtOrders: {
+        total: shirtOrdersStats.reduce((sum, s) => sum + s._count, 0),
+        paid:
+          shirtOrdersStats.find((s) => s.paymentStatus === "PAID")?._count || 0,
+        revenue:
+          shirtOrdersStats.find((s) => s.paymentStatus === "PAID")?._sum
+            .totalAmount || 0,
+      },
     });
   } catch (error) {
     console.error("Statistics API error:", error);

@@ -2,6 +2,24 @@
 import React, { useState, useEffect } from "react";
 import { Plus, Trash2, Save, ArrowUp, ArrowDown, Loader2 } from "lucide-react";
 
+interface Distance {
+  id: string;
+  name: string;
+  price: number;
+}
+
+interface Shirt {
+  id?: string;
+  category: string;
+  type: string;
+  size: string;
+  price: number;
+  standalonePrice: number; // ✅ NEW: Giá bán lẻ
+  stockQuantity: number;
+  isAvailable: boolean;
+  isNew?: boolean;
+}
+
 const DistanceShirtManagerIntegrated = ({ eventId }) => {
   const [distances, setDistances] = useState([]);
   const [shirts, setShirts] = useState([]);
@@ -21,16 +39,26 @@ const DistanceShirtManagerIntegrated = ({ eventId }) => {
   const loadData = async () => {
     setLoading(true);
     try {
-      const [distancesRes, shirtsRes] = await Promise.all([
-        fetch(`/api/admin/events/${eventId}/distances`),
-        fetch(`/api/admin/events/${eventId}/shirts`),
-      ]);
+      //   const [distancesRes, shirtsRes] = await Promise.all([
+      //     fetch(`/api/admin/events/${eventId}/distances`),
+      //     fetch(`/api/admin/events/${eventId}/shirts`),
+      //   ]);
 
-      const distancesData = await distancesRes.json();
-      const shirtsData = await shirtsRes.json();
+      //   const distancesData = await distancesRes.json();
+      //   const shirtsData = await shirtsRes.json();
 
-      setDistances(distancesData.distances || []);
-      setShirts(shirtsData.shirts || []);
+      //   setDistances(distancesData.distances || []);
+      //   setShirts(shirtsData.shirts || []);
+
+      // Load distances
+      const distRes = await fetch(`/api/admin/events/${eventId}/distances`);
+      const distData = await distRes.json();
+      setDistances(distData.distances || []);
+
+      // Load shirts
+      const shirtRes = await fetch(`/api/admin/events/${eventId}/shirts`);
+      const shirtData = await shirtRes.json();
+      setShirts(shirtData.shirts || []);
     } catch (error) {
       console.error("Failed to load data:", error);
       alert("❌ Không thể tải dữ liệu");
@@ -89,6 +117,7 @@ const DistanceShirtManagerIntegrated = ({ eventId }) => {
       type: "SHORT_SLEEVE",
       size: "M",
       price: 150000,
+      standalonePrice: 260000, // ✅ NEW: Default +60k
       stockQuantity: 100,
       isAvailable: true,
     };
@@ -120,7 +149,11 @@ const DistanceShirtManagerIntegrated = ({ eventId }) => {
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ defaultPrice: 150000, defaultStock: 50 }),
+          body: JSON.stringify({
+            defaultPrice: 150000,
+            defaultStock: 50,
+            defaultStandalonePrice: 260000, // ✅ NEW
+          }),
         }
       );
 
@@ -531,7 +564,21 @@ const DistanceShirtManagerIntegrated = ({ eventId }) => {
                         className="w-full px-3 py-2 border rounded-lg text-sm"
                       />
                     </div>
-
+                    {/* ✅ NEW: Standalone Price */}
+                    <div className="col-span-2">
+                      <label className="block text-xs font-medium text-gray-700 mb-1">
+                        Giá bán lẻ <span className="text-red-500">*</span>
+                      </label>
+                      <Input
+                        type="number"
+                        value={shirt.standalonePrice}
+                        onChange={(e) =>
+                          updateShirt(index, "standalonePrice", e.target.value)
+                        }
+                        className="text-sm"
+                        placeholder="260000"
+                      />
+                    </div>
                     {/* Stock */}
                     <div className="col-span-2">
                       <label className="text-xs text-gray-600">Số lượng</label>
@@ -577,6 +624,16 @@ const DistanceShirtManagerIntegrated = ({ eventId }) => {
             )}
           </div>
 
+          {/* ✅ NEW: Price Info */}
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mt-4">
+            <p className="text-sm text-blue-900">
+              💡 <strong>Ghi chú giá bán:</strong>
+              <br />• <strong>Giá ĐK:</strong> Giá khi khách đăng ký kèm BIB
+              <br />• <strong>Giá bán lẻ:</strong> Giá khi khách mua áo riêng
+              (không có BIB)
+              <br />• Giá bán lẻ nên cao hơn giá ĐK
+            </p>
+          </div>
           {shirts.length > 0 && (
             <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
               <p className="text-sm text-blue-900">

@@ -250,6 +250,8 @@ model EmailConfig {
   attachQrCheckin             Boolean  @default(true)
   createdAt                   DateTime @default(now())
   updatedAt                   DateTime @updatedAt
+  subjectShirtOrder           String?  @default("Xác nhận đơn hàng áo - {{eventName}}")
+  bodyShirtOrder              String?  @default("Đơn hàng áo của bạn đã được xác nhận")
   event                       Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
 
   @@map("email_configs")

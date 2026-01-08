@@ -17,6 +17,7 @@ import {
   Phone,
   Mail,
   Facebook,
+  ShoppingBag,
 } from "lucide-react";
 import Link from "next/link";
 import { toast } from "sonner";
@@ -269,6 +270,14 @@ export default function EventDetailPage() {
                       </div>
                     </div>
                   ))}
+                  <Button
+                    onClick={() =>
+                      router.push(`/events/${event.slug}/order-shirt`)
+                    }
+                  >
+                    <ShoppingBag className="w-4 h-4 mr-2" />
+                    Mua áo kỷ niệm
+                  </Button>
                 </div>
               </CardContent>
             </Card>
