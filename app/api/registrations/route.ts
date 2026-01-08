@@ -215,6 +215,8 @@ export async function POST(req: NextRequest) {
           emailType: "REGISTRATION_PENDING",
           subject: `Xác nhận đăng ký - ${event.name}`,
           status: "SENT",
+          recipientEmail: registration.email,
+          emailProvider: "GMAIL_FIRST",
         },
       });
     } catch (error: any) {
@@ -229,6 +231,8 @@ export async function POST(req: NextRequest) {
           subject: `Xác nhận đăng ký - ${event.name}`,
           status: "FAILED",
           errorMessage: error.message || "Unknown error",
+          recipientEmail: registration.email,
+          emailProvider: "GMAIL_FIRST",
         },
       });
 

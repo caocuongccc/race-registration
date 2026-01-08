@@ -149,6 +149,8 @@ async function processPaymentConfirmation(
           emailType: "PAYMENT_CONFIRMED",
           subject: `Thanh toán thành công - Số BIB ${bibNumber}`,
           status: "SENT",
+          recipientEmail: registration.email,
+          emailProvider: "GMAIL_FIRST",
         },
       });
 
@@ -163,6 +165,8 @@ async function processPaymentConfirmation(
           emailType: "PAYMENT_CONFIRMED",
           subject: `Thanh toán thành công - Số BIB ${bibNumber}`,
           status: "FAILED",
+          recipientEmail: registration.email,
+          emailProvider: "GMAIL_FIRST",
           errorMessage: (emailError as Error).message,
         },
       });

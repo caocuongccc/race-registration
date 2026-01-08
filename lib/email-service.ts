@@ -165,6 +165,8 @@ export async function sendPaymentConfirmationEmail(data: {
       emailType: sendBibNow ? "PAYMENT_CONFIRMED" : "PAYMENT_RECEIVED_NO_BIB",
       subject,
       status: "SENT",
+      recipientEmail: registration.email,
+      emailProvider: result.provider,
     },
   });
 }
@@ -226,6 +228,8 @@ export async function sendBibAnnouncementEmails(eventId: string): Promise<{
                 registrationId: registration.id,
                 emailType: "BIB_ANNOUNCEMENT",
                 status: "SENT",
+                recipientEmail: registration.email,
+                emailProvider: result.provider,
               },
             });
             success++;
@@ -240,6 +244,8 @@ export async function sendBibAnnouncementEmails(eventId: string): Promise<{
               emailType: "BIB_ANNOUNCEMENT",
               status: "FAILED",
               errorMessage: error.message,
+              recipientEmail: registration.email,
+              emailProvider: "unknown",
             },
           });
           failed++;

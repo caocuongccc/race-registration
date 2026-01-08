@@ -229,6 +229,8 @@ export async function sendPaymentConfirmationEmailGmailFirst(data: {
       emailType: sendBibNow ? "PAYMENT_CONFIRMED" : "PAYMENT_RECEIVED_NO_BIB",
       subject,
       status: "SENT",
+      recipientEmail: registration.email,
+      emailProvider: "gmail",
     },
   });
 }
