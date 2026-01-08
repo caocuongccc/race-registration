@@ -4,7 +4,8 @@
 // app/api/shirt-orders/route.ts
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { generatePaymentQR } from "@/lib/qr-generator";
+// import { generatePaymentQR } from "@/lib/qr-generator";
+import { generatePaymentQR } from "@/lib/imgbb";
 import { sendEmailGmailFirst } from "@/lib/email-service-gmail-first";
 import { ShirtOrderPendingEmail } from "@/emails/shirt-order-pending";
 
@@ -110,7 +111,14 @@ export async function POST(req: NextRequest) {
     }
 
     // Generate Payment QR
-    const description = `${customerInfo?.phone || "SHIRT"} ${orderType}`;
+    // const description = `${customerInfo?.name} - ${customerInfo?.phone || "SHIRT"} ${orderType}`;
+    const description = [
+      customerInfo?.name,
+      customerInfo?.phone,
+      orderType === "STANDALONE" ? " - Áo riêng" : "",
+    ]
+      .filter(Boolean)
+      .join(" ");
     const qrPaymentUrl = await generatePaymentQR(description, totalAmount);
     // Create order in transaction
     const order = await prisma.$transaction(async (tx) => {
