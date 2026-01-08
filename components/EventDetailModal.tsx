@@ -233,7 +233,9 @@ export function EventDetailModal({
                       <div className="text-sm opacity-90">Giá từ</div>
                       <div className="text-3xl font-bold my-2">
                         {formatCurrency(
-                          Math.min(...distances.map((d) => d.price))
+                          distances.length
+                            ? Math.min(...distances.map((d) => d.price))
+                            : 0
                         )}
                       </div>
                       {event.allowRegistration ? (

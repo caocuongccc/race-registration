@@ -101,29 +101,29 @@ Giải được chia thành 4 PEN theo mục tiêu thời gian:
     {
       name: "10KM - PEN A (≤40 phút)",
       price: 150000,
-      bibPrefix: "10KA",
-      maxParticipants: 25,
+      bibPrefix: "A",
+      maxParticipants: null,
       sortOrder: 0,
     },
     {
       name: "10KM - PEN B (≤45 phút)",
       price: 150000,
-      bibPrefix: "10KB",
-      maxParticipants: 25,
+      bibPrefix: "B",
+      maxParticipants: null,
       sortOrder: 1,
     },
     {
       name: "10KM - PEN C (≤50 phút)",
       price: 150000,
-      bibPrefix: "10KC",
-      maxParticipants: 25,
+      bibPrefix: "C",
+      maxParticipants: null,
       sortOrder: 2,
     },
     {
       name: "10KM - PEN D (≤55 phút)",
       price: 150000,
-      bibPrefix: "10KD",
-      maxParticipants: 25,
+      bibPrefix: "D",
+      maxParticipants: null,
       sortOrder: 3,
     },
   ];
@@ -153,8 +153,9 @@ Giải được chia thành 4 PEN theo mục tiêu thời gian:
           type: "SHORT_SLEEVE",
           size: size as any,
           price: shirtPrice,
-          stockQuantity: 20,
+          stockQuantity: 1000,
           isAvailable: true,
+          standalonePrice: 260000,
         },
       });
     }
