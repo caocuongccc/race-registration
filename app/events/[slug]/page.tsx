@@ -175,6 +175,20 @@ export default function EventDetailPage() {
                 </p>
               </div>
             )}
+
+            {/* ✅ NEW: Shirt Purchase Button (if available) */}
+            {event.hasShirt && (
+              <Link href={`/events/${event.slug}/order-shirt`}>
+                <Button
+                  variant="outline"
+                  className="w-full bg-purple-50 border-purple-200 text-purple-700 hover:bg-purple-100 hover:border-purple-300"
+                  size="sm"
+                >
+                  <ShoppingBag className="w-4 h-4 mr-2" />
+                  Mua áo riêng (không BIB)
+                </Button>
+              </Link>
+            )}
           </div>
         </div>
       </section>

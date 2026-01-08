@@ -36,12 +36,11 @@ export async function POST(req: NextRequest) {
     // Get event
     const event = await prisma.event.findUnique({
       where: { id: eventId },
+      include: { distances: true },
     });
-
     if (!event) {
       return NextResponse.json({ error: "Event not found" }, { status: 404 });
     }
-
     // Calculate total
     let totalAmount = 0;
     const orderItems = [];
@@ -69,7 +68,7 @@ export async function POST(req: NextRequest) {
       // Use standalonePrice if buying without BIB, otherwise use regular price
       const unitPrice =
         orderType === "STANDALONE"
-          ? shirt.standalonePrice || shirt.price + 50000 // Add 50k if no standalone price set
+          ? shirt.standalonePrice // Add 50k if no standalone price set
           : shirt.price;
 
       const itemTotal = unitPrice * item.quantity;
@@ -111,7 +110,6 @@ export async function POST(req: NextRequest) {
     // Generate Payment QR
     const description = `${customerInfo?.phone || "SHIRT"} ${orderType}`;
     const qrPaymentUrl = await generatePaymentQR(description, totalAmount);
-
     // Create order in transaction
     const order = await prisma.$transaction(async (tx) => {
       const newOrder = await tx.shirtOrder.create({

@@ -13,10 +13,9 @@ export async function GET(
     const slug = (await context.params).slug;
 
     const event = await prisma.event.findFirst({
-      where: { slug },
+      where: { id: slug },
       select: { id: true },
     });
-
     if (!event) {
       return NextResponse.json({ error: "Event not found" }, { status: 404 });
     }

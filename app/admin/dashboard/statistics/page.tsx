@@ -29,6 +29,7 @@ import {
   CheckCircle,
   XCircle,
   Clock,
+  Shirt,
 } from "lucide-react";
 
 interface Stats {
@@ -513,7 +514,7 @@ export default function StatisticsPage() {
         </Card>
       </div>
 
-      {/* Shirt Statistics */}
+      {/* Shirt Statistics
       {stats.shirtStats.total > 0 && (
         <Card>
           <CardHeader>
@@ -558,6 +559,254 @@ export default function StatisticsPage() {
             </div>
           </CardContent>
         </Card>
+      )} */}
+
+      {/* ✅ NEW: Enhanced Shirt Statistics Section */}
+      {stats.shirtStats?.total > 0 && (
+        <>
+          {/* Shirt Sales Overview */}
+          <Card className="border-2 border-purple-200">
+            <CardHeader className="bg-purple-50">
+              <CardTitle className="flex items-center gap-2 text-purple-900">
+                <Shirt className="w-6 h-6" />
+                📊 Thống kê bán áo chi tiết
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="pt-6">
+              {/* Summary Cards */}
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+                <div className="bg-blue-50 p-4 rounded-lg">
+                  <div className="text-sm text-gray-600 mb-1">
+                    Tổng áo đã bán
+                  </div>
+                  <div className="text-3xl font-bold text-blue-600">
+                    {stats.shirtStats.total}
+                  </div>
+                </div>
+
+                <div className="bg-green-50 p-4 rounded-lg">
+                  <div className="text-sm text-gray-600 mb-1">Áo kèm BIB</div>
+                  <div className="text-3xl font-bold text-green-600">
+                    {stats.shirtStats.withBib || 0}
+                  </div>
+                  <div className="text-xs text-gray-500 mt-1">
+                    {stats.shirtStats.total > 0
+                      ? (
+                          (stats.shirtStats.withBib / stats.shirtStats.total) *
+                          100
+                        ).toFixed(1)
+                      : 0}
+                    %
+                  </div>
+                </div>
+
+                <div className="bg-purple-50 p-4 rounded-lg">
+                  <div className="text-sm text-gray-600 mb-1">Áo mua riêng</div>
+                  <div className="text-3xl font-bold text-purple-600">
+                    {stats.shirtStats.standalone || 0}
+                  </div>
+                  <div className="text-xs text-gray-500 mt-1">
+                    {stats.shirtStats.total > 0
+                      ? (
+                          (stats.shirtStats.standalone /
+                            stats.shirtStats.total) *
+                          100
+                        ).toFixed(1)
+                      : 0}
+                    %
+                  </div>
+                </div>
+
+                <div className="bg-orange-50 p-4 rounded-lg">
+                  <div className="text-sm text-gray-600 mb-1">Doanh thu áo</div>
+                  <div className="text-2xl font-bold text-orange-600">
+                    {formatCurrency(stats.shirtStats.revenue || 0)}
+                  </div>
+                </div>
+              </div>
+
+              {/* By Category (Nam/Nữ/Trẻ em) */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+                <div>
+                  <h3 className="font-bold text-lg mb-4 flex items-center gap-2">
+                    👔👗👶 Phân bổ theo loại
+                  </h3>
+                  <ResponsiveContainer width="100%" height={250}>
+                    <PieChart>
+                      <Pie
+                        data={Object.entries(
+                          stats.shirtStats.byCategory || {}
+                        ).map(([name, value]) => ({
+                          name:
+                            name === "MALE"
+                              ? "Nam"
+                              : name === "FEMALE"
+                                ? "Nữ"
+                                : "Trẻ em",
+                          value,
+                        }))}
+                        cx="50%"
+                        cy="50%"
+                        labelLine={false}
+                        label={({ name, percent }) =>
+                          `${name}: ${(percent * 100).toFixed(0)}%`
+                        }
+                        outerRadius={80}
+                        fill="#8884d8"
+                        dataKey="value"
+                      >
+                        {Object.keys(stats.shirtStats.byCategory || {}).map(
+                          (entry, index) => (
+                            <Cell
+                              key={`cell-${index}`}
+                              fill={COLORS[index % COLORS.length]}
+                            />
+                          )
+                        )}
+                      </Pie>
+                      <Tooltip />
+                    </PieChart>
+                  </ResponsiveContainer>
+                </div>
+
+                {/* By Size */}
+                <div>
+                  <h3 className="font-bold text-lg mb-4">
+                    📏 Phân bổ theo size
+                  </h3>
+                  <ResponsiveContainer width="100%" height={250}>
+                    <BarChart
+                      data={Object.entries(stats.shirtStats.bySize || {}).map(
+                        ([name, value]) => ({ name, value })
+                      )}
+                    >
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis dataKey="name" />
+                      <YAxis />
+                      <Tooltip />
+                      <Bar
+                        dataKey="value"
+                        fill="#8b5cf6"
+                        radius={[8, 8, 0, 0]}
+                      />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
+
+              {/* Detailed Table: By Category, Type, Size */}
+              <div>
+                <h3 className="font-bold text-lg mb-4">
+                  📋 Chi tiết theo loại & size
+                </h3>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead className="bg-gray-50 border-b-2">
+                      <tr>
+                        <th className="px-4 py-3 text-left">Loại áo</th>
+                        <th className="px-4 py-3 text-left">Kiểu</th>
+                        <th className="px-4 py-3 text-left">Size</th>
+                        <th className="px-4 py-3 text-right">Kèm BIB</th>
+                        <th className="px-4 py-3 text-right">Mua riêng</th>
+                        <th className="px-4 py-3 text-right">Tổng</th>
+                        <th className="px-4 py-3 text-right">Doanh thu</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y">
+                      {stats.shirtStats.details?.map(
+                        (item: any, idx: number) => (
+                          <tr key={idx} className="hover:bg-gray-50">
+                            <td className="px-4 py-3">
+                              {item.category === "MALE"
+                                ? "👔 Nam"
+                                : item.category === "FEMALE"
+                                  ? "👗 Nữ"
+                                  : "👶 Trẻ em"}
+                            </td>
+                            <td className="px-4 py-3">
+                              {item.type === "SHORT_SLEEVE" ? "Có tay" : "3 lỗ"}
+                            </td>
+                            <td className="px-4 py-3 font-bold">{item.size}</td>
+                            <td className="px-4 py-3 text-right text-green-600">
+                              {item.withBib || 0}
+                            </td>
+                            <td className="px-4 py-3 text-right text-purple-600">
+                              {item.standalone || 0}
+                            </td>
+                            <td className="px-4 py-3 text-right font-bold">
+                              {item.total}
+                            </td>
+                            <td className="px-4 py-3 text-right font-medium text-blue-600">
+                              {formatCurrency(item.revenue || 0)}
+                            </td>
+                          </tr>
+                        )
+                      )}
+                    </tbody>
+                    <tfoot className="bg-gray-50 font-bold border-t-2">
+                      <tr>
+                        <td colSpan={3} className="px-4 py-3">
+                          TỔNG CỘNG
+                        </td>
+                        <td className="px-4 py-3 text-right text-green-600">
+                          {stats.shirtStats.withBib || 0}
+                        </td>
+                        <td className="px-4 py-3 text-right text-purple-600">
+                          {stats.shirtStats.standalone || 0}
+                        </td>
+                        <td className="px-4 py-3 text-right">
+                          {stats.shirtStats.total}
+                        </td>
+                        <td className="px-4 py-3 text-right text-blue-600">
+                          {formatCurrency(stats.shirtStats.revenue || 0)}
+                        </td>
+                      </tr>
+                    </tfoot>
+                  </table>
+                </div>
+              </div>
+
+              {/* Payment Status Breakdown */}
+              {stats.shirtStats.byStatus && (
+                <div className="mt-6 grid grid-cols-3 gap-4">
+                  <div className="bg-green-50 p-4 rounded-lg border border-green-200">
+                    <div className="flex items-center gap-2 mb-2">
+                      <CheckCircle className="w-5 h-5 text-green-600" />
+                      <span className="font-medium text-green-900">
+                        Đã thanh toán
+                      </span>
+                    </div>
+                    <div className="text-2xl font-bold text-green-600">
+                      {stats.shirtStats.byStatus.paid || 0}
+                    </div>
+                  </div>
+
+                  <div className="bg-yellow-50 p-4 rounded-lg border border-yellow-200">
+                    <div className="flex items-center gap-2 mb-2">
+                      <Clock className="w-5 h-5 text-yellow-600" />
+                      <span className="font-medium text-yellow-900">
+                        Chờ xác nhận
+                      </span>
+                    </div>
+                    <div className="text-2xl font-bold text-yellow-600">
+                      {stats.shirtStats.byStatus.pending || 0}
+                    </div>
+                  </div>
+
+                  <div className="bg-red-50 p-4 rounded-lg border border-red-200">
+                    <div className="flex items-center gap-2 mb-2">
+                      <XCircle className="w-5 h-5 text-red-600" />
+                      <span className="font-medium text-red-900">Thất bại</span>
+                    </div>
+                    <div className="text-2xl font-bold text-red-600">
+                      {stats.shirtStats.byStatus.failed || 0}
+                    </div>
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </>
       )}
 
       {/* Distance Details */}
