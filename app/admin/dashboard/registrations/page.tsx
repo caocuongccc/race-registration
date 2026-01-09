@@ -7,6 +7,8 @@ import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { formatCurrency, formatDate } from "@/lib/utils";
 import { toast } from "sonner";
+import { Pagination } from "@/components/Pagination";
+
 import {
   Search,
   Download,
@@ -17,6 +19,7 @@ import {
   Eye,
   Check,
   X,
+  Loader2,
 } from "lucide-react";
 
 interface Registration {
@@ -29,7 +32,17 @@ interface Registration {
   paymentStatus: string;
   registrationDate: Date;
   distance: { name: string };
+  registrationSource: string;
   event: { name: string };
+}
+
+interface PaginationMeta {
+  currentPage: number;
+  totalPages: number;
+  totalItems: number;
+  itemsPerPage: number;
+  hasNextPage: boolean;
+  hasPreviousPage: boolean;
 }
 
 export default function RegistrationsPage() {
@@ -37,7 +50,14 @@ export default function RegistrationsPage() {
   const [filteredRegistrations, setFilteredRegistrations] = useState<
     Registration[]
   >([]);
-
+  const [pagination, setPagination] = useState<PaginationMeta>({
+    currentPage: 1,
+    totalPages: 1,
+    totalItems: 0,
+    itemsPerPage: 10,
+    hasNextPage: false,
+    hasPreviousPage: false,
+  });
   const [loading, setLoading] = useState(true);
   const [sendingEmails, setSendingEmails] = useState(false);
 
@@ -46,12 +66,41 @@ export default function RegistrationsPage() {
   const [statusFilter, setStatusFilter] = useState("all");
   const [distanceFilter, setDistanceFilter] = useState("all");
   const [selectedEvent, setSelectedEvent] = useState("all");
+  const [sourceFilter, setSourceFilter] = useState("all");
 
   // NEW STATES NEEDED
   const [events, setEvents] = useState<any[]>([]);
   const [selectedEventData, setSelectedEventData] = useState<any | null>(null);
   const [quickConfirmMode, setQuickConfirmMode] = useState(false);
   const [confirming, setConfirming] = useState<string | null>(null);
+
+  // ✅ Load on mount and when filters change
+  useEffect(() => {
+    loadEvents();
+  }, []);
+
+  useEffect(() => {
+    loadRegistrations();
+  }, [
+    selectedEvent,
+    statusFilter,
+    distanceFilter,
+    sourceFilter,
+    pagination.currentPage,
+  ]);
+
+  // ✅ Debounced search
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (pagination.currentPage === 1) {
+        loadRegistrations();
+      } else {
+        setPagination((prev) => ({ ...prev, currentPage: 1 }));
+      }
+    }, 500);
+
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
 
   // Load event list
   const loadEvents = async () => {
@@ -66,13 +115,24 @@ export default function RegistrationsPage() {
 
   // Load registrations for selected event
   const loadRegistrations = async () => {
+    setLoading(true);
     try {
-      const res = await fetch(
-        `/api/admin/registrations?eventId=${selectedEvent}`
-      );
+      const params = new URLSearchParams({
+        page: pagination.currentPage.toString(),
+        limit: pagination.itemsPerPage.toString(),
+      });
+
+      if (selectedEvent !== "all") params.append("eventId", selectedEvent);
+      if (statusFilter !== "all") params.append("status", statusFilter);
+      if (distanceFilter !== "all") params.append("distance", distanceFilter);
+      if (sourceFilter !== "all") params.append("source", sourceFilter);
+      if (searchQuery) params.append("search", searchQuery);
+
+      const res = await fetch(`/api/admin/registrations?${params.toString()}`);
       const data = await res.json();
+
       setRegistrations(data.registrations || []);
-      setFilteredRegistrations(data.registrations || []);
+      setPagination(data.pagination);
 
       // Load selected event info
       if (selectedEvent !== "all") {
@@ -94,40 +154,10 @@ export default function RegistrationsPage() {
     }
   };
 
-  useEffect(() => {
-    loadEvents();
-    loadRegistrations();
-  }, []);
-
-  useEffect(() => {
-    loadRegistrations();
-  }, [selectedEvent]);
-
-  // Filter logic
-  useEffect(() => {
-    let filtered = [...registrations];
-
-    if (searchQuery) {
-      const query = searchQuery.toLowerCase();
-      filtered = filtered.filter(
-        (r) =>
-          r.fullName.toLowerCase().includes(query) ||
-          r.email.toLowerCase().includes(query) ||
-          r.phone.includes(query) ||
-          r.bibNumber?.includes(query)
-      );
-    }
-
-    if (statusFilter !== "all") {
-      filtered = filtered.filter((r) => r.paymentStatus === statusFilter);
-    }
-
-    if (distanceFilter !== "all") {
-      filtered = filtered.filter((r) => r.distance.name === distanceFilter);
-    }
-
-    setFilteredRegistrations(filtered);
-  }, [searchQuery, statusFilter, distanceFilter, registrations]);
+  const handlePageChange = (page: number) => {
+    setPagination((prev) => ({ ...prev, currentPage: page }));
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
 
   // EXPORT
   const handleExport = async () => {
@@ -330,16 +360,16 @@ export default function RegistrationsPage() {
                 </option>
               ))}
             </Select>
-            {/* <Select
-              value={batchFilter}
-              onChange={(e) => setBatchFilter(e.target.value)}
+            <Select
+              value={sourceFilter}
+              onChange={(e) => setSourceFilter(e.target.value)}
               label="Import Batch"
             >
               <option value="all">Tất cả nguồn</option>
               <option value="ONLINE">Đăng ký online</option>
               <option value="EXCEL">Import từ Excel</option>
               <option value="MANUAL">Thủ công</option>
-            </Select> */}
+            </Select>
           </div>
         </CardContent>
       </Card>
@@ -347,136 +377,166 @@ export default function RegistrationsPage() {
       {/* TABLE */}
       <Card>
         <CardContent className="p-0">
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="bg-gray-50 border-b">
-                <tr>
-                  <th className="px-6 py-3 text-left text-xs">STT</th>
-                  <th className="px-6 py-3 text-left text-xs">BIB</th>
-                  <th className="px-6 py-3 text-left text-xs">Họ tên</th>
-                  <th className="px-6 py-3 text-left text-xs">Liên hệ</th>
-                  <th className="px-6 py-3 text-left text-xs">Cự ly</th>
-                  <th className="px-6 py-3 text-left text-xs">Số tiền</th>
-                  <th className="px-6 py-3 text-left text-xs">Trạng thái</th>
-                  <th className="px-6 py-3 text-left text-xs">Ngày ĐK</th>
-                  <th className="px-6 py-3 text-left text-xs">Nguồn</th>
-                  <th className="px-6 py-3 text-left text-xs">Thao tác</th>
-                </tr>
-              </thead>
+          {loading ? (
+            <div className="flex items-center justify-center py-12">
+              <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+            </div>
+          ) : (
+            <>
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead className="bg-gray-50 border-b">
+                    <tr>
+                      <th className="px-6 py-3 text-left text-xs">STT</th>
+                      <th className="px-6 py-3 text-left text-xs">BIB</th>
+                      <th className="px-6 py-3 text-left text-xs">Họ tên</th>
+                      <th className="px-6 py-3 text-left text-xs">Liên hệ</th>
+                      <th className="px-6 py-3 text-left text-xs">Cự ly</th>
+                      <th className="px-6 py-3 text-left text-xs">Số tiền</th>
+                      <th className="px-6 py-3 text-left text-xs">
+                        Trạng thái
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs">Ngày ĐK</th>
+                      <th className="px-6 py-3 text-left text-xs">Nguồn</th>
+                      <th className="px-6 py-3 text-left text-xs">Thao tác</th>
+                    </tr>
+                  </thead>
 
-              <tbody>
-                {filteredRegistrations.map((r, idx) => (
-                  <tr
-                    key={r.id}
-                    className={`hover:bg-gray-50 ${
-                      quickConfirmMode && r.paymentStatus === "PENDING"
-                        ? "bg-blue-50"
-                        : ""
-                    }`}
-                  >
-                    <td className="px-6 py-4">{idx + 1}</td>
+                  <tbody>
+                    {registrations.map((r, idx) => {
+                      const globalIndex =
+                        (pagination.currentPage - 1) * pagination.itemsPerPage +
+                        idx +
+                        1;
 
-                    <td className="px-6 py-4 font-mono">
-                      {r.bibNumber || <span className="text-gray-400">—</span>}
-                    </td>
-
-                    <td className="px-6 py-4">{r.fullName}</td>
-
-                    <td className="px-6 py-4 text-sm text-gray-600">
-                      {r.email}
-                      <br />
-                      {r.phone}
-                    </td>
-
-                    <td className="px-6 py-4">{r.distance.name}</td>
-
-                    <td className="px-6 py-4 font-medium">
-                      {formatCurrency(r.totalAmount)}
-                    </td>
-
-                    <td className="px-6 py-4">
-                      {getStatusBadge(r.paymentStatus)}
-                    </td>
-
-                    <td className="px-6 py-4">
-                      {formatDate(r.registrationDate)}
-                    </td>
-                    <td className="px-6 py-4">
-                      <span
-                        className={`px-2 py-1 text-xs rounded-full ${
-                          r.registrationSource === "ONLINE"
-                            ? "bg-green-100 text-green-700"
-                            : r.registrationSource === "EXCEL"
-                              ? "bg-blue-100 text-blue-700"
-                              : "bg-gray-100 text-gray-700"
-                        }`}
-                      >
-                        {r.registrationSource === "ONLINE"
-                          ? "🌐 Online"
-                          : r.registrationSource === "EXCEL"
-                            ? "📊 Excel"
-                            : "✏️ Thủ công"}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="flex items-center gap-2">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() =>
-                            window.open(
-                              `/registrations/${r.id}/payment`,
-                              "_blank"
-                            )
-                          }
+                      return (
+                        <tr
+                          key={r.id}
+                          className={`hover:bg-gray-50 ${
+                            quickConfirmMode && r.paymentStatus === "PENDING"
+                              ? "bg-blue-50"
+                              : ""
+                          }`}
                         >
-                          <Eye className="w-4 h-4" />
-                        </Button>
+                          <td className="px-6 py-4">{globalIndex}</td>
 
-                        {r.paymentStatus === "PENDING" &&
-                          (quickConfirmMode ||
-                            (selectedEventData &&
-                              !selectedEventData.requireOnlinePayment)) && (
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => handleConfirmPayment(r.id)}
-                              disabled={confirming === r.id}
-                              className="text-green-600 hover:bg-green-50"
+                          <td className="px-6 py-4 font-mono">
+                            {r.bibNumber || (
+                              <span className="text-gray-400">—</span>
+                            )}
+                          </td>
+
+                          <td className="px-6 py-4">{r.fullName}</td>
+
+                          <td className="px-6 py-4 text-sm text-gray-600">
+                            {r.email}
+                            <br />
+                            {r.phone}
+                          </td>
+
+                          <td className="px-6 py-4">{r.distance.name}</td>
+
+                          <td className="px-6 py-4 font-medium">
+                            {formatCurrency(r.totalAmount)}
+                          </td>
+
+                          <td className="px-6 py-4">
+                            {getStatusBadge(r.paymentStatus)}
+                          </td>
+
+                          <td className="px-6 py-4">
+                            {formatDate(r.registrationDate)}
+                          </td>
+
+                          <td className="px-6 py-4">
+                            <span
+                              className={`px-2 py-1 text-xs rounded-full ${
+                                r.registrationSource === "ONLINE"
+                                  ? "bg-green-100 text-green-700"
+                                  : r.registrationSource === "EXCEL"
+                                    ? "bg-blue-100 text-blue-700"
+                                    : "bg-gray-100 text-gray-700"
+                              }`}
                             >
-                              {confirming === r.id ? (
-                                <div className="animate-spin h-4 w-4 border-b-2 border-green-600 rounded-full" />
-                              ) : (
-                                <Check className="w-4 h-4" />
-                              )}
-                            </Button>
-                          )}
+                              {r.registrationSource === "ONLINE"
+                                ? "🌐 Online"
+                                : r.registrationSource === "EXCEL"
+                                  ? "📊 Excel"
+                                  : "✏️ Thủ công"}
+                            </span>
+                          </td>
 
-                        {r.paymentStatus === "PENDING" &&
-                          selectedEventData &&
-                          !selectedEventData.requireOnlinePayment && (
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => handleRejectPayment(r.id)}
-                              className="text-red-600 hover:bg-red-50"
-                            >
-                              <X className="w-4 h-4" />
-                            </Button>
-                          )}
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+                          <td className="px-6 py-4">
+                            <div className="flex items-center gap-2">
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() =>
+                                  window.open(
+                                    `/registrations/${r.id}/payment`,
+                                    "_blank"
+                                  )
+                                }
+                              >
+                                <Eye className="w-4 h-4" />
+                              </Button>
 
-            {filteredRegistrations.length === 0 && (
-              <div className="text-center py-12 text-gray-500">
-                Không có kết quả phù hợp
+                              {r.paymentStatus === "PENDING" &&
+                                (quickConfirmMode ||
+                                  (selectedEventData &&
+                                    !selectedEventData.requireOnlinePayment)) && (
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => handleConfirmPayment(r.id)}
+                                    disabled={confirming === r.id}
+                                    className="text-green-600 hover:bg-green-50"
+                                  >
+                                    {confirming === r.id ? (
+                                      <Loader2 className="w-4 h-4 animate-spin" />
+                                    ) : (
+                                      <Check className="w-4 h-4" />
+                                    )}
+                                  </Button>
+                                )}
+
+                              {r.paymentStatus === "PENDING" &&
+                                selectedEventData &&
+                                !selectedEventData.requireOnlinePayment && (
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => handleRejectPayment(r.id)}
+                                    className="text-red-600 hover:bg-red-50"
+                                  >
+                                    <X className="w-4 h-4" />
+                                  </Button>
+                                )}
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+
+                {registrations.length === 0 && !loading && (
+                  <div className="text-center py-12 text-gray-500">
+                    Không có kết quả phù hợp
+                  </div>
+                )}
               </div>
-            )}
-          </div>
+
+              {/* ✅ Pagination Component */}
+              <Pagination
+                currentPage={pagination.currentPage}
+                totalPages={pagination.totalPages}
+                totalItems={pagination.totalItems}
+                itemsPerPage={pagination.itemsPerPage}
+                onPageChange={handlePageChange}
+              />
+            </>
+          )}
         </CardContent>
       </Card>
     </div>

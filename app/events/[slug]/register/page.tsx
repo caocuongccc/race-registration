@@ -654,7 +654,22 @@ export default function RegistrationPage() {
                     </label>
                   </div>
                 </div>
-
+                {/* ✅ Highlight selected category */}
+                {watchShirtCategory && watchShirtCategory !== "" && (
+                  <div className="bg-blue-50 border-2 border-blue-300 rounded-lg p-4">
+                    <p className="text-sm text-blue-900 font-medium text-center">
+                      ✨ Bạn đang chọn:{" "}
+                      <span className="font-bold">
+                        Áo{" "}
+                        {watchShirtCategory === "MALE"
+                          ? "Nam"
+                          : watchShirtCategory === "FEMALE"
+                            ? "Nữ"
+                            : "Trẻ em"}
+                      </span>
+                    </p>
+                  </div>
+                )}
                 {watchShirtCategory && watchShirtCategory !== "" && (
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
