@@ -1,3 +1,4 @@
+// app/api/events/[slug]/route.ts
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 
@@ -22,6 +23,21 @@ export async function GET(
         shirts: {
           where: { isAvailable: true },
           orderBy: [{ category: "asc" }, { type: "asc" }, { size: "asc" }],
+        },
+        // ✅ ADD: Include shirt images
+        eventImages: {
+          where: {
+            imageType: {
+              in: ["SHIRT_MALE", "SHIRT_FEMALE", "SHIRT_KID"],
+            },
+          },
+          orderBy: { sortOrder: "asc" },
+          select: {
+            id: true,
+            imageUrl: true,
+            imageType: true,
+            title: true,
+          },
         },
       },
     });
@@ -56,6 +72,15 @@ export async function GET(
       return acc;
     }, {} as any);
 
+    // ✅ Group shirt images by category
+    const shirtImages = {
+      MALE: event.eventImages.filter((img) => img.imageType === "SHIRT_MALE"),
+      FEMALE: event.eventImages.filter(
+        (img) => img.imageType === "SHIRT_FEMALE"
+      ),
+      KID: event.eventImages.filter((img) => img.imageType === "SHIRT_KID"),
+    };
+
     return NextResponse.json({
       event: {
         id: event.id,
@@ -85,6 +110,7 @@ export async function GET(
           (!d.maxParticipants || d.currentParticipants < d.maxParticipants),
       })),
       shirts: Object.values(shirtsGrouped),
+      shirtImages, // ✅ ADD: Include shirt images
     });
   } catch (error) {
     console.error("Error fetching event:", error);

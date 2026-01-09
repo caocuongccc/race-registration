@@ -9,8 +9,9 @@ import { Input } from "@/components/ui/input";
 import { ShirtSelectorWithQuantity } from "@/components/ShirtSelectorWithQuantity";
 import { formatCurrency, formatDate } from "@/lib/utils";
 import { toast } from "sonner";
-import { ShoppingBag, ArrowLeft, Check } from "lucide-react";
+import { ShoppingBag, ArrowLeft, Check, Link, ArrowRight } from "lucide-react";
 import Image from "next/image";
+import { ShirtImageCarousel } from "@/components/ShirtImageCarousel";
 
 interface ShirtItem {
   shirtId: string;
@@ -30,6 +31,7 @@ export default function OrderShirtPage() {
   const [submitting, setSubmitting] = useState(false);
   const [orderCreated, setOrderCreated] = useState(false);
   const [orderResult, setOrderResult] = useState<any>(null);
+  const [shirtImages, setShirtImages] = useState<any>({});
 
   // Customer info
   const [fullName, setFullName] = useState("");
@@ -56,6 +58,7 @@ export default function OrderShirtPage() {
       }
 
       setEvent(data.event);
+      setShirtImages(data.shirtImages || {}); // ✅ ADD
     } catch (error) {
       toast.error("Không thể tải thông tin sự kiện");
     } finally {
@@ -344,13 +347,57 @@ export default function OrderShirtPage() {
                   ⚠️ Đây là áo MUA RIÊNG, KHÔNG bao gồm quyền tham gia thi đấu
                 </li>
                 <li>
-                  ⚠️ Muốn thi đấu, vui lòng đăng ký tại trang "Đăng ký tham gia"
+                  ⚠️ Muốn thi đấu, vui lòng đăng ký tại trang{" "}
+                  <a
+                    href={`/events/${event.slug}/register`}
+                    className="text-red-600"
+                  >
+                    "Đăng ký tại đây"
+                  </a>
+                  {/* <Link href={`/events/${event.slug}/register`}>
+                    <Button size="lg">
+                      "Đăng ký tham gia"
+                      <ArrowRight className="w-5 h-5 ml-2" />
+                    </Button>
+                  </Link> */}
                 </li>
               </ul>
             </div>
           </div>
         </div>
+        {/* ✅ ADD: Shirt Gallery Preview */}
+        {Object.keys(shirtImages).length > 0 && (
+          <Card className="mb-6">
+            <CardHeader>
+              <CardTitle>👕 Xem trước mẫu áo</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                {shirtImages.MALE?.length > 0 && (
+                  <ShirtImageCarousel
+                    images={shirtImages.MALE}
+                    category="MALE"
+                  />
+                )}
+                {shirtImages.FEMALE?.length > 0 && (
+                  <ShirtImageCarousel
+                    images={shirtImages.FEMALE}
+                    category="FEMALE"
+                  />
+                )}
+                {shirtImages.KID?.length > 0 && (
+                  <ShirtImageCarousel images={shirtImages.KID} category="KID" />
+                )}
+              </div>
 
+              <div className="mt-6 bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <p className="text-sm text-blue-900 text-center">
+                  💡 Vuốt hoặc click mũi tên để xem các góc chụp khác nhau
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+        )}
         {/* Customer Info Form */}
         <Card className="mb-6">
           <CardHeader>

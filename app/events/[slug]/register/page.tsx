@@ -6,6 +6,7 @@ import { useParams, useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { ShirtImageCarousel } from "@/components/ShirtImageCarousel";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
@@ -83,9 +84,11 @@ export default function RegistrationPage() {
     if (params?.slug) {
       setEventSlug(params.slug as string);
     }
+    console.log("Params changed:", params);
   }, [params]);
 
   useEffect(() => {
+    console.log("Event slug changed:", eventSlug);
     if (!eventSlug) return;
 
     async function loadEvent() {
@@ -389,9 +392,9 @@ export default function RegistrationPage() {
                     error={errors.fullName?.message}
                     required
                   />
-                  <p className="text-xs text-gray-500 mt-1">
+                  {/* <p className="text-xs text-gray-500 mt-1">
                     ✨ Tự động viết hoa chữ cái đầu
-                  </p>
+                  </p> */}
                 </div>
                 <div>
                   <Input
@@ -404,9 +407,9 @@ export default function RegistrationPage() {
                     error={emailError || errors.email?.message}
                     required
                   />
-                  <p className="text-xs text-gray-500 mt-1">
+                  {/* <p className="text-xs text-gray-500 mt-1">
                     ✨ Tự động sửa .con → .com
-                  </p>
+                  </p> */}
                 </div>
               </div>
 
@@ -423,9 +426,9 @@ export default function RegistrationPage() {
                     placeholder="0912345678"
                     required
                   />
-                  <p className="text-xs text-gray-500 mt-1">
+                  {/* <p className="text-xs text-gray-500 mt-1">
                     ✨ Tự động format số VN (10 số)
-                  </p>
+                  </p> */}
                 </div>
 
                 <Input
@@ -458,9 +461,9 @@ export default function RegistrationPage() {
                     onChange={handleIdCardChange}
                     placeholder="001234567890"
                   />
-                  <p className="text-xs text-gray-500 mt-1">
+                  {/* <p className="text-xs text-gray-500 mt-1">
                     ✨ Tự động xóa ký tự đặc biệt
-                  </p>
+                  </p> */}
                 </div>
               </div>
 
@@ -534,6 +537,66 @@ export default function RegistrationPage() {
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
+                {/* ✅ NEW: Shirt Gallery Preview - Hiển thị ngay từ đầu */}
+                {eventData.shirtImages &&
+                  Object.keys(eventData.shirtImages).length > 0 && (
+                    <div className="bg-gradient-to-br from-purple-50 via-pink-50 to-blue-50 rounded-xl p-6 border-2 border-purple-200">
+                      <h3 className="text-lg font-bold text-center text-purple-900 mb-6">
+                        👕 Xem trước các mẫu áo kỷ niệm
+                      </h3>
+
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        {eventData.shirtImages.MALE?.length > 0 && (
+                          <div className="bg-white rounded-lg p-4 shadow-sm">
+                            <ShirtImageCarousel
+                              images={eventData.shirtImages.MALE}
+                              category="MALE"
+                            />
+                          </div>
+                        )}
+
+                        {eventData.shirtImages.FEMALE?.length > 0 && (
+                          <div className="bg-white rounded-lg p-4 shadow-sm">
+                            <ShirtImageCarousel
+                              images={eventData.shirtImages.FEMALE}
+                              category="FEMALE"
+                            />
+                          </div>
+                        )}
+
+                        {eventData.shirtImages.KID?.length > 0 && (
+                          <div className="bg-white rounded-lg p-4 shadow-sm">
+                            <ShirtImageCarousel
+                              images={eventData.shirtImages.KID}
+                              category="KID"
+                            />
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="mt-6 text-center space-y-2">
+                        <p className="text-sm text-purple-900">
+                          💡 <strong>Click vào ảnh</strong> để phóng to và xem
+                          chi tiết
+                        </p>
+                        <p className="text-xs text-gray-600">
+                          Chọn loại áo bên dưới để đăng ký mua kèm BIB
+                        </p>
+                      </div>
+                    </div>
+                  )}
+
+                {/* ✅ Thêm divider đẹp */}
+                <div className="relative">
+                  <div className="absolute inset-0 flex items-center">
+                    <div className="w-full border-t border-gray-300"></div>
+                  </div>
+                  <div className="relative flex justify-center text-sm">
+                    <span className="px-4 bg-white text-gray-500 font-medium">
+                      Chọn loại áo (nếu muốn mua)
+                    </span>
+                  </div>
+                </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Loại áo

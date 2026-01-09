@@ -96,9 +96,10 @@ export function ImageUploader({
           type="file"
           accept="image/*"
           disabled={uploading}
-          onChange={(e) =>
-            e.target.files?.[0] && handleFileSelect(e.target.files[0])
-          }
+          onChange={(e) => {
+            e.stopPropagation(); // ✅ ADD THIS
+            e.target.files?.[0] && handleFileSelect(e.target.files[0]);
+          }}
           className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
         />
 
@@ -114,7 +115,8 @@ export function ImageUploader({
         <button
           type="button"
           className="text-xs text-red-600 hover:underline"
-          onClick={() => {
+          onClick={(e) => {
+            e.preventDefault(); // ✅ ADD THIS
             setPreview(null);
             onRemove?.();
           }}
