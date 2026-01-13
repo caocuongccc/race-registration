@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -44,6 +44,22 @@ interface PaginationMeta {
   hasNextPage: boolean;
   hasPreviousPage: boolean;
 }
+// ✅ OPTIMIZATION 1: Debounce hook
+function useDebounce<T>(value: T, delay: number): T {
+  const [debouncedValue, setDebouncedValue] = useState<T>(value);
+
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedValue(value);
+    }, delay);
+
+    return () => {
+      clearTimeout(handler);
+    };
+  }, [value, delay]);
+
+  return debouncedValue;
+}
 
 export default function RegistrationsPage() {
   const [registrations, setRegistrations] = useState<Registration[]>([]);
@@ -54,25 +70,34 @@ export default function RegistrationsPage() {
     currentPage: 1,
     totalPages: 1,
     totalItems: 0,
-    itemsPerPage: 10,
+    itemsPerPage: 50,
     hasNextPage: false,
     hasPreviousPage: false,
   });
   const [loading, setLoading] = useState(true);
   const [sendingEmails, setSendingEmails] = useState(false);
 
-  // Filters
-  const [searchQuery, setSearchQuery] = useState("");
+  // ✅ OPTIMIZATION 2: Separate search state from filter state
+  const [searchInput, setSearchInput] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [distanceFilter, setDistanceFilter] = useState("all");
   const [selectedEvent, setSelectedEvent] = useState("all");
   const [sourceFilter, setSourceFilter] = useState("all");
+
+  // ✅ OPTIMIZATION 3: Debounce search - only trigger API after 800ms of no typing
+  const debouncedSearch = useDebounce(searchInput, 800);
+
+  // Filters
+  const [searchQuery, setSearchQuery] = useState("");
 
   // NEW STATES NEEDED
   const [events, setEvents] = useState<any[]>([]);
   const [selectedEventData, setSelectedEventData] = useState<any | null>(null);
   const [quickConfirmMode, setQuickConfirmMode] = useState(false);
   const [confirming, setConfirming] = useState<string | null>(null);
+
+  // ✅ OPTIMIZATION 4: Track if initial load to prevent double fetch
+  const initialLoadRef = useRef(true);
 
   // ✅ Load on mount and when filters change
   useEffect(() => {
@@ -89,18 +114,30 @@ export default function RegistrationsPage() {
     pagination.currentPage,
   ]);
 
-  // ✅ Debounced search
+  // ✅ OPTIMIZATION 6: Load registrations when filters change OR debounced search changes
   useEffect(() => {
-    const timer = setTimeout(() => {
-      if (pagination.currentPage === 1) {
-        loadRegistrations();
-      } else {
-        setPagination((prev) => ({ ...prev, currentPage: 1 }));
-      }
-    }, 500);
+    // Skip on initial mount (will be loaded by selectedEvent change)
+    if (initialLoadRef.current) {
+      initialLoadRef.current = false;
+      return;
+    }
 
-    return () => clearTimeout(timer);
-  }, [searchQuery]);
+    loadRegistrations();
+  }, [
+    selectedEvent,
+    statusFilter,
+    distanceFilter,
+    sourceFilter,
+    pagination.currentPage,
+    debouncedSearch, // Only trigger when user stops typing
+  ]);
+
+  // ✅ OPTIMIZATION 7: Separate effect for page changes to reset to page 1
+  useEffect(() => {
+    if (pagination.currentPage !== 1) {
+      setPagination((prev) => ({ ...prev, currentPage: 1 }));
+    }
+  }, [selectedEvent, statusFilter, distanceFilter, sourceFilter]);
 
   // Load event list
   const loadEvents = async () => {
@@ -113,28 +150,41 @@ export default function RegistrationsPage() {
     }
   };
 
+  // ✅ OPTIMIZATION 8: Memoize API params to prevent unnecessary refetches
+  const apiParams = useMemo(() => {
+    const params = new URLSearchParams({
+      page: pagination.currentPage.toString(),
+      limit: pagination.itemsPerPage.toString(),
+    });
+
+    if (selectedEvent !== "all") params.append("eventId", selectedEvent);
+    if (statusFilter !== "all") params.append("status", statusFilter);
+    if (distanceFilter !== "all") params.append("distance", distanceFilter);
+    if (sourceFilter !== "all") params.append("source", sourceFilter);
+    if (debouncedSearch) params.append("search", debouncedSearch);
+
+    return params.toString();
+  }, [
+    pagination.currentPage,
+    pagination.itemsPerPage,
+    selectedEvent,
+    statusFilter,
+    distanceFilter,
+    sourceFilter,
+    debouncedSearch,
+  ]);
+
   // Load registrations for selected event
-  const loadRegistrations = async () => {
+  const loadRegistrations = useCallback(async () => {
     setLoading(true);
     try {
-      const params = new URLSearchParams({
-        page: pagination.currentPage.toString(),
-        limit: pagination.itemsPerPage.toString(),
-      });
-
-      if (selectedEvent !== "all") params.append("eventId", selectedEvent);
-      if (statusFilter !== "all") params.append("status", statusFilter);
-      if (distanceFilter !== "all") params.append("distance", distanceFilter);
-      if (sourceFilter !== "all") params.append("source", sourceFilter);
-      if (searchQuery) params.append("search", searchQuery);
-
-      const res = await fetch(`/api/admin/registrations?${params.toString()}`);
+      const res = await fetch(`/api/admin/registrations?${apiParams}`);
       const data = await res.json();
 
       setRegistrations(data.registrations || []);
       setPagination(data.pagination);
 
-      // Load selected event info
+      // Load selected event info if needed
       if (selectedEvent !== "all") {
         try {
           const eventRes = await fetch(`/api/admin/events/${selectedEvent}`);
@@ -152,15 +202,15 @@ export default function RegistrationsPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [apiParams, selectedEvent]);
 
-  const handlePageChange = (page: number) => {
+  const handlePageChange = useCallback((page: number) => {
     setPagination((prev) => ({ ...prev, currentPage: page }));
     window.scrollTo({ top: 0, behavior: "smooth" });
-  };
+  }, []);
 
-  // EXPORT
-  const handleExport = async () => {
+  // ✅ OPTIMIZATION 9: Memoize export function
+  const handleExport = useCallback(async () => {
     try {
       const res = await fetch(
         `/api/admin/registrations/export?eventId=${selectedEvent}`
@@ -175,61 +225,69 @@ export default function RegistrationsPage() {
     } catch (error) {
       toast.error("Không thể xuất file");
     }
-  };
+  }, [selectedEvent]);
 
-  // CONFIRM PAYMENT
-  const handleConfirmPayment = async (registrationId: string) => {
-    setConfirming(registrationId);
-    try {
-      const res = await fetch(
-        `/api/admin/registrations/${registrationId}/confirm-payment`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            notes: "Xác nhận thanh toán thủ công bởi admin",
-          }),
+  // ✅ OPTIMIZATION 10: Memoize confirm payment handler
+  const handleConfirmPayment = useCallback(
+    async (registrationId: string) => {
+      setConfirming(registrationId);
+      try {
+        const res = await fetch(
+          `/api/admin/registrations/${registrationId}/confirm-payment`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              notes: "Xác nhận thanh toán thủ công bởi admin",
+            }),
+          }
+        );
+
+        const result = await res.json();
+        if (result.success) {
+          toast.success(`Đã xác nhận! BIB: ${result.bibNumber}`);
+          // Reload current page
+          loadRegistrations();
+        } else {
+          toast.error(result.error || "Có lỗi xảy ra");
         }
-      );
-
-      const result = await res.json();
-      if (result.success) {
-        toast.success(`Đã xác nhận! BIB: ${result.bibNumber}`);
-        loadRegistrations();
-      } else {
-        toast.error(result.error || "Có lỗi xảy ra");
+      } catch {
+        toast.error("Không thể xác nhận thanh toán");
+      } finally {
+        setConfirming(null);
       }
-    } catch {
-      toast.error("Không thể xác nhận thanh toán");
-    } finally {
-      setConfirming(null);
-    }
-  };
+    },
+    [loadRegistrations]
+  );
 
-  // CANCEL PAYMENT
-  const handleRejectPayment = async (registrationId: string) => {
-    if (!confirm("Hủy đăng ký này?")) return;
+  // ✅ OPTIMIZATION 11: Memoize reject payment handler
+  const handleRejectPayment = useCallback(
+    async (registrationId: string) => {
+      if (!confirm("Hủy đăng ký này?")) return;
 
-    try {
-      const res = await fetch(
-        `/api/admin/registrations/${registrationId}/confirm-payment`,
-        { method: "DELETE" }
-      );
+      try {
+        const res = await fetch(
+          `/api/admin/registrations/${registrationId}/confirm-payment`,
+          { method: "DELETE" }
+        );
 
-      const result = await res.json();
+        const result = await res.json();
 
-      if (result.success) {
-        toast.success("Đã hủy đăng ký");
-        loadRegistrations();
-      } else {
-        toast.error(result.error || "Có lỗi xảy ra");
+        if (result.success) {
+          toast.success("Đã hủy đăng ký");
+          loadRegistrations();
+        } else {
+          toast.error(result.error || "Có lỗi xảy ra");
+        }
+      } catch {
+        toast.error("Không thể hủy đăng ký");
       }
-    } catch {
-      toast.error("Không thể hủy đăng ký");
-    }
-  };
+    },
+    [loadRegistrations]
+  );
 
-  const getStatusBadge = (status: string) => {
+  // ✅ OPTIMIZATION 12: Memoize status badge component
+  const getStatusBadge = useCallback((status: string) => {
     switch (status) {
       case "PAID":
         return (
@@ -252,11 +310,24 @@ export default function RegistrationsPage() {
       default:
         return status;
     }
-  };
+  }, []);
 
-  const uniqueDistances = [
-    ...new Set(registrations.map((r) => r.distance.name)),
-  ];
+  // ✅ OPTIMIZATION 13: Memoize unique distances
+  const uniqueDistances = useMemo(
+    () => [...new Set(registrations.map((r) => r.distance.name))],
+    [registrations]
+  );
+
+  // ✅ OPTIMIZATION 14: Memoize stats
+  const stats = useMemo(() => {
+    const paidCount = registrations.filter(
+      (r) => r.paymentStatus === "PAID"
+    ).length;
+    const pendingCount = registrations.filter(
+      (r) => r.paymentStatus === "PENDING"
+    ).length;
+    return { paidCount, pendingCount };
+  }, [registrations]);
 
   const paidCount = filteredRegistrations.filter(
     (r) => r.paymentStatus === "PAID"
@@ -325,21 +396,26 @@ export default function RegistrationsPage() {
                 </option>
               ))}
             </Select>
-            {/* <div className="relative md:col-span-2"> */}
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-            <Input
-              placeholder={
-                quickConfirmMode
-                  ? "🔍 Tìm SĐT hoặc tên..."
-                  : "Tìm tên, email, SĐT, BIB..."
-              }
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className={`pl-10 ${
-                quickConfirmMode ? "border-blue-500 ring-2 ring-blue-100" : ""
-              }`}
-            />
-            {/* </div> */}
+            {/* ✅ OPTIMIZATION 15: Controlled input with visual feedback */}
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+              <Input
+                placeholder={
+                  quickConfirmMode
+                    ? "🔍 Tìm SĐT hoặc tên..."
+                    : "Tìm tên, email, SĐT, BIB..."
+                }
+                value={searchInput}
+                onChange={(e) => setSearchInput(e.target.value)}
+                className={`pl-10 ${
+                  quickConfirmMode ? "border-blue-500 ring-2 ring-blue-100" : ""
+                }`}
+              />
+              {/* Show loading indicator while debouncing */}
+              {searchInput !== debouncedSearch && (
+                <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 animate-spin text-blue-600" />
+              )}
+            </div>
             <Select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
