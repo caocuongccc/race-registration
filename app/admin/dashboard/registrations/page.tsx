@@ -553,6 +553,7 @@ export default function RegistrationsPage() {
                                     "_blank"
                                   )
                                 }
+                                placeholder="Xem chi tiết."
                               >
                                 <Eye className="w-4 h-4" />
                               </Button>

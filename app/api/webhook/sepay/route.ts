@@ -11,7 +11,7 @@ import crypto from "crypto";
 function verifyWebhookSignature(
   payload: string,
   signature: string,
-  secret: string
+  secret: string,
 ): boolean {
   const hmac = crypto.createHmac("sha256", secret);
   const expectedSignature = hmac.update(payload).digest("hex");
@@ -23,7 +23,7 @@ function verifyWebhookSignature(
  */
 async function generateBibNumber(
   registrationId: string,
-  distanceId: string
+  distanceId: string,
 ): Promise<string> {
   // Get distance info
   const distance = await prisma.distance.findUnique({
@@ -59,7 +59,7 @@ async function processPaymentConfirmation(
   registrationId: string,
   transactionId: string,
   amount: number,
-  webhookData: any
+  webhookData: any,
 ) {
   try {
     // Get registration
@@ -85,7 +85,7 @@ async function processPaymentConfirmation(
     // Verify amount matches
     if (amount !== registration.totalAmount) {
       console.warn(
-        `Amount mismatch: expected ${registration.totalAmount}, got ${amount}`
+        `Amount mismatch: expected ${registration.totalAmount}, got ${amount}`,
       );
       // Still process if amount is equal or greater
       if (amount < registration.totalAmount) {
@@ -96,7 +96,7 @@ async function processPaymentConfirmation(
     // Generate BIB number
     const bibNumber = await generateBibNumber(
       registrationId,
-      registration.distanceId
+      registration.distanceId,
     );
 
     // Generate check-in QR code
@@ -197,14 +197,14 @@ export async function POST(req: NextRequest) {
       const isValid = verifyWebhookSignature(
         body,
         signature,
-        process.env.SEPAY_WEBHOOK_SECRET
+        process.env.SEPAY_WEBHOOK_SECRET,
       );
 
       if (!isValid) {
         console.error("Invalid webhook signature");
         return NextResponse.json(
           { error: "Invalid signature" },
-          { status: 401 }
+          { status: 401 },
         );
       }
     }
@@ -238,7 +238,7 @@ export async function POST(req: NextRequest) {
       console.error("Invalid transaction content format:", content);
       return NextResponse.json(
         { error: "Cannot extract registration ID from content" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -249,7 +249,7 @@ export async function POST(req: NextRequest) {
       registrationId,
       transactionId,
       amount,
-      webhookData
+      webhookData,
     );
 
     console.log(`✅ Payment processed successfully:`, result);

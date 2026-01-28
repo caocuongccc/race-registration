@@ -20,7 +20,9 @@ import {
   Settings,
   Contact,
   Settings2,
+  User,
 } from "lucide-react";
+import { EventUserManager } from "@/components/EventUserManager";
 
 export default function EditEventPage() {
   const params = useParams();
@@ -29,7 +31,7 @@ export default function EditEventPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [activeTab, setActiveTab] = useState<
-    "basic" | "media" | "payment" | "contact" | "config"
+    "basic" | "media" | "payment" | "contact" | "config" | "users"
   >("basic");
   const [eventImages, setEventImages] = useState<any[]>([]);
 
@@ -183,6 +185,7 @@ export default function EditEventPage() {
             { id: "payment", label: "Thanh toán", icon: Settings2 },
             { id: "contact", label: "Liên hệ", icon: Contact },
             { id: "config", label: "Cự ly & Áo", icon: Settings },
+            { id: "users", label: "Quản lý người dùng", icon: User },
           ].map((tab) => (
             <button
               key={tab.id}
@@ -703,7 +706,7 @@ export default function EditEventPage() {
           </Card>
         )}
         {activeTab === "config" && <DistanceShirtManager eventId={id} />}
-
+        {activeTab === "users" && <EventUserManager eventId={id} />}
         {/* Save Button - Always visible */}
         <div className="flex justify-end gap-3 sticky bottom-6 bg-white p-4 rounded-lg shadow-lg border border-gray-200">
           <Button

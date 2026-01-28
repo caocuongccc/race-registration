@@ -15,6 +15,7 @@ model User {
   role          UserRole       @default(ADMIN)
   createdAt     DateTime       @default(now())
   updatedAt     DateTime       @updatedAt
+  eventUsers    EventUser[]
   events        Event[]
   importBatches ImportBatch[]
   registrations Registration[]
@@ -61,6 +62,7 @@ model Event {
   emailConfig          EmailConfig?
   eventImages          EventImage[]
   shirts               EventShirt[]
+  assignedUsers        EventUser[]
   createdBy            User           @relation(fields: [createdById], references: [id])
   importBatches        ImportBatch[]
   registrations        Registration[]
@@ -333,6 +335,23 @@ model ShirtOrderItem {
   @@map("shirt_order_items")
 }
 
+model EventUser {
+  id        String        @id @default(dbgenerated("(gen_random_uuid())::text"))
+  eventId   String
+  userId    String
+  role      EventUserRole @default(VIEWER)
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @default(now()) @updatedAt
+  event     Event         @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  user      User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([eventId, userId])
+  @@index([userId])
+  @@index([eventId])
+  @@index([role])
+  @@map("event_users")
+}
+
 enum ShirtOrderType {
   WITH_BIB
   STANDALONE
@@ -426,4 +445,10 @@ enum EmailStatus {
   OPENED
   FAILED
   BOUNCED
+}
+
+enum EventUserRole {
+  ADMIN
+  EDITOR
+  VIEWER
 }

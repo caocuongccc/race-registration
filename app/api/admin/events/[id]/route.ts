@@ -3,6 +3,10 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import {
+  getUserSession,
+  requireEventPermission,
+} from "@/lib/event-permissions";
 
 export async function GET(
   req: NextRequest,
@@ -13,9 +17,13 @@ export async function GET(
     if (!session) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
+    const user = await getUserSession();
+    const eventId = (await context.params).id;
+    // ✅ Require at least VIEW permission
+    await requireEventPermission(eventId, user.id, "view");
 
     const event = await prisma.event.findUnique({
-      where: { id: (await context.params).id },
+      where: { id: eventId },
       include: {
         distances: {
           orderBy: { sortOrder: "asc" },
@@ -52,6 +60,10 @@ export async function PUT(
 
     const body = await req.json();
     const eventId = (await context.params).id;
+    const user = await getUserSession();
+
+    // ✅ Require EDIT permission
+    await requireEventPermission(eventId, user.id, "edit");
 
     // Update event with all fields including images
     const event = await prisma.event.update({
