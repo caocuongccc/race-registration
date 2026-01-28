@@ -1,4 +1,4 @@
-// app/events/[slug]/register/page.tsx - FIXED PRICE CALCULATION
+// app/events/[slug]/register/page.tsx - WITH BANK INFO DISPLAY
 "use client";
 
 import { useEffect, useState } from "react";
@@ -11,7 +11,25 @@ import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { formatCurrency, formatDate } from "@/lib/utils";
-import { Calendar, MapPin, Shirt } from "lucide-react";
+import {
+  sanitizeEmail,
+  sanitizePhone,
+  validateEmail,
+  validatePhone,
+  sanitizeName,
+  sanitizeText,
+  sanitizeIdCard,
+} from "@/lib/validation";
+
+import {
+  Calendar,
+  MapPin,
+  Shirt,
+  Award,
+  CreditCard,
+  AlertCircle,
+} from "lucide-react";
+import { ShirtSize } from "@prisma/client";
 
 interface EventData {
   event: any;
@@ -22,6 +40,8 @@ interface EventData {
 interface FormData {
   distanceId: string;
   fullName: string;
+  bibName: string; // NEW: Name to show on BIB
+
   email: string;
   phone: string;
   dob: string;
@@ -36,6 +56,7 @@ interface FormData {
   shirtId: string;
   shirtCategory: string;
   shirtType: string;
+  shirtSize: string; // NEW: Store selected size
 }
 
 export default function RegistrationPage() {
@@ -45,10 +66,16 @@ export default function RegistrationPage() {
   const [eventData, setEventData] = useState<EventData | null>(null);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  const [shirtImages, setShirtImages] = useState<any>({});
 
   const [selectedDistance, setSelectedDistance] = useState<any>(null);
   const [selectedShirt, setSelectedShirt] = useState<any>(null);
   const [availableSizes, setAvailableSizes] = useState<any[]>([]);
+  const [selectedShirtPrice, setSelectedShirtPrice] = useState(0);
+  // Real-time validation states
+  const [emailError, setEmailError] = useState<string>("");
+  const [phoneError, setPhoneError] = useState<string>("");
+  const [emergencyPhoneError, setEmergencyPhoneError] = useState<string>("");
 
   const {
     register,
@@ -62,44 +89,118 @@ export default function RegistrationPage() {
     if (params?.slug) {
       setEventSlug(params.slug as string);
     }
+    console.log("Params changed:", params);
   }, [params]);
 
   useEffect(() => {
+    console.log("Event slug changed:", eventSlug);
     if (!eventSlug) return;
+
+    async function loadEvent() {
+      try {
+        const res = await fetch(`/api/events/${eventSlug}`);
+        console.log("Fetching event data for slug:", eventSlug);
+        console.log("Fetching event data for slug:", res);
+        if (!res.ok) throw new Error("Không tìm thấy sự kiện");
+        const data = await res.json();
+        console.log("Event data:", data);
+        // ✅ Check if registration is allowed
+        if (!data.event.allowRegistration) {
+          toast.error("Sự kiện này chưa mở đăng ký");
+          router.push("/");
+          return;
+        }
+
+        setEventData(data);
+        setShirtImages(data.shirtImages || {});
+      } catch (error) {
+        toast.error("Không thể tải thông tin sự kiện");
+        router.push("/");
+      } finally {
+        setLoading(false);
+      }
+    }
     loadEvent();
   }, [eventSlug, router]);
 
-  const loadEvent = async () => {
-    try {
-      const res = await fetch(`/api/events/${eventSlug}`);
-      if (!res.ok) throw new Error("Không tìm thấy sự kiện");
-      const data = await res.json();
+  const watchShirtCategory = watch("shirtCategory");
+  const watchShirtType = watch("shirtType");
+  const watchShirtSize = watch("shirtSize"); // NEW: Watch size selection
 
-      if (!data.event.allowRegistration) {
-        toast.error("Sự kiện này chưa mở đăng ký");
-        router.push("/");
-        return;
-      }
+  // Email validation with auto-fix
+  const handleEmailChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const cleaned = sanitizeEmail(e.target.value);
+    setValue("email", cleaned);
 
-      setEventData(data);
-    } catch (error) {
-      toast.error("Không thể tải thông tin sự kiện");
-      router.push("/");
-    } finally {
-      setLoading(false);
+    // Validate
+    if (cleaned) {
+      const validation = validateEmail(cleaned);
+      setEmailError(validation.valid ? "" : validation.error || "");
+    } else {
+      setEmailError("");
     }
   };
 
-  const watchShirtCategory = watch("shirtCategory");
-  const watchShirtType = watch("shirtType");
-  const watchShirtId = watch("shirtId");
+  // Phone validation
+  const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const cleaned = sanitizePhone(e.target.value);
+    setValue("phone", cleaned);
 
-  // ✅ FIX 1: Update available sizes when category/type changes
+    // Validate
+    if (cleaned) {
+      const validation = validatePhone(cleaned);
+      setPhoneError(validation.valid ? "" : validation.error || "");
+    } else {
+      setPhoneError("");
+    }
+  };
+
+  // Emergency phone validation
+  const handleEmergencyPhoneChange = (
+    e: React.ChangeEvent<HTMLInputElement>,
+  ) => {
+    const cleaned = sanitizePhone(e.target.value);
+    setValue("emergencyContactPhone", cleaned);
+
+    // Validate
+    if (cleaned) {
+      const validation = validatePhone(cleaned);
+      setEmergencyPhoneError(validation.valid ? "" : validation.error || "");
+    } else {
+      setEmergencyPhoneError("");
+    }
+  };
+
+  // Name sanitization
+  const handleNameChange = (
+    e: React.ChangeEvent<HTMLInputElement>,
+    field: "fullName" | "emergencyContactName",
+  ) => {
+    const cleaned = e.target.value;
+    setValue(field, cleaned);
+  };
+
+  // Text sanitization
+  const handleTextChange = (
+    e: React.ChangeEvent<HTMLInputElement>,
+    field: "address" | "city",
+  ) => {
+    const cleaned = e.target.value;
+    setValue(field, cleaned);
+  };
+
+  // ID card sanitization
+  const handleIdCardChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const cleaned = sanitizeIdCard(e.target.value);
+    setValue("idCard", cleaned);
+  };
+  // Update available sizes when category/type changes
   useEffect(() => {
     if (!eventData?.shirts || !watchShirtCategory || !watchShirtType) {
       setAvailableSizes([]);
-      setSelectedShirt(null);
       setValue("shirtId", "");
+      setValue("shirtSize", ""); // NEW: Reset size
+      setSelectedShirt(null);
       return;
     }
 
@@ -108,30 +209,30 @@ export default function RegistrationPage() {
     );
 
     setAvailableSizes(shirtGroup?.sizes || []);
+    setSelectedShirtPrice(shirtGroup?.price || 0);
     setValue("shirtId", "");
+    setValue("shirtSize", ""); // NEW: Reset size
     setSelectedShirt(null);
   }, [watchShirtCategory, watchShirtType, eventData, setValue]);
 
-  // ✅ FIX 2: Update selectedShirt when size is selected
+  // NEW: Update shirtId when size is selected
   useEffect(() => {
-    if (!watchShirtId || !availableSizes.length) {
-      setSelectedShirt(null);
-      return;
+    if (watchShirtSize) {
+      const selectedSizeObj = availableSizes.find(
+        (s) => s.size === watchShirtSize,
+      );
+      if (selectedSizeObj) {
+        setValue("shirtId", selectedSizeObj.id);
+        setSelectedShirt(selectedSizeObj);
+      }
     }
+  }, [watchShirtSize, availableSizes, setValue]);
 
-    const selected = availableSizes.find((s) => s.id === watchShirtId);
-    setSelectedShirt(selected || null);
-  }, [watchShirtId, availableSizes]);
-
-  // ✅ FIX 3: Calculate total with proper shirt price
   const calculateTotal = () => {
     let total = selectedDistance?.price || 0;
-
-    // Add shirt price only if a shirt is actually selected
-    if (selectedShirt?.price) {
-      total += selectedShirt.price;
+    if (selectedShirtPrice) {
+      total += selectedShirtPrice;
     }
-
     return total;
   };
 
@@ -140,7 +241,11 @@ export default function RegistrationPage() {
       toast.error("Vui lòng chọn cự ly");
       return;
     }
-
+    // Final validation
+    if (emailError || phoneError || emergencyPhoneError) {
+      toast.error("Vui lòng kiểm tra lại thông tin đã nhập");
+      return;
+    }
     setSubmitting(true);
 
     try {
@@ -152,6 +257,8 @@ export default function RegistrationPage() {
           distanceId: data.distanceId,
           shirtId: data.shirtId || null,
           fullName: data.fullName,
+          bibName: data.bibName || data.fullName, // Use bibName or fallback to fullName
+
           email: data.email,
           phone: data.phone,
           dob: new Date(data.dob),
@@ -165,6 +272,7 @@ export default function RegistrationPage() {
           bloodType: data.bloodType || null,
           shirtCategory: watchShirtCategory || null,
           shirtType: watchShirtType || null,
+          shirtSize: data.shirtSize || null, // NEW: Send selected size
         }),
       });
 
@@ -223,10 +331,13 @@ export default function RegistrationPage() {
         </Card>
 
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-          {/* Distance Selection */}
+          {/* Step 1: Chọn cự ly */}
           <Card>
             <CardHeader>
-              <CardTitle>Bước 1: Chọn Cự Ly</CardTitle>
+              <CardTitle className="flex items-center gap-2">
+                <Award className="w-6 h-6" />
+                Bước 1: Chọn Cự Ly
+              </CardTitle>
             </CardHeader>
             <CardContent>
               <div className="grid md:grid-cols-3 gap-4">
@@ -258,6 +369,19 @@ export default function RegistrationPage() {
                     <div className="text-2xl font-bold text-blue-600 mt-2">
                       {formatCurrency(distance.price)}
                     </div>
+                    {distance.maxParticipants && (
+                      <div className="text-xs text-gray-500 mt-2">
+                        Còn{" "}
+                        {distance.maxParticipants -
+                          distance.currentParticipants}{" "}
+                        chỗ
+                      </div>
+                    )}
+                    {!distance.isAvailable && (
+                      <div className="absolute top-2 right-2 bg-red-500 text-white text-xs px-2 py-1 rounded">
+                        Hết chỗ
+                      </div>
+                    )}
                   </label>
                 ))}
               </div>
@@ -269,60 +393,158 @@ export default function RegistrationPage() {
             </CardContent>
           </Card>
 
-          {/* Personal Info - Same as before */}
+          {/* Step 2: Thông tin cá nhân */}
+          {/* Step 2: Personal Info - REFORMATTED */}
           <Card>
             <CardHeader>
               <CardTitle>Bước 2: Thông Tin Cá Nhân</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
+              {/* Row 1: Full Name & BIB Name */}
               <div className="grid md:grid-cols-2 gap-4">
                 <Input
-                  label="Họ và tên"
+                  label="Họ và tên đầy đủ *"
                   {...register("fullName", {
                     required: "Vui lòng nhập họ tên",
                   })}
                   error={errors.fullName?.message}
                   required
                 />
-                <Input
-                  label="Email"
-                  type="email"
-                  {...register("email", { required: "Vui lòng nhập email" })}
-                  error={errors.email?.message}
-                  required
-                />
+
+                <div>
+                  <Input
+                    label="Tên hiển thị trên BIB *"
+                    {...register("bibName")}
+                    placeholder="VD: Nguyễn Văn A hoặc A.NGUYEN"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">
+                    💡 Để trống sẽ dùng họ tên đầy đủ
+                  </p>
+                </div>
               </div>
+
+              {/* Row 2: Email & Phone */}
               <div className="grid md:grid-cols-2 gap-4">
                 <Input
-                  label="Số điện thoại"
+                  label="Email *"
+                  type="email"
+                  {...register("email", {
+                    required: "Vui lòng nhập email",
+                  })}
+                  onChange={handleEmailChange}
+                  error={emailError || errors.email?.message}
+                  required
+                />
+
+                <Input
+                  label="Số điện thoại *"
+                  type="tel"
                   {...register("phone", {
                     required: "Vui lòng nhập số điện thoại",
                   })}
-                  error={errors.phone?.message}
+                  onChange={handlePhoneChange}
+                  error={phoneError || errors.phone?.message}
+                  placeholder="0912345678"
                   required
                 />
+              </div>
+
+              {/* Row 3: DOB, Gender, Blood Type */}
+              <div className="grid md:grid-cols-3 gap-4">
                 <Input
-                  label="Ngày sinh"
+                  label="Ngày sinh *"
                   type="date"
                   {...register("dob", { required: "Vui lòng chọn ngày sinh" })}
                   error={errors.dob?.message}
                   required
                 />
+
+                <Select
+                  label="Giới tính *"
+                  {...register("gender", {
+                    required: "Vui lòng chọn giới tính",
+                  })}
+                  error={errors.gender?.message}
+                  required
+                >
+                  <option value="">-- Chọn giới tính --</option>
+                  <option value="MALE">Nam</option>
+                  <option value="FEMALE">Nữ</option>
+                </Select>
+
+                <Select label="Nhóm máu" {...register("bloodType")}>
+                  <option value="">-- Chọn nhóm máu --</option>
+                  <option value="A">A</option>
+                  <option value="B">B</option>
+                  <option value="O">O</option>
+                  <option value="AB">AB</option>
+                </Select>
               </div>
-              <Select
-                label="Giới tính"
-                {...register("gender", { required: "Vui lòng chọn giới tính" })}
-                error={errors.gender?.message}
-                required
-              >
-                <option value="">-- Chọn giới tính --</option>
-                <option value="MALE">Nam</option>
-                <option value="FEMALE">Nữ</option>
-              </Select>
+
+              {/* Row 4: ID Card & Address */}
+              <div className="grid md:grid-cols-2 gap-4">
+                <Input
+                  label="CCCD/CMND"
+                  {...register("idCard")}
+                  placeholder="001234567890"
+                />
+                <Input label="Tỉnh/Thành phố" {...register("city")} />
+              </div>
+
+              {/* Row 5: Full Address */}
+              <Input
+                label="Địa chỉ chi tiết"
+                {...register("address")}
+                placeholder="Số nhà, đường, phường/xã"
+              />
+
+              {/* Emergency Contact */}
+              <div className="border-t pt-4 mt-4">
+                <h4 className="font-medium text-gray-900 mb-3">
+                  Liên hệ khẩn cấp
+                </h4>
+                <div className="grid md:grid-cols-2 gap-4">
+                  <Input
+                    label="Tên người liên hệ"
+                    {...register("emergencyContactName")}
+                  />
+                  <Input
+                    label="Số điện thoại"
+                    type="tel"
+                    {...register("emergencyContactPhone")}
+                    onChange={handleEmergencyPhoneChange}
+                    error={emergencyPhoneError}
+                    placeholder="0912345678"
+                  />
+                </div>
+              </div>
+
+              {/* Health Declaration */}
+              <div className="border-t pt-4 mt-4">
+                <label className="flex items-start gap-3">
+                  <input
+                    type="checkbox"
+                    {...register("healthDeclaration", {
+                      required: "Vui lòng xác nhận tình trạng sức khỏe",
+                    })}
+                    className="mt-1 h-4 w-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
+                  />
+                  <span className="text-sm text-gray-700">
+                    Tôi cam đoan sức khỏe tốt, không có bệnh lý tim mạch, huyết
+                    áp hoặc bất kỳ vấn đề sức khỏe nào có thể ảnh hưởng đến việc
+                    tham gia giải chạy. <span className="text-red-500">*</span>
+                  </span>
+                </label>
+                {errors.healthDeclaration && (
+                  <p className="mt-1 text-sm text-red-600">
+                    {errors.healthDeclaration.message}
+                  </p>
+                )}
+              </div>
             </CardContent>
           </Card>
 
-          {/* Shirt Selection */}
+          {/* Step 3: Shirt Selection - WITH SIZE DROPDOWN */}
           {eventData.event.hasShirt && (
             <Card>
               <CardHeader>
@@ -332,52 +554,71 @@ export default function RegistrationPage() {
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
+                {/* Shirt Gallery */}
+                {shirtImages && Object.keys(shirtImages).length > 0 && (
+                  <div className="bg-gradient-to-br from-purple-50 via-pink-50 to-blue-50 rounded-xl p-6 border-2 border-purple-200">
+                    <h3 className="text-lg font-bold text-center text-purple-900 mb-6">
+                      👕 Xem trước các mẫu áo kỷ niệm
+                    </h3>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                      {shirtImages.MALE?.length > 0 && (
+                        <div className="bg-white rounded-lg p-4 shadow-sm">
+                          <ShirtImageCarousel
+                            images={shirtImages.MALE}
+                            category="MALE"
+                          />
+                        </div>
+                      )}
+                      {shirtImages.FEMALE?.length > 0 && (
+                        <div className="bg-white rounded-lg p-4 shadow-sm">
+                          <ShirtImageCarousel
+                            images={shirtImages.FEMALE}
+                            category="FEMALE"
+                          />
+                        </div>
+                      )}
+                      {shirtImages.KID?.length > 0 && (
+                        <div className="bg-white rounded-lg p-4 shadow-sm">
+                          <ShirtImageCarousel
+                            images={shirtImages.KID}
+                            category="KID"
+                          />
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+
                 {/* Category Selection */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Loại áo
                   </label>
                   <div className="grid grid-cols-4 gap-3">
-                    <label className="relative">
-                      <input
-                        type="radio"
-                        value=""
-                        {...register("shirtCategory")}
-                        onChange={() => {
-                          setValue("shirtCategory", "");
-                          setValue("shirtType", "");
-                          setValue("shirtId", "");
-                        }}
-                        className="sr-only peer"
-                      />
-                      <div className="p-3 border-2 rounded-lg text-center cursor-pointer transition-all peer-checked:border-blue-600 peer-checked:bg-blue-50 hover:border-blue-300">
-                        <div className="text-sm font-medium">Không mua</div>
-                      </div>
-                    </label>
-
-                    <label className="relative">
-                      <input
-                        type="radio"
-                        value="MALE"
-                        {...register("shirtCategory")}
-                        className="sr-only peer"
-                      />
-                      <div className="p-3 border-2 rounded-lg text-center cursor-pointer transition-all peer-checked:border-blue-600 peer-checked:bg-blue-50 hover:border-blue-300">
-                        <div className="text-sm font-medium">Áo Nam</div>
-                      </div>
-                    </label>
-
-                    <label className="relative">
-                      <input
-                        type="radio"
-                        value="FEMALE"
-                        {...register("shirtCategory")}
-                        className="sr-only peer"
-                      />
-                      <div className="p-3 border-2 rounded-lg text-center cursor-pointer transition-all peer-checked:border-blue-600 peer-checked:bg-blue-50 hover:border-blue-300">
-                        <div className="text-sm font-medium">Áo Nữ</div>
-                      </div>
-                    </label>
+                    {["", "MALE", "FEMALE"].map((cat) => (
+                      <label key={cat} className="relative">
+                        <input
+                          type="radio"
+                          value={cat}
+                          {...register("shirtCategory")}
+                          onChange={(e) => {
+                            setValue("shirtCategory", e.target.value);
+                            setValue("shirtType", "");
+                            setValue("shirtSize", ""); // Reset size
+                          }}
+                          className="sr-only peer"
+                        />
+                        <div className="p-3 border-2 rounded-lg text-center cursor-pointer transition-all peer-checked:border-blue-600 peer-checked:bg-blue-50 hover:border-blue-300">
+                          <div className="text-sm font-medium">
+                            {cat === ""
+                              ? "Không mua"
+                              : cat === "MALE"
+                                ? "Áo Nam"
+                                : "Áo Nữ"}
+                          </div>
+                        </div>
+                      </label>
+                    ))}
                   </div>
                 </div>
 
@@ -393,6 +634,10 @@ export default function RegistrationPage() {
                           type="radio"
                           value="SHORT_SLEEVE"
                           {...register("shirtType")}
+                          onChange={(e) => {
+                            setValue("shirtType", e.target.value);
+                            setValue("shirtSize", ""); // Reset size
+                          }}
                           className="sr-only peer"
                         />
                         <div className="p-4 border-2 rounded-lg text-center cursor-pointer transition-all peer-checked:border-blue-600 peer-checked:bg-blue-50 hover:border-blue-300">
@@ -403,47 +648,35 @@ export default function RegistrationPage() {
                   </div>
                 )}
 
-                {/* Size Selection */}
+                {/* SIZE DROPDOWN - NEW */}
                 {watchShirtType && availableSizes.length > 0 && (
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Size áo
-                      {/* ✅ FIX: Show price from selectedShirt */}
-                      {selectedShirt && (
-                        <span className="ml-2 text-blue-600">
-                          - {formatCurrency(selectedShirt.price)}
-                        </span>
-                      )}
-                    </label>
-                    <div className="grid grid-cols-5 gap-3">
+                    <Select
+                      label={`Chọn size áo - Giá: ${formatCurrency(selectedShirtPrice)}`}
+                      {...register("shirtSize")}
+                    >
+                      <option value="">-- Chọn size --</option>
                       {availableSizes.map((sizeOption) => (
-                        <label key={sizeOption.id} className="relative">
-                          <input
-                            type="radio"
-                            value={sizeOption.id}
-                            disabled={!sizeOption.isAvailable}
-                            {...register("shirtId")}
-                            className="sr-only peer"
-                          />
-                          <div
-                            className={`p-4 border-2 rounded-lg text-center cursor-pointer transition-all peer-checked:border-blue-600 peer-checked:bg-blue-50 hover:border-blue-300 ${
-                              !sizeOption.isAvailable
-                                ? "opacity-50 cursor-not-allowed bg-gray-50"
-                                : ""
-                            }`}
-                          >
-                            <div className="text-lg font-bold">
-                              {sizeOption.size}
-                            </div>
-                            <div className="text-xs text-gray-500 mt-1">
-                              Còn{" "}
-                              {sizeOption.stockQuantity -
-                                sizeOption.soldQuantity}
-                            </div>
-                          </div>
-                        </label>
+                        <option
+                          key={sizeOption.id}
+                          value={sizeOption.size}
+                          disabled={!sizeOption.isAvailable}
+                        >
+                          {sizeOption.size} - Còn{" "}
+                          {sizeOption.stockQuantity - sizeOption.soldQuantity}
+                          {!sizeOption.isAvailable && " (Hết hàng)"}
+                        </option>
                       ))}
-                    </div>
+                    </Select>
+
+                    {watchShirtSize && (
+                      <div className="mt-2 p-3 bg-green-50 border border-green-200 rounded-lg">
+                        <p className="text-sm text-green-800">
+                          ✅ Đã chọn: Size <strong>{watchShirtSize}</strong> -{" "}
+                          {formatCurrency(selectedShirtPrice)}
+                        </p>
+                      </div>
+                    )}
                   </div>
                 )}
               </CardContent>
@@ -469,19 +702,24 @@ export default function RegistrationPage() {
                   </div>
                 )}
 
-                {/* ✅ FIX: Only show shirt price if selectedShirt exists */}
-                {selectedShirt && (
-                  <div className="flex justify-between items-center text-gray-700 p-3 bg-purple-50 rounded-lg">
+                {selectedShirtPrice > 0 && (
+                  <div className="flex justify-between items-center text-gray-700 p-3 bg-purple-50 rounded-lg animate-fadeIn">
                     <div>
                       <div className="font-medium">
-                        Áo {watchShirtCategory === "MALE" ? "Nam" : "Nữ"} -{" "}
-                        {watchShirtType === "SHORT_SLEEVE" ? "Có tay" : "3 lỗ"}{" "}
-                        - Size {selectedShirt.size}
+                        Áo{" "}
+                        {watchShirtCategory === "MALE"
+                          ? "Nam"
+                          : watchShirtCategory === "FEMALE"
+                            ? "Nữ"
+                            : "Trẻ Em"}
+                        {" - "}
+                        {watchShirtType === "SHORT_SLEEVE" ? "Có tay" : "3 lỗ"}
+                        {selectedShirt?.size && ` - Size ${selectedShirt.size}`}
                       </div>
                       <div className="text-xs text-gray-500">Áo kỷ niệm</div>
                     </div>
                     <span className="text-lg font-semibold text-purple-600">
-                      {formatCurrency(selectedShirt.price)}
+                      {formatCurrency(selectedShirtPrice)}
                     </span>
                   </div>
                 )}
@@ -493,11 +731,15 @@ export default function RegistrationPage() {
                         TỔNG CỘNG
                       </div>
                       <div className="text-xs text-gray-500">
-                        {selectedShirt ? "Phí đăng ký + Áo" : "Phí đăng ký"}
+                        {selectedShirtPrice > 0
+                          ? "Phí đăng ký + Áo"
+                          : "Phí đăng ký"}
                       </div>
                     </div>
-                    <div className="text-3xl font-bold text-blue-600">
-                      {formatCurrency(calculateTotal())}
+                    <div className="text-right">
+                      <div className="text-3xl font-bold text-blue-600">
+                        {formatCurrency(calculateTotal())}
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -508,14 +750,76 @@ export default function RegistrationPage() {
                 size="lg"
                 className="w-full mt-6"
                 isLoading={submitting}
-                disabled={submitting || !selectedDistance}
+                // disabled={submitting || !selectedDistance}
+                disabled={
+                  submitting ||
+                  !selectedDistance ||
+                  !!emailError ||
+                  !!phoneError ||
+                  !!emergencyPhoneError
+                }
               >
                 {submitting
                   ? "Đang xử lý..."
                   : `Đăng ký - ${formatCurrency(calculateTotal())}`}
               </Button>
+              {(emailError || phoneError || emergencyPhoneError) && (
+                <div className="mt-3 p-3 bg-red-50 border border-red-200 rounded-lg">
+                  <p className="text-sm text-red-700">
+                    ⚠️ Vui lòng sửa lỗi trước khi đăng ký
+                  </p>
+                </div>
+              )}
             </CardContent>
           </Card>
+          {/* ✅ NEW: Bank Info Card */}
+          {eventData.event.bankAccount && (
+            <Card className="mb-6 border-2 border-yellow-300 bg-yellow-50">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-lg flex items-center gap-2 text-yellow-900">
+                  <CreditCard className="w-5 h-5" />
+                  Thông tin chuyển khoản
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-4 text-sm">
+                  <div>
+                    <div className="text-gray-600 text-xs mb-1">Ngân hàng</div>
+                    <div className="font-bold text-gray-900">
+                      {eventData.event.bankName || "MB Bank"}
+                    </div>
+                  </div>
+
+                  <div>
+                    <div className="text-gray-600 text-xs mb-1">
+                      Số tài khoản
+                    </div>
+                    <div className="font-bold text-blue-600 font-mono">
+                      {eventData.event.bankAccount}
+                    </div>
+                  </div>
+
+                  <div className="col-span-2 md:col-span-1">
+                    <div className="text-gray-600 text-xs mb-1">
+                      Chủ tài khoản
+                    </div>
+                    <div className="font-bold text-gray-900">
+                      {eventData.event.bankHolder}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="mt-3 pt-3 border-t border-yellow-300 flex items-start gap-2">
+                  <AlertCircle className="w-4 h-4 text-yellow-700 mt-0.5 flex-shrink-0" />
+                  <p className="text-xs text-yellow-900">
+                    Sau khi đăng ký, bạn sẽ nhận email với QR code thanh toán.
+                    Vui lòng chuyển khoản đúng nội dung để hệ thống tự động xác
+                    nhận.
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+          )}
         </form>
       </div>
     </div>

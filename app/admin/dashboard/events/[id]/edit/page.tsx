@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button";
 import { ImageUploader } from "@/components/ImageUploader";
 import { ImageGallery } from "@/components/ImageGallery";
 import DistanceShirtManager from "@/components/DistanceShirtManager";
-
+import EventUserManager from "@/components/EventUserManager";
 import { toast } from "sonner";
 import {
   Save,
@@ -22,7 +22,6 @@ import {
   Settings2,
   User,
 } from "lucide-react";
-import { EventUserManager } from "@/components/EventUserManager";
 
 export default function EditEventPage() {
   const params = useParams();

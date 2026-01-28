@@ -14,6 +14,7 @@ import {
   Shirt,
   ArrowRight,
   Eye,
+  Search,
 } from "lucide-react";
 import { EventDetailModal } from "@/components/EventDetailModal";
 import Link from "next/link";
@@ -303,7 +304,7 @@ export default function HomePage() {
                         <span className="text-sm text-gray-600">Giá từ:</span>
                         <span className="text-lg font-bold text-blue-600">
                           {formatCurrency(
-                            Math.min(...event.distances.map((d) => d.price))
+                            Math.min(...event.distances.map((d) => d.price)),
                           )}
                         </span>
                       </div>
@@ -386,5 +387,78 @@ export default function HomePage() {
         />
       )}
     </div>
+  );
+}
+
+export function LookupBanner() {
+  return (
+    <section className="bg-gradient-to-r from-blue-600 to-indigo-600 py-16">
+      <div className="max-w-7xl mx-auto px-4 text-center">
+        <div className="max-w-3xl mx-auto">
+          <Search className="w-16 h-16 text-white mx-auto mb-6" />
+
+          <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">
+            Đã đăng ký? Tra cứu ngay!
+          </h2>
+
+          <p className="text-xl text-blue-100 mb-8">
+            Kiểm tra trạng thái thanh toán và số BIB của bạn chỉ với vài thao
+            tác đơn giản
+          </p>
+
+          <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
+            <Link
+              href="/lookup"
+              className="inline-flex items-center gap-2 bg-white text-blue-600 px-8 py-4 rounded-lg font-semibold text-lg hover:bg-blue-50 transition-colors shadow-lg"
+            >
+              <Search className="w-5 h-5" />
+              Tra cứu đăng ký
+            </Link>
+
+            <div className="flex items-center gap-6 text-white">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 bg-white/20 rounded-full flex items-center justify-center">
+                  ✓
+                </div>
+                <span className="text-sm">Kiểm tra nhanh</span>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 bg-white/20 rounded-full flex items-center justify-center">
+                  🔒
+                </div>
+                <span className="text-sm">Bảo mật cao</span>
+              </div>
+            </div>
+          </div>
+
+          <div className="mt-8 grid grid-cols-1 md:grid-cols-3 gap-6 text-white">
+            <div className="bg-white/10 backdrop-blur-sm rounded-lg p-4">
+              <div className="text-3xl mb-2">🔍</div>
+              <div className="font-medium mb-1">Tìm kiếm dễ dàng</div>
+              <div className="text-sm text-blue-100">
+                Chỉ cần tên, SĐT hoặc email
+              </div>
+            </div>
+
+            <div className="bg-white/10 backdrop-blur-sm rounded-lg p-4">
+              <div className="text-3xl mb-2">⚡</div>
+              <div className="font-medium mb-1">Kết quả tức thì</div>
+              <div className="text-sm text-blue-100">
+                Xem trạng thái và số BIB ngay lập tức
+              </div>
+            </div>
+
+            <div className="bg-white/10 backdrop-blur-sm rounded-lg p-4">
+              <div className="text-3xl mb-2">🔐</div>
+              <div className="font-medium mb-1">Bảo mật thông tin</div>
+              <div className="text-sm text-blue-100">
+                Dữ liệu được mã hóa và bảo vệ
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
   );
 }

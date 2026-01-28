@@ -86,7 +86,7 @@ export default function EventDetailPage() {
   const { event, distances, shirts, images } = data;
 
   const galleryImages = images.filter(
-    (img) => img.imageType === selectedImageType
+    (img) => img.imageType === selectedImageType,
   );
   const shirtImages = {
     MALE: images.filter((img) => img.imageType === "SHIRT_MALE"),
@@ -455,7 +455,7 @@ export default function EventDetailPage() {
                     <span>
                       {distances.reduce(
                         (sum, d) => sum + d.currentParticipants,
-                        0
+                        0,
                       )}{" "}
                       người đã đăng ký
                     </span>
@@ -529,7 +529,7 @@ export default function EventDetailPage() {
                       const text = `Đăng ký ${event.name} ngay!`;
                       window.open(
                         `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(url)}`,
-                        "_blank"
+                        "_blank",
                       );
                     }}
                   >

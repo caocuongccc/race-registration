@@ -17,7 +17,7 @@ async function main() {
 
   if (!adminUser) {
     console.log("👤 Creating admin user...");
-    const hashedPassword = await bcrypt.hash("", 10);
+    const hashedPassword = await bcrypt.hash("BachMa2026@Admin", 10);
     adminUser = await prisma.user.create({
       data: {
         email: adminEmail,
@@ -60,7 +60,7 @@ async function main() {
 
     if (!user) {
       console.log(`👤 Creating organizer: ${org.name}...`);
-      const hashedPassword = await bcrypt.hash("", 10);
+      const hashedPassword = await bcrypt.hash("BachMa2026", 10);
       user = await prisma.user.create({
         data: {
           email: org.email,
@@ -173,7 +173,7 @@ LỘ TRÌNH: Cổng Vườn (Km3) → Điểm sạt lở (Km12) → Tuyến băn
       name: "17km - Chinh phục đỉnh Bạch Mã",
       price: 300000, // 300,000 VND
       bibPrefix: "BM17",
-      maxParticipants: 400, // Dự định 400 VĐV
+      maxParticipants: 1000, // Dự định 400 VĐV
       currentParticipants: 0,
       isAvailable: true,
       sortOrder: 0,
@@ -192,7 +192,7 @@ LỘ TRÌNH: Cổng Vườn (Km3) → Điểm sạt lở (Km12) → Tuyến băn
   const shirtPrice = 130000; // 130,000 VND theo tài liệu
   const standalonePrice = 200000; // Giá bán lẻ (nếu mua riêng)
 
-  const shirtCategories = ["MALE", "FEMALE", "KID"] as const;
+  const shirtCategories = ["MALE", "FEMALE"] as const;
   const shirtTypes = ["SHORT_SLEEVE"] as const;
   const shirtSizes = ["XS", "S", "M", "L", "XL", "XXL"] as const;
 
