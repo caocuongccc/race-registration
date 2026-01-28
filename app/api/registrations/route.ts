@@ -42,7 +42,7 @@ export async function POST(req: NextRequest) {
     ) {
       return NextResponse.json(
         { error: "Missing required fields" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -61,7 +61,7 @@ export async function POST(req: NextRequest) {
     if (!event) {
       return NextResponse.json(
         { error: "Sự kiện không tồn tại" },
-        { status: 404 }
+        { status: 404 },
       );
     }
 
@@ -69,7 +69,7 @@ export async function POST(req: NextRequest) {
     if (!event.allowRegistration) {
       return NextResponse.json(
         { error: "Sự kiện này đã đóng đăng ký hoặc chưa mở đăng ký" },
-        { status: 403 }
+        { status: 403 },
       );
     }
 
@@ -78,7 +78,7 @@ export async function POST(req: NextRequest) {
     if (!distance || !distance.isAvailable) {
       return NextResponse.json(
         { error: "Cự ly không khả dụng" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -89,7 +89,7 @@ export async function POST(req: NextRequest) {
     ) {
       return NextResponse.json(
         { error: "Cự ly đã đủ số lượng" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -146,6 +146,7 @@ export async function POST(req: NextRequest) {
 
           utmSource: body.utmSource || null,
           confirmationToken: Math.random().toString(36).substring(7),
+          bibName: body.bibName || null,
         },
         include: {
           distance: true,
@@ -237,7 +238,7 @@ export async function POST(req: NextRequest) {
       });
 
       console.warn(
-        `⚠️ Registration created but email failed for ${registration.email}`
+        `⚠️ Registration created but email failed for ${registration.email}`,
       );
     }
 
@@ -258,7 +259,7 @@ export async function POST(req: NextRequest) {
     console.error("Registration error:", error);
     return NextResponse.json(
       { error: "Đã có lỗi xảy ra khi xử lý đăng ký" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

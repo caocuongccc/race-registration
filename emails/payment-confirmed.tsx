@@ -51,7 +51,12 @@ export function PaymentConfirmedEmail({
       <Body style={main}>
         <Container style={container}>
           {event.logoUrl && (
-            <Img src={event.logoUrl} alt={event.name} width="200" style={logo} />
+            <Img
+              src={event.logoUrl}
+              alt={event.name}
+              width="200"
+              style={logo}
+            />
           )}
 
           {/* Success Badge */}
@@ -65,8 +70,8 @@ export function PaymentConfirmedEmail({
           </Text>
 
           <Text style={paragraph}>
-            Chúc mừng! Chúng tôi đã nhận được thanh toán của bạn. Đăng ký tham gia{" "}
-            <strong>{event.name}</strong> của bạn đã được xác nhận.
+            Chúc mừng! Chúng tôi đã nhận được thanh toán của bạn. Đăng ký tham
+            gia <strong>{event.name}</strong> của bạn đã được xác nhận.
           </Text>
 
           {/* BIB Number Highlight */}
@@ -81,7 +86,7 @@ export function PaymentConfirmedEmail({
           {/* Payment Details */}
           <Section style={infoBox}>
             <Text style={infoTitle}>💰 CHI TIẾT THANH TOÁN</Text>
-            
+
             <table style={infoTable}>
               <tbody>
                 <tr>
@@ -107,12 +112,18 @@ export function PaymentConfirmedEmail({
           {/* Registration Summary */}
           <Section style={summaryBox}>
             <Text style={infoTitle}>📋 THÔNG TIN ĐĂNG KÝ</Text>
-            
+
             <table style={infoTable}>
               <tbody>
                 <tr>
                   <td style={labelCell}>Họ tên:</td>
                   <td style={valueCell}>{registration.fullName}</td>
+                </tr>
+                <tr>
+                  <td style={labelCell}>Tên trên bib:</td>
+                  <td style={valueCell}>
+                    {registration.bibName || registration.fullName}
+                  </td>
                 </tr>
                 <tr>
                   <td style={labelCell}>Số BIB:</td>
@@ -134,7 +145,7 @@ export function PaymentConfirmedEmail({
                   <td style={labelCell}>Số điện thoại:</td>
                   <td style={valueCell}>{registration.phone}</td>
                 </tr>
-                
+
                 {registration.shirtSize && (
                   <tr>
                     <td style={labelCell}>Áo:</td>
@@ -142,8 +153,8 @@ export function PaymentConfirmedEmail({
                       {registration.shirtCategory === "MALE"
                         ? "Nam"
                         : registration.shirtCategory === "FEMALE"
-                        ? "Nữ"
-                        : "Trẻ em"}{" "}
+                          ? "Nữ"
+                          : "Trẻ em"}{" "}
                       -{" "}
                       {registration.shirtType === "SHORT_SLEEVE"
                         ? "Có tay"
@@ -162,7 +173,7 @@ export function PaymentConfirmedEmail({
             <Text style={qrSubtitle}>
               Xuất trình mã QR này khi nhận race pack và check-in ngày thi đấu
             </Text>
-            
+
             {registration.qrCheckinUrl && (
               <Img
                 src={registration.qrCheckinUrl}
@@ -172,10 +183,10 @@ export function PaymentConfirmedEmail({
                 style={qrCode}
               />
             )}
-            
+
             <Text style={qrInstruction}>
-              💡 <strong>Lưu lại ảnh QR này</strong> hoặc mang theo email khi đến
-              nhận race pack
+              💡 <strong>Lưu lại ảnh QR này</strong> hoặc mang theo email khi
+              đến nhận race pack
             </Text>
           </Section>
 
@@ -183,7 +194,7 @@ export function PaymentConfirmedEmail({
           {event.racePackLocation && (
             <Section style={racePackBox}>
               <Text style={infoTitle}>📦 THÔNG TIN NHẬN RACE PACK</Text>
-              
+
               <table style={infoTable}>
                 <tbody>
                   <tr>
@@ -210,7 +221,7 @@ export function PaymentConfirmedEmail({
           {/* Race Day Info */}
           <Section style={raceDayBox}>
             <Text style={infoTitle}>🏁 THÔNG TIN NGÀY THI ĐẤU</Text>
-            
+
             <table style={infoTable}>
               <tbody>
                 <tr>
@@ -248,8 +259,8 @@ export function PaymentConfirmedEmail({
             <Text style={noteTitle}>⚠️ LƯU Ý QUAN TRỌNG</Text>
             <ul style={noteList}>
               <li>
-                <strong>Nhớ số BIB: {registration.bibNumber}</strong> - Đây là số
-                thứ tự của bạn trong giải
+                <strong>Nhớ số BIB: {registration.bibNumber}</strong> - Đây là
+                số thứ tự của bạn trong giải
               </li>
               <li>
                 Mang theo CCCD/CMND và mã QR trên email này khi nhận race pack
@@ -257,9 +268,7 @@ export function PaymentConfirmedEmail({
               <li>Đến sớm ít nhất 30 phút trước giờ xuất phát để check-in</li>
               <li>Mặc trang phục thể thao phù hợp, mang theo nước uống</li>
               <li>Tuân thủ hướng dẫn của BTC và tình nguyện viên</li>
-              <li>
-                Không sử dụng tai nghe khi chạy để đảm bảo an toàn
-              </li>
+              <li>Không sử dụng tai nghe khi chạy để đảm bảo an toàn</li>
             </ul>
           </Section>
 
@@ -285,7 +294,8 @@ export function PaymentConfirmedEmail({
           </Text>
 
           <Text style={footer}>
-            Chúc bạn có một mùa giải thành công và đạt được mục tiêu của mình! 🎯
+            Chúc bạn có một mùa giải thành công và đạt được mục tiêu của mình!
+            🎯
           </Text>
 
           <Text style={footer}>

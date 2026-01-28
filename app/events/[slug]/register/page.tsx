@@ -403,7 +403,7 @@ export default function RegistrationPage() {
               {/* Row 1: Full Name & BIB Name */}
               <div className="grid md:grid-cols-2 gap-4">
                 <Input
-                  label="Họ và tên đầy đủ *"
+                  label="Họ và tên đầy đủ "
                   {...register("fullName", {
                     required: "Vui lòng nhập họ tên",
                   })}
@@ -413,20 +413,18 @@ export default function RegistrationPage() {
 
                 <div>
                   <Input
-                    label="Tên hiển thị trên BIB *"
+                    label="Tên hiển thị trên BIB (Để trống sẽ dùng họ tên đầy đủ)"
                     {...register("bibName")}
-                    placeholder="VD: Nguyễn Văn A hoặc A.NGUYEN"
+                    placeholder="Nguyễn Văn A hoặc A.NGUYEN"
                   />
-                  <p className="text-xs text-gray-500 mt-1">
-                    💡 Để trống sẽ dùng họ tên đầy đủ
-                  </p>
+                  <p className="text-xs text-gray-500 mt-1"></p>
                 </div>
               </div>
 
               {/* Row 2: Email & Phone */}
               <div className="grid md:grid-cols-2 gap-4">
                 <Input
-                  label="Email *"
+                  label="Email "
                   type="email"
                   {...register("email", {
                     required: "Vui lòng nhập email",
@@ -437,7 +435,7 @@ export default function RegistrationPage() {
                 />
 
                 <Input
-                  label="Số điện thoại *"
+                  label="Số điện thoại "
                   type="tel"
                   {...register("phone", {
                     required: "Vui lòng nhập số điện thoại",
@@ -452,7 +450,7 @@ export default function RegistrationPage() {
               {/* Row 3: DOB, Gender, Blood Type */}
               <div className="grid md:grid-cols-3 gap-4">
                 <Input
-                  label="Ngày sinh *"
+                  label="Ngày sinh "
                   type="date"
                   {...register("dob", { required: "Vui lòng chọn ngày sinh" })}
                   error={errors.dob?.message}
@@ -460,7 +458,7 @@ export default function RegistrationPage() {
                 />
 
                 <Select
-                  label="Giới tính *"
+                  label="Giới tính "
                   {...register("gender", {
                     required: "Vui lòng chọn giới tính",
                   })}
@@ -487,6 +485,8 @@ export default function RegistrationPage() {
                   label="CCCD/CMND"
                   {...register("idCard")}
                   placeholder="001234567890"
+                  error={errors.idCard?.message}
+                  required
                 />
                 <Input label="Tỉnh/Thành phố" {...register("city")} />
               </div>

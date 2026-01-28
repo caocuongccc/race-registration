@@ -78,6 +78,12 @@ export function RegistrationPendingEmail({
                   <td style={valueCell}>{registration.fullName}</td>
                 </tr>
                 <tr>
+                  <td style={labelCell}>Tên trên bib:</td>
+                  <td style={valueCell}>
+                    {registration.bibName || registration.fullName}
+                  </td>
+                </tr>
+                <tr>
                   <td style={labelCell}>Ngày sinh:</td>
                   <td style={valueCell}>{formatDate(registration.dob)}</td>
                 </tr>
