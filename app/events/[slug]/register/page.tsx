@@ -472,9 +472,9 @@ export default function RegistrationPage() {
 
                 <div>
                   <Input
-                    label="Tên hiển thị trên BIB (Để trống sẽ dùng họ tên đầy đủ)"
+                    label="Tên hiển thị trên BIB"
                     {...register("bibName")}
-                    placeholder="Nguyễn Văn A hoặc A.NGUYEN"
+                    placeholder="💡 Để trống sẽ dùng họ tên đầy đủ"
                   />
                   <p className="text-xs text-gray-500 mt-1"></p>
                 </div>
