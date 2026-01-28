@@ -28,6 +28,9 @@ import {
   Award,
   CreditCard,
   AlertCircle,
+  Info,
+  Link,
+  Search,
 } from "lucide-react";
 import { ShirtSize } from "@prisma/client";
 
@@ -329,8 +332,27 @@ export default function RegistrationPage() {
             </div>
           </CardContent>
         </Card>
-
+        {/* Thông báo tra cứu
+        <div className="bg-blue-50 border-l-4 border-blue-500 p-4 mb-6 rounded shadow">
+          <div className="flex items-start">
+            <Info className="w-5 h-5 text-blue-600 mt-0.5 mr-3 shrink-0" />
+            <div className="flex-1">
+              <p className="text-sm text-blue-900 mb-2">
+                <strong>Đã đăng ký?</strong> Bạn có thể tra cứu thông tin đăng
+                ký và trạng thái thanh toán của mình.
+              </p>
+              <Link
+                href={`/events/${eventData.event.slug}/lookup`}
+                className="inline-flex items-center gap-2 text-sm font-medium text-blue-600 hover:text-blue-800 hover:underline"
+              >
+                <Search className="w-4 h-4" />
+                Tra cứu đăng ký →
+              </Link>
+            </div>
+          </div>
+        </div> */}
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+          {/* Step 1: Chọn cự ly */}
           {/* Step 1: Chọn cự ly */}
           <Card>
             <CardHeader>
@@ -340,13 +362,31 @@ export default function RegistrationPage() {
               </CardTitle>
             </CardHeader>
             <CardContent>
+              {/* ⚠️ CẢNH BÁO MỚI - Hiện khi chưa chọn cự ly */}
+              {/* {!selectedDistance && (
+                <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-4 rounded">
+                  <div className="flex items-start">
+                    <AlertCircle className="w-5 h-5 text-yellow-600 mt-0.5 mr-3 flex-shrink-0" />
+                    <div>
+                      <p className="text-sm text-yellow-800 font-semibold mb-1">
+                        Lưu ý quan trọng
+                      </p>
+                      <p className="text-sm text-yellow-800">
+                        Vui lòng chọn cự ly bạn muốn tham gia. Đây là thông tin
+                        bắt buộc để hoàn tất đăng ký.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )} */}
+
               <div className="grid md:grid-cols-3 gap-4">
                 {eventData.distances.map((distance) => (
                   <label
                     key={distance.id}
                     className={`relative flex flex-col p-4 border-2 rounded-lg cursor-pointer transition-all ${
                       selectedDistance?.id === distance.id
-                        ? "border-blue-600 bg-blue-50"
+                        ? "border-blue-600 bg-blue-50 ring-2 ring-blue-200"
                         : "border-gray-200 hover:border-blue-300"
                     } ${!distance.isAvailable ? "opacity-50 cursor-not-allowed" : ""}`}
                   >
@@ -363,6 +403,24 @@ export default function RegistrationPage() {
                       }}
                       className="sr-only"
                     />
+
+                    {/* Checkmark khi được chọn */}
+                    {selectedDistance?.id === distance.id && (
+                      <div className="absolute top-2 right-2 bg-blue-600 rounded-full p-1">
+                        <svg
+                          className="w-4 h-4 text-white"
+                          fill="currentColor"
+                          viewBox="0 0 20 20"
+                        >
+                          <path
+                            fillRule="evenodd"
+                            d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                            clipRule="evenodd"
+                          />
+                        </svg>
+                      </div>
+                    )}
+
                     <div className="text-lg font-bold text-gray-900">
                       {distance.name}
                     </div>
@@ -385,6 +443,7 @@ export default function RegistrationPage() {
                   </label>
                 ))}
               </div>
+
               {errors.distanceId && (
                 <p className="mt-2 text-sm text-red-600">
                   {errors.distanceId.message}
@@ -588,7 +647,6 @@ export default function RegistrationPage() {
                     </div>
                   </div>
                 )}
-
                 {/* Category Selection */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -621,7 +679,6 @@ export default function RegistrationPage() {
                     ))}
                   </div>
                 </div>
-
                 {/* Type Selection */}
                 {watchShirtCategory && watchShirtCategory !== "" && (
                   <div>
@@ -647,9 +704,8 @@ export default function RegistrationPage() {
                     </div>
                   </div>
                 )}
-
                 {/* SIZE DROPDOWN - NEW */}
-                {watchShirtType && availableSizes.length > 0 && (
+                {/* {watchShirtType && availableSizes.length > 0 && (
                   <div>
                     <Select
                       label={`Chọn size áo - Giá: ${formatCurrency(selectedShirtPrice)}`}
@@ -677,6 +733,275 @@ export default function RegistrationPage() {
                         </p>
                       </div>
                     )}
+                  </div>
+                )} */}
+                {watchShirtType && availableSizes.length > 0 && (
+                  <div className="space-y-3">
+                    {/* Header với tổng số size available */}
+                    <div className="flex items-center justify-between">
+                      <label className="block text-sm font-medium text-gray-700">
+                        Chọn size áo
+                      </label>
+                      <span className="text-sm text-gray-500">
+                        {availableSizes.filter((s) => s.isAvailable).length}/
+                        {availableSizes.length} size còn hàng
+                      </span>
+                    </div>
+
+                    {/* Price info */}
+                    {selectedShirtPrice > 0 && (
+                      <div className="inline-flex items-center gap-2 px-3 py-1 bg-purple-100 text-purple-700 rounded-full text-sm font-medium">
+                        <svg
+                          className="w-4 h-4"
+                          fill="currentColor"
+                          viewBox="0 0 20 20"
+                        >
+                          <path d="M8.433 7.418c.155-.103.346-.196.567-.267v1.698a2.305 2.305 0 01-.567-.267C8.07 8.34 8 8.114 8 8c0-.114.07-.34.433-.582zM11 12.849v-1.698c.22.071.412.164.567.267.364.243.433.468.433.582 0 .114-.07.34-.433.582a2.305 2.305 0 01-.567.267z" />
+                          <path
+                            fillRule="evenodd"
+                            d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-13a1 1 0 10-2 0v.092a4.535 4.535 0 00-1.676.662C6.602 6.234 6 7.009 6 8c0 .99.602 1.765 1.324 2.246.48.32 1.054.545 1.676.662v1.941c-.391-.127-.68-.317-.843-.504a1 1 0 10-1.51 1.31c.562.649 1.413 1.076 2.353 1.253V15a1 1 0 102 0v-.092a4.535 4.535 0 001.676-.662C13.398 13.766 14 12.991 14 12c0-.99-.602-1.765-1.324-2.246A4.535 4.535 0 0011 9.092V7.151c.391.127.68.317.843.504a1 1 0 101.511-1.31c-.563-.649-1.413-1.076-2.354-1.253V5z"
+                            clipRule="evenodd"
+                          />
+                        </svg>
+                        Giá áo: {formatCurrency(selectedShirtPrice)}
+                      </div>
+                    )}
+
+                    {/* Grid buttons - Responsive: 4 cols mobile, 6 cols tablet, 8 cols desktop */}
+                    <div className="grid grid-cols-4 sm:grid-cols-5 md:grid-cols-6 lg:grid-cols-8 gap-3">
+                      {availableSizes.map((sizeOption) => {
+                        const isSelected = watchShirtSize === sizeOption.size;
+                        const isAvailable = sizeOption.isAvailable;
+                        const stockLeft =
+                          sizeOption.stockQuantity - sizeOption.soldQuantity;
+                        const isLowStock = stockLeft > 0 && stockLeft <= 5;
+
+                        return (
+                          <button
+                            key={sizeOption.id}
+                            type="button"
+                            onClick={() => {
+                              if (isAvailable) {
+                                setValue("shirtSize", sizeOption.size);
+                              }
+                            }}
+                            disabled={!isAvailable}
+                            className={`
+              group relative p-4 rounded-xl border-2 transition-all duration-200 transform
+              ${
+                isSelected
+                  ? "border-purple-500 bg-gradient-to-br from-purple-50 to-purple-100 ring-4 ring-purple-200 shadow-lg scale-105"
+                  : isAvailable
+                    ? "border-gray-300 bg-white hover:border-purple-400 hover:bg-purple-50 hover:shadow-md hover:scale-102"
+                    : "border-gray-200 bg-gray-50 cursor-not-allowed opacity-60"
+              }
+            `}
+                          >
+                            {/* Checkmark badge khi selected */}
+                            {isSelected && (
+                              <div className="absolute -top-2 -right-2 bg-purple-500 rounded-full p-1 shadow-md">
+                                <svg
+                                  className="w-3 h-3 text-white"
+                                  fill="currentColor"
+                                  viewBox="0 0 20 20"
+                                >
+                                  <path
+                                    fillRule="evenodd"
+                                    d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                                    clipRule="evenodd"
+                                  />
+                                </svg>
+                              </div>
+                            )}
+
+                            {/* Low stock warning badge */}
+                            {isLowStock && !isSelected && (
+                              <div className="absolute -top-1 -right-1 bg-orange-500 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center">
+                                !
+                              </div>
+                            )}
+
+                            {/* Size label */}
+                            <div
+                              className={`text-xl font-bold mb-2 ${
+                                isSelected
+                                  ? "text-purple-700"
+                                  : isAvailable
+                                    ? "text-gray-900"
+                                    : "text-gray-400"
+                              }`}
+                            >
+                              {sizeOption.size}
+                            </div>
+
+                            {/* Stock info với color coding */}
+                            <div
+                              className={`text-xs font-medium ${
+                                isSelected
+                                  ? "text-purple-600"
+                                  : !isAvailable
+                                    ? "text-red-500 font-semibold"
+                                    : isLowStock
+                                      ? "text-orange-600 font-semibold"
+                                      : "text-green-600"
+                              }`}
+                            >
+                              {!isAvailable ? (
+                                <>
+                                  <div className="flex items-center justify-center gap-1">
+                                    <svg
+                                      className="w-3 h-3"
+                                      fill="currentColor"
+                                      viewBox="0 0 20 20"
+                                    >
+                                      <path
+                                        fillRule="evenodd"
+                                        d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"
+                                        clipRule="evenodd"
+                                      />
+                                    </svg>
+                                    Hết
+                                  </div>
+                                </>
+                              ) : isLowStock ? (
+                                <>
+                                  <div className="flex items-center justify-center gap-1">
+                                    <svg
+                                      className="w-3 h-3"
+                                      fill="currentColor"
+                                      viewBox="0 0 20 20"
+                                    >
+                                      <path
+                                        fillRule="evenodd"
+                                        d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z"
+                                        clipRule="evenodd"
+                                      />
+                                    </svg>
+                                    {stockLeft}
+                                  </div>
+                                </>
+                              ) : (
+                                <>
+                                  <div className="flex items-center justify-center gap-1">
+                                    <svg
+                                      className="w-3 h-3"
+                                      fill="currentColor"
+                                      viewBox="0 0 20 20"
+                                    >
+                                      <path
+                                        fillRule="evenodd"
+                                        d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+                                        clipRule="evenodd"
+                                      />
+                                    </svg>
+                                    {stockLeft}
+                                  </div>
+                                </>
+                              )}
+                            </div>
+
+                            {/* Hover tooltip cho available sizes */}
+                            {isAvailable && !isSelected && (
+                              <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 bg-gray-900 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap">
+                                Click để chọn
+                              </div>
+                            )}
+                          </button>
+                        );
+                      })}
+                    </div>
+
+                    {/* Empty state nếu không có size nào */}
+                    {availableSizes.length === 0 && (
+                      <div className="text-center py-8 bg-gray-50 rounded-lg border-2 border-dashed border-gray-300">
+                        <svg
+                          className="w-12 h-12 text-gray-400 mx-auto mb-2"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"
+                          />
+                        </svg>
+                        <p className="text-sm text-gray-500">
+                          Không có size nào cho lựa chọn này
+                        </p>
+                      </div>
+                    )}
+
+                    {/* Thông báo đã chọn - Enhanced với animation */}
+                    {watchShirtSize && (
+                      <div className="animate-fadeIn p-4 bg-gradient-to-r from-green-50 to-emerald-50 border-2 border-green-300 rounded-xl shadow-sm">
+                        <div className="flex items-start gap-3">
+                          <div className="flex-shrink-0 mt-0.5">
+                            <div className="w-8 h-8 bg-green-500 rounded-full flex items-center justify-center">
+                              <svg
+                                className="w-5 h-5 text-white"
+                                fill="currentColor"
+                                viewBox="0 0 20 20"
+                              >
+                                <path
+                                  fillRule="evenodd"
+                                  d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                                  clipRule="evenodd"
+                                />
+                              </svg>
+                            </div>
+                          </div>
+                          <div className="flex-1">
+                            <p className="text-sm font-semibold text-green-900 mb-1">
+                              Đã chọn size áo
+                            </p>
+                            <div className="flex flex-wrap items-center gap-2">
+                              <span className="inline-flex items-center px-3 py-1 bg-white border border-green-300 rounded-full text-sm font-bold text-green-700">
+                                Size {watchShirtSize}
+                              </span>
+                              <span className="text-sm text-green-700">
+                                • {formatCurrency(selectedShirtPrice)}
+                              </span>
+                            </div>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => setValue("shirtSize", "")}
+                            className="flex-shrink-0 text-green-600 hover:text-green-800 transition-colors"
+                            title="Bỏ chọn"
+                          >
+                            <svg
+                              className="w-5 h-5"
+                              fill="currentColor"
+                              viewBox="0 0 20 20"
+                            >
+                              <path
+                                fillRule="evenodd"
+                                d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
+                                clipRule="evenodd"
+                              />
+                            </svg>
+                          </button>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Legend / Chú thích */}
+                    <div className="flex items-start gap-4 p-3 bg-gray-50 rounded-lg text-xs text-gray-600">
+                      <div className="flex items-center gap-1.5">
+                        <div className="w-3 h-3 bg-green-500 rounded-full"></div>
+                        <span>Còn hàng</span>
+                      </div>
+                      <div className="flex items-center gap-1.5">
+                        <div className="w-3 h-3 bg-orange-500 rounded-full"></div>
+                        <span>Sắp hết</span>
+                      </div>
+                      <div className="flex items-center gap-1.5">
+                        <div className="w-3 h-3 bg-gray-300 rounded-full"></div>
+                        <span>Hết hàng</span>
+                      </div>
+                    </div>
                   </div>
                 )}
               </CardContent>
@@ -745,24 +1070,43 @@ export default function RegistrationPage() {
                 </div>
               </div>
 
+              {/* Summary Card - Phần Submit Button */}
               <Button
                 type="submit"
                 size="lg"
                 className="w-full mt-6"
                 isLoading={submitting}
-                // disabled={submitting || !selectedDistance}
                 disabled={
                   submitting ||
-                  !selectedDistance ||
+                  !selectedDistance || // Disable khi chưa chọn cự ly
                   !!emailError ||
                   !!phoneError ||
                   !!emergencyPhoneError
                 }
               >
-                {submitting
-                  ? "Đang xử lý..."
-                  : `Đăng ký - ${formatCurrency(calculateTotal())}`}
+                {submitting ? (
+                  "Đang xử lý..."
+                ) : !selectedDistance ? (
+                  // ⚠️ TEXT MỚI khi chưa chọn cự ly
+                  <>
+                    <AlertCircle className="w-5 h-5 mr-2" />
+                    Vui lòng chọn cự ly để tiếp tục
+                  </>
+                ) : (
+                  `Đăng ký - ${formatCurrency(calculateTotal())}`
+                )}
               </Button>
+
+              {/* Thông báo lỗi bên dưới button */}
+              {!selectedDistance && (
+                <div className="mt-3 p-3 bg-yellow-50 border-l-4 border-yellow-400 rounded-lg">
+                  <p className="text-sm text-yellow-800 flex items-center gap-2">
+                    <AlertCircle className="w-4 h-4 flex-shrink-0" />
+                    <span>Bạn chưa chọn cự ly tham gia</span>
+                  </p>
+                </div>
+              )}
+
               {(emailError || phoneError || emergencyPhoneError) && (
                 <div className="mt-3 p-3 bg-red-50 border border-red-200 rounded-lg">
                   <p className="text-sm text-red-700">
