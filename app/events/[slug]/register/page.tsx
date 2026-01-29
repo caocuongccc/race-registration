@@ -233,9 +233,17 @@ export default function RegistrationPage() {
 
   const calculateTotal = () => {
     let total = selectedDistance?.price || 0;
-    if (selectedShirtPrice) {
+    // ❌ CODE CŨ - SAI:
+    // if (selectedShirtPrice) {
+    //   total += selectedShirtPrice;
+    // }
+
+    // ✅ CODE MỚI - ĐÚNG:
+    // CHỈ cộng tiền áo khi đã chọn SIZE
+    if (watchShirtSize && selectedShirtPrice) {
       total += selectedShirtPrice;
     }
+
     return total;
   };
 
@@ -1002,6 +1010,38 @@ export default function RegistrationPage() {
                         <span>Hết hàng</span>
                       </div>
                     </div>
+
+                    {/* ⚠️ THÊM CẢNH BÁO MỚI - Hiện khi chọn loại/kiểu nhưng chưa chọn size */}
+                    {watchShirtCategory &&
+                      watchShirtCategory !== "" &&
+                      watchShirtType &&
+                      !watchShirtSize && (
+                        <div className="bg-orange-50 border-l-4 border-orange-400 p-3 rounded animate-fadeIn">
+                          <div className="flex items-start gap-2">
+                            <svg
+                              className="w-4 h-4 text-orange-600 mt-0.5 flex-shrink-0"
+                              fill="currentColor"
+                              viewBox="0 0 20 20"
+                            >
+                              <path
+                                fillRule="evenodd"
+                                d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z"
+                                clipRule="evenodd"
+                              />
+                            </svg>
+                            <div className="flex-1">
+                              <p className="text-sm text-orange-800 font-semibold mb-1">
+                                Chưa chọn size áo
+                              </p>
+                              <p className="text-xs text-orange-700">
+                                Vui lòng chọn size để hoàn tất việc thêm áo vào
+                                đơn hàng. Nếu không chọn size, bạn sẽ không nhận
+                                được áo kỷ niệm.
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                      )}
                   </div>
                 )}
               </CardContent>
@@ -1027,7 +1067,7 @@ export default function RegistrationPage() {
                   </div>
                 )}
 
-                {selectedShirtPrice > 0 && (
+                {/* {selectedShirtPrice > 0 && (
                   <div className="flex justify-between items-center text-gray-700 p-3 bg-purple-50 rounded-lg animate-fadeIn">
                     <div>
                       <div className="font-medium">
@@ -1047,6 +1087,29 @@ export default function RegistrationPage() {
                       {formatCurrency(selectedShirtPrice)}
                     </span>
                   </div>
+                )} */}
+                {/* ✅ CODE MỚI - ĐÚNG: Check cả watchShirtSize */}
+                {watchShirtSize && selectedShirtPrice > 0 && (
+                  <div className="flex justify-between items-center text-gray-700 p-3 bg-purple-50 rounded-lg animate-fadeIn">
+                    <div>
+                      <div className="font-medium">
+                        Áo{" "}
+                        {watchShirtCategory === "MALE"
+                          ? "Nam"
+                          : watchShirtCategory === "FEMALE"
+                            ? "Nữ"
+                            : "Trẻ Em"}
+                        {" - "}
+                        {watchShirtType === "SHORT_SLEEVE" ? "Có tay" : "3 lỗ"}
+                        {/* ✅ THÊM hiển thị size */}
+                        {watchShirtSize && ` - Size ${watchShirtSize}`}
+                      </div>
+                      <div className="text-xs text-gray-500">Áo kỷ niệm</div>
+                    </div>
+                    <span className="text-lg font-semibold text-purple-600">
+                      {formatCurrency(selectedShirtPrice)}
+                    </span>
+                  </div>
                 )}
 
                 <div className="border-t-2 border-gray-200 pt-3 mt-3">
@@ -1056,7 +1119,10 @@ export default function RegistrationPage() {
                         TỔNG CỘNG
                       </div>
                       <div className="text-xs text-gray-500">
-                        {selectedShirtPrice > 0
+                        {/* {selectedShirtPrice > 0
+                          ? "Phí đăng ký + Áo"
+                          : "Phí đăng ký"} */}
+                        {watchShirtSize && selectedShirtPrice > 0
                           ? "Phí đăng ký + Áo"
                           : "Phí đăng ký"}
                       </div>
