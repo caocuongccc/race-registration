@@ -361,7 +361,6 @@ export default function RegistrationPage() {
         </div> */}
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
           {/* Step 1: Chọn cự ly */}
-          {/* Step 1: Chọn cự ly */}
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
@@ -712,37 +711,7 @@ export default function RegistrationPage() {
                     </div>
                   </div>
                 )}
-                {/* SIZE DROPDOWN - NEW */}
-                {/* {watchShirtType && availableSizes.length > 0 && (
-                  <div>
-                    <Select
-                      label={`Chọn size áo - Giá: ${formatCurrency(selectedShirtPrice)}`}
-                      {...register("shirtSize")}
-                    >
-                      <option value="">-- Chọn size --</option>
-                      {availableSizes.map((sizeOption) => (
-                        <option
-                          key={sizeOption.id}
-                          value={sizeOption.size}
-                          disabled={!sizeOption.isAvailable}
-                        >
-                          {sizeOption.size} - Còn{" "}
-                          {sizeOption.stockQuantity - sizeOption.soldQuantity}
-                          {!sizeOption.isAvailable && " (Hết hàng)"}
-                        </option>
-                      ))}
-                    </Select>
 
-                    {watchShirtSize && (
-                      <div className="mt-2 p-3 bg-green-50 border border-green-200 rounded-lg">
-                        <p className="text-sm text-green-800">
-                          ✅ Đã chọn: Size <strong>{watchShirtSize}</strong> -{" "}
-                          {formatCurrency(selectedShirtPrice)}
-                        </p>
-                      </div>
-                    )}
-                  </div>
-                )} */}
                 {watchShirtType && availableSizes.length > 0 && (
                   <div className="space-y-3">
                     {/* Header với tổng số size available */}
@@ -1067,27 +1036,6 @@ export default function RegistrationPage() {
                   </div>
                 )}
 
-                {/* {selectedShirtPrice > 0 && (
-                  <div className="flex justify-between items-center text-gray-700 p-3 bg-purple-50 rounded-lg animate-fadeIn">
-                    <div>
-                      <div className="font-medium">
-                        Áo{" "}
-                        {watchShirtCategory === "MALE"
-                          ? "Nam"
-                          : watchShirtCategory === "FEMALE"
-                            ? "Nữ"
-                            : "Trẻ Em"}
-                        {" - "}
-                        {watchShirtType === "SHORT_SLEEVE" ? "Có tay" : "3 lỗ"}
-                        {selectedShirt?.size && ` - Size ${selectedShirt.size}`}
-                      </div>
-                      <div className="text-xs text-gray-500">Áo kỷ niệm</div>
-                    </div>
-                    <span className="text-lg font-semibold text-purple-600">
-                      {formatCurrency(selectedShirtPrice)}
-                    </span>
-                  </div>
-                )} */}
                 {/* ✅ CODE MỚI - ĐÚNG: Check cả watchShirtSize */}
                 {watchShirtSize && selectedShirtPrice > 0 && (
                   <div className="flex justify-between items-center text-gray-700 p-3 bg-purple-50 rounded-lg animate-fadeIn">
