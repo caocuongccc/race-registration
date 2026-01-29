@@ -161,7 +161,7 @@ model Registration {
   distanceId String
   shirtId    String?
   fullName   String
-  bibName    String // NEW: Name to show on BIB
+  bibName    String? // NEW: Name to show on BIB
   email                 String
   phone                 String
   dob                   DateTime

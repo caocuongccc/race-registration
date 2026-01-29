@@ -25,7 +25,7 @@ export async function getUserSession() {
  */
 export async function checkEventAccess(
   eventId: string,
-  userId: string
+  userId: string,
 ): Promise<EventPermission> {
   // Check if user is creator
   const event = await prisma.event.findFirst({
@@ -72,7 +72,7 @@ export async function checkEventAccess(
 export async function requireEventPermission(
   eventId: string,
   userId: string,
-  requiredPermission: "view" | "edit" | "admin"
+  requiredPermission: "view" | "edit" | "admin",
 ): Promise<void> {
   const permission = await checkEventAccess(eventId, userId);
 
@@ -88,7 +88,7 @@ export async function requireEventPermission(
 
   if (userLevel < requiredLevel) {
     throw new Error(
-      `Access denied. Required: ${requiredPermission}, Have: ${permission}`
+      `Access denied. Required: ${requiredPermission}, Have: ${permission}`,
     );
   }
 }
@@ -151,7 +151,7 @@ export async function getUserAccessibleEvents(userId: string) {
 
   // Remove duplicates (user might be both creator and assigned)
   const uniqueEvents = allEvents.filter(
-    (event, index, self) => index === self.findIndex((e) => e.id === event.id)
+    (event, index, self) => index === self.findIndex((e) => e.id === event.id),
   );
 
   return uniqueEvents;
@@ -170,7 +170,7 @@ export async function getUserAccessibleRegistrations(
     source?: string;
     page?: number;
     limit?: number;
-  }
+  },
 ) {
   const {
     eventId,
@@ -240,6 +240,8 @@ export async function getUserAccessibleRegistrations(
   // Get data
   const skip = (page - 1) * limit;
   const totalCount = await prisma.registration.count({ where: whereClause });
+  console.log("Total accessible registrations:", totalCount);
+  console.log("Where clause:", whereClause);
   const registrations = await prisma.registration.findMany({
     where: whereClause,
     include: {
@@ -250,7 +252,7 @@ export async function getUserAccessibleRegistrations(
     skip,
     take: limit,
   });
-
+  console.log("Fetched registrations:", registrations);
   const totalPages = Math.ceil(totalCount / limit);
 
   return {
