@@ -573,14 +573,21 @@ export default function RegistrationPage() {
                   <Input
                     label="Tên người liên hệ"
                     {...register("emergencyContactName")}
+                    error={errors.emergencyContactName?.message}
+                    placeholder="Nguyễn Văn A"
+                    required
                   />
                   <Input
                     label="Số điện thoại"
                     type="tel"
                     {...register("emergencyContactPhone")}
                     onChange={handleEmergencyPhoneChange}
-                    error={emergencyPhoneError}
+                    error={
+                      emergencyPhoneError ||
+                      errors.emergencyContactPhone?.message
+                    }
                     placeholder="0912345678"
+                    required
                   />
                 </div>
               </div>

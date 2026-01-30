@@ -19,10 +19,25 @@ export async function GET(
 
     const eventId = (await context.params).id;
 
-    // Get event with assigned users
+    // Get event with assigned users via EventUser junction table
+    const eventUsers = await prisma.eventUser.findMany({
+      where: { eventId },
+      include: {
+        user: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            role: true,
+          },
+        },
+      },
+    });
+
+    // Get event creator
     const event = await prisma.event.findUnique({
       where: { id: eventId },
-      include: {
+      select: {
         createdBy: {
           select: {
             id: true,
@@ -31,19 +46,6 @@ export async function GET(
             role: true,
           },
         },
-        // If you have a many-to-many relationship
-        // eventUsers: {
-        //   include: {
-        //     user: {
-        //       select: {
-        //         id: true,
-        //         name: true,
-        //         email: true,
-        //         role: true,
-        //       },
-        //     },
-        //   },
-        // },
       },
     });
 
@@ -51,10 +53,15 @@ export async function GET(
       return NextResponse.json({ error: "Event not found" }, { status: 404 });
     }
 
-    // For now, return creator as the only assigned user
-    // You can expand this with EventUser junction table if needed
+    // Map to user format with EventUser role
+    const users = eventUsers.map((eu) => ({
+      ...eu.user,
+      eventUserRole: eu.role, // ADMIN, EDITOR, VIEWER from EventUser
+      eventUserId: eu.id, // For deletion
+    }));
+
     return NextResponse.json({
-      users: [event.createdBy],
+      users,
       creator: event.createdBy,
     });
   } catch (error) {
@@ -67,7 +74,7 @@ export async function GET(
 }
 
 /**
- * POST - Assign users to event
+ * POST - Assign users to event (supports multiple users)
  */
 export async function POST(
   req: NextRequest,
@@ -80,11 +87,31 @@ export async function POST(
     }
 
     const eventId = (await context.params).id;
-    const { userIds } = await req.json();
+    const body = await req.json();
 
-    if (!Array.isArray(userIds)) {
+    // Support both single user and multiple users
+    let userIds: string[] = [];
+    let role: string = "VIEWER"; // Default role
+
+    if (body.userIds && Array.isArray(body.userIds)) {
+      // Multiple users
+      userIds = body.userIds;
+      role = body.role || "VIEWER";
+    } else if (body.userId) {
+      // Single user (backward compatibility)
+      userIds = [body.userId];
+      role = body.role || "VIEWER";
+    } else {
       return NextResponse.json(
-        { error: "userIds must be an array" },
+        { error: "userId or userIds is required" },
+        { status: 400 },
+      );
+    }
+
+    // Validate role
+    if (!["ADMIN", "EDITOR", "VIEWER"].includes(role)) {
+      return NextResponse.json(
+        { error: "Invalid role. Must be ADMIN, EDITOR, or VIEWER" },
         { status: 400 },
       );
     }
@@ -112,40 +139,45 @@ export async function POST(
       );
     }
 
-    // ============================================
-    // Option 1: If you have EventUser junction table
-    // ============================================
-    // await prisma.eventUser.createMany({
-    //   data: userIds.map(userId => ({
-    //     eventId,
-    //     userId,
-    //   })),
-    //   skipDuplicates: true,
-    // });
+    // Create EventUser records (skip duplicates)
+    const created = await Promise.all(
+      userIds.map(async (userId) => {
+        return await prisma.eventUser.upsert({
+          where: {
+            eventId_userId: {
+              eventId,
+              userId,
+            },
+          },
+          create: {
+            eventId,
+            userId,
+            role,
+          },
+          update: {
+            role, // Update role if already exists
+          },
+          include: {
+            user: {
+              select: {
+                id: true,
+                name: true,
+                email: true,
+                role: true,
+              },
+            },
+          },
+        });
+      }),
+    );
 
-    // ============================================
-    // Option 2: Store as JSON array in Event table
-    // ============================================
-    // Add this field to Event model: assignedUserIds String[]
-    // await prisma.event.update({
-    //   where: { id: eventId },
-    //   data: {
-    //     assignedUserIds: {
-    //       set: userIds,
-    //     },
-    //   },
-    // });
-
-    // ============================================
-    // Option 3: Simple response for now
-    // ============================================
     return NextResponse.json({
       success: true,
-      message: "Users assigned successfully",
-      assigned: users.map((u) => ({
-        id: u.id,
-        name: u.name,
-        email: u.email,
+      message: `Assigned ${created.length} user(s) successfully`,
+      assigned: created.map((eu) => ({
+        ...eu.user,
+        eventUserRole: eu.role,
+        eventUserId: eu.id,
       })),
     });
   } catch (error) {
@@ -181,42 +213,113 @@ export async function DELETE(
       );
     }
 
-    // ============================================
-    // Option 1: If using EventUser junction table
-    // ============================================
-    // await prisma.eventUser.delete({
-    //   where: {
-    //     eventId_userId: {
-    //       eventId,
-    //       userId,
-    //     },
-    //   },
-    // });
-
-    // ============================================
-    // Option 2: If using assignedUserIds array
-    // ============================================
-    // const event = await prisma.event.findUnique({
-    //   where: { id: eventId },
-    // });
-    //
-    // await prisma.event.update({
-    //   where: { id: eventId },
-    //   data: {
-    //     assignedUserIds: {
-    //       set: event.assignedUserIds.filter(id => id !== userId),
-    //     },
-    //   },
-    // });
+    // Delete from EventUser junction table
+    await prisma.eventUser.delete({
+      where: {
+        eventId_userId: {
+          eventId,
+          userId,
+        },
+      },
+    });
 
     return NextResponse.json({
       success: true,
-      message: "User removed from event",
+      message: "User removed from event successfully",
     });
-  } catch (error) {
+  } catch (error: any) {
     console.error("Error removing user:", error);
+
+    // Handle not found case
+    if (error.code === "P2025") {
+      return NextResponse.json(
+        { error: "User assignment not found" },
+        { status: 404 },
+      );
+    }
+
     return NextResponse.json(
       { error: "Failed to remove user" },
+      { status: 500 },
+    );
+  }
+}
+
+/**
+ * PATCH - Update user's role on event
+ */
+export async function PATCH(
+  req: NextRequest,
+  context: { params: Promise<{ id: string }> },
+) {
+  try {
+    const session = await getServerSession(authOptions);
+    if (!session) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const eventId = (await context.params).id;
+    const body = await req.json();
+    const { userId, role } = body;
+
+    if (!userId) {
+      return NextResponse.json(
+        { error: "userId is required" },
+        { status: 400 },
+      );
+    }
+
+    if (!role || !["ADMIN", "EDITOR", "VIEWER"].includes(role)) {
+      return NextResponse.json(
+        { error: "Invalid role. Must be ADMIN, EDITOR, or VIEWER" },
+        { status: 400 },
+      );
+    }
+
+    // Update role in EventUser
+    const updated = await prisma.eventUser.update({
+      where: {
+        eventId_userId: {
+          eventId,
+          userId,
+        },
+      },
+      data: {
+        role,
+      },
+      include: {
+        user: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            role: true,
+          },
+        },
+      },
+    });
+
+    return NextResponse.json({
+      success: true,
+      message: "User role updated successfully",
+      user: {
+        ...updated.user,
+        eventUserRole: updated.role,
+        eventUserId: updated.id,
+      },
+    });
+  } catch (error: any) {
+    console.error("Error updating user role:", error);
+
+    if (error.code === "P2025") {
+      return NextResponse.json(
+        { error: "User assignment not found" },
+        { status: 404 },
+      );
+    }
+
+    return NextResponse.json(
+      { error: "Failed to update user role" },
       { status: 500 },
     );
   }
