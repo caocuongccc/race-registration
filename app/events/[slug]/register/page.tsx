@@ -31,6 +31,7 @@ import {
   Info,
   Link,
   Search,
+  SearchIcon,
 } from "lucide-react";
 import { ShirtSize } from "@prisma/client";
 
@@ -293,10 +294,24 @@ export default function RegistrationPage() {
         throw new Error(result.error || "Đăng ký thất bại");
       }
 
-      toast.success(
-        "Đăng ký thành công! Vui lòng kiểm tra email để thanh toán.",
-      );
-      router.push(`/registrations/${result.registration.id}/payment`);
+      // ============================================
+      // NEW: REDIRECT TO SEPAY PAYMENT PAGE
+      // ============================================
+      if (result.paymentUrl) {
+        toast.success("Đang chuyển đến trang thanh toán...");
+
+        // Show loading message
+        toast.loading("Vui lòng đợi...", { duration: 2000 });
+
+        // Redirect to SePay
+        setTimeout(() => {
+          window.location.href = result.paymentUrl;
+        }, 1500);
+      } else {
+        // Fallback: redirect to payment page if no SePay URL
+        toast.success("Đăng ký thành công!");
+        router.push(`/registrations/${result.registration.id}/payment`);
+      }
     } catch (error: any) {
       toast.error(error.message || "Đã có lỗi xảy ra");
     } finally {
@@ -328,7 +343,7 @@ export default function RegistrationPage() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="grid md:grid-cols-2 gap-4 text-sm text-gray-600">
+            <div className="grid md:grid-cols-3 gap-4 text-sm text-gray-600">
               <div className="flex items-center gap-2">
                 <Calendar className="w-5 h-5" />
                 <span>{formatDate(eventData.event.date)}</span>
@@ -337,28 +352,20 @@ export default function RegistrationPage() {
                 <MapPin className="w-5 h-5" />
                 <span>{eventData.event.location}</span>
               </div>
+              <div className="flex items-center gap-2">
+                <SearchIcon className="w-5 h-5" />
+                <span>
+                  <a
+                    href={`/events/${eventData.event.slug}/lookup`}
+                    target="_blank"
+                  >
+                    Tra cứu đăng ký →
+                  </a>
+                </span>
+              </div>
             </div>
           </CardContent>
         </Card>
-        {/* Thông báo tra cứu
-        <div className="bg-blue-50 border-l-4 border-blue-500 p-4 mb-6 rounded shadow">
-          <div className="flex items-start">
-            <Info className="w-5 h-5 text-blue-600 mt-0.5 mr-3 shrink-0" />
-            <div className="flex-1">
-              <p className="text-sm text-blue-900 mb-2">
-                <strong>Đã đăng ký?</strong> Bạn có thể tra cứu thông tin đăng
-                ký và trạng thái thanh toán của mình.
-              </p>
-              <Link
-                href={`/events/${eventData.event.slug}/lookup`}
-                className="inline-flex items-center gap-2 text-sm font-medium text-blue-600 hover:text-blue-800 hover:underline"
-              >
-                <Search className="w-4 h-4" />
-                Tra cứu đăng ký →
-              </Link>
-            </div>
-          </div>
-        </div> */}
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
           {/* Step 1: Chọn cự ly */}
           <Card>
@@ -1114,7 +1121,7 @@ export default function RegistrationPage() {
                     Vui lòng chọn cự ly để tiếp tục
                   </>
                 ) : (
-                  `Đăng ký - ${formatCurrency(calculateTotal())}`
+                  `Tiếp tục thanh toán - ${formatCurrency(calculateTotal())}`
                 )}
               </Button>
 

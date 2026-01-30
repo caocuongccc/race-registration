@@ -1,31 +1,18 @@
-// app/api/webhook/sepay/route.ts
+// app/api/webhook/sepay/route.ts - CORRECT SEPAY WEBHOOK
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { generateCheckinQR } from "@/lib/google-drive";
-import { sendPaymentConfirmedEmail } from "@/lib/email";
-import crypto from "crypto";
+import { Prisma } from "@prisma/client";
+import { generateCheckinQR } from "@/lib/imgbb";
+import { parseSepayWebhook, verifySepayWebhook } from "@/lib/sepay-service";
+import { sendPaymentConfirmationEmailGmailFirst } from "@/lib/email-service-gmail-first";
 
 /**
- * Verify webhook signature from SePay
- */
-function verifyWebhookSignature(
-  payload: string,
-  signature: string,
-  secret: string,
-): boolean {
-  const hmac = crypto.createHmac("sha256", secret);
-  const expectedSignature = hmac.update(payload).digest("hex");
-  return signature === expectedSignature;
-}
-
-/**
- * Generate BIB number based on distance prefix and payment order
+ * Generate BIB number
  */
 async function generateBibNumber(
   registrationId: string,
   distanceId: string,
 ): Promise<string> {
-  // Get distance info
   const distance = await prisma.distance.findUnique({
     where: { id: distanceId },
   });
@@ -34,7 +21,6 @@ async function generateBibNumber(
     throw new Error("Distance not found");
   }
 
-  // Count paid registrations for this distance
   const paidCount = await prisma.registration.count({
     where: {
       distanceId: distanceId,
@@ -45,10 +31,7 @@ async function generateBibNumber(
     },
   });
 
-  // Generate BIB: prefix + zero-padded number
-  // Example: HM001, HM002, 10K001, 5K001
   const bibNumber = `${distance.bibPrefix}${String(paidCount + 1).padStart(3, "0")}`;
-
   return bibNumber;
 }
 
@@ -62,6 +45,8 @@ async function processPaymentConfirmation(
   webhookData: any,
 ) {
   try {
+    console.log(`🔄 Processing payment for: ${registrationId}`);
+
     // Get registration
     const registration = await prisma.registration.findUnique({
       where: { id: registrationId },
@@ -73,23 +58,33 @@ async function processPaymentConfirmation(
     });
 
     if (!registration) {
-      throw new Error("Registration not found");
+      throw new Error(`Registration not found: ${registrationId}`);
     }
 
     // Check if already paid
     if (registration.paymentStatus === "PAID") {
-      console.log(`Registration ${registrationId} already paid`);
-      return { success: true, message: "Already paid" };
+      console.log(`✅ Already paid: ${registrationId}`);
+      return {
+        success: true,
+        message: "Already paid",
+        bibNumber: registration.bibNumber,
+      };
     }
 
-    // Verify amount matches
-    if (amount !== registration.totalAmount) {
+    console.log(`💰 Amount: ${amount}, Expected: ${registration.totalAmount}`);
+
+    // Verify amount (allow small difference)
+    const amountDiff = Math.abs(amount - registration.totalAmount);
+    if (amountDiff > 1000) {
       console.warn(
-        `Amount mismatch: expected ${registration.totalAmount}, got ${amount}`,
+        `⚠️ Amount mismatch: ${amount} vs ${registration.totalAmount}`,
       );
-      // Still process if amount is equal or greater
+
+      // If amount is more, it's OK (customer paid extra)
       if (amount < registration.totalAmount) {
-        throw new Error("Payment amount is less than required");
+        throw new Error(
+          `Payment amount ${amount} is less than required ${registration.totalAmount}`,
+        );
       }
     }
 
@@ -98,51 +93,66 @@ async function processPaymentConfirmation(
       registrationId,
       registration.distanceId,
     );
+    console.log(`🎫 BIB number: ${bibNumber}`);
 
-    // Generate check-in QR code
-    const qrCheckinUrl = await generateCheckinQR(registrationId, bibNumber);
+    // Generate check-in QR
+    const qrCheckinUrl = await generateCheckinQR(
+      registrationId,
+      bibNumber,
+      registration.fullName,
+      registration.gender,
+      registration.dob,
+      registration.phone,
+      registration.shirtCategory,
+      registration.shirtType,
+      registration.shirtSize,
+    );
 
-    // Update registration in transaction
-    const updatedRegistration = await prisma.$transaction(async (tx) => {
-      // Update registration
-      const updated = await tx.registration.update({
-        where: { id: registrationId },
-        data: {
-          paymentStatus: "PAID",
-          bibNumber: bibNumber,
-          qrCheckinUrl: qrCheckinUrl,
-          paymentDate: new Date(),
-        },
-        include: {
-          distance: true,
-          event: true,
-          shirt: true,
-        },
-      });
+    // Update registration
+    const updatedRegistration = await prisma.$transaction(
+      async (tx: Prisma.TransactionClient) => {
+        const updated = await tx.registration.update({
+          where: { id: registrationId },
+          data: {
+            paymentStatus: "PAID",
+            bibNumber: bibNumber,
+            qrCheckinUrl: qrCheckinUrl,
+            paymentDate: new Date(),
+          },
+          include: {
+            distance: true,
+            event: true,
+            shirt: true,
+          },
+        });
 
-      // Create payment record
-      await tx.payment.create({
-        data: {
-          registrationId: registrationId,
-          transactionId: transactionId,
-          amount: amount,
-          status: "PAID",
-          paymentMethod: "bank_transfer",
-          webhookData: webhookData,
-        },
-      });
+        // Create payment record
+        await tx.payment.create({
+          data: {
+            registrationId: registrationId,
+            transactionId: transactionId,
+            amount: amount,
+            status: "PAID",
+            paymentMethod: "sepay_transfer",
+            webhookData: webhookData,
+          },
+        });
 
-      return updated;
-    });
+        return updated;
+      },
+    );
 
-    // Send confirmation email with BIB number
+    console.log(`✅ Registration updated successfully`);
+
+    // Send confirmation email
     try {
-      await sendPaymentConfirmedEmail({
+      await sendPaymentConfirmationEmailGmailFirst({
         registration: updatedRegistration,
         event: registration.event,
       });
 
-      // Log email sent
+      console.log(`✅ Confirmation email sent`);
+
       await prisma.emailLog.create({
         data: {
           registrationId: registrationId,
@@ -153,12 +163,9 @@ async function processPaymentConfirmation(
           emailProvider: "GMAIL_FIRST",
         },
       });
-
-      console.log(`✅ Payment confirmed email sent for ${bibNumber}`);
     } catch (emailError) {
-      console.error("Failed to send confirmation email:", emailError);
+      console.error("❌ Email error:", emailError);
 
-      // Log email failure but don't fail the payment
       await prisma.emailLog.create({
         data: {
           registrationId: registrationId,
@@ -178,103 +185,108 @@ async function processPaymentConfirmation(
       registrationId: registrationId,
     };
   } catch (error) {
-    console.error("Payment processing error:", error);
+    console.error("❌ Payment processing error:", error);
     throw error;
   }
 }
 
 /**
- * Webhook endpoint - POST /api/webhook/sepay
+ * SePay Webhook Handler
+ * Receives bank transaction notifications from SePay
  */
 export async function POST(req: NextRequest) {
   try {
-    // Get raw body for signature verification
-    const body = await req.text();
-    const signature = req.headers.get("x-sepay-signature") || "";
+    console.log("\n" + "=".repeat(60));
+    console.log("🔔 SePay Webhook at:", new Date().toISOString());
+    console.log("=".repeat(60));
 
-    // Verify signature if secret is set
-    if (process.env.SEPAY_WEBHOOK_SECRET) {
-      const isValid = verifyWebhookSignature(
-        body,
-        signature,
-        process.env.SEPAY_WEBHOOK_SECRET,
-      );
+    // Get webhook body
+    const webhookData = await req.json();
+    console.log("📥 Webhook data:", JSON.stringify(webhookData, null, 2));
 
-      if (!isValid) {
-        console.error("Invalid webhook signature");
-        return NextResponse.json(
-          { error: "Invalid signature" },
-          { status: 401 },
-        );
-      }
+    // Verify webhook
+    if (!verifySepayWebhook(webhookData)) {
+      console.error("❌ Invalid webhook data");
+      return NextResponse.json({ error: "Invalid webhook" }, { status: 400 });
     }
 
     // Parse webhook data
-    const webhookData = JSON.parse(body);
+    const parsed = parseSepayWebhook(webhookData);
+    console.log("📋 Parsed:", parsed);
 
-    console.log("📥 Webhook received:", webhookData);
+    const { orderCode, amount, transactionId, transactionDate, bankName } =
+      parsed;
 
-    // Extract data from webhook
-    // Format depends on SePay's webhook structure
-    // Common fields: transaction_id, amount, content, status
-    const {
-      transaction_id: transactionId,
-      amount_in: amount,
-      transaction_content: content,
-      gateway_status: status,
-    } = webhookData;
+    // Check if order code found
+    if (!orderCode) {
+      console.error("❌ No order code found in webhook");
+      console.log("Content:", webhookData.content);
 
-    // Only process successful transactions
-    if (status !== "success" && status !== "SUCCESSFUL") {
-      console.log(`Transaction status: ${status}, skipping`);
-      return NextResponse.json({ success: true, message: "Skipped" });
+      // Return 200 to avoid SePay retry
+      return NextResponse.json({
+        success: false,
+        message: "No order code found in transaction content",
+      });
     }
 
-    // Extract registration ID from content
-    // Expected format: "DK {registrationId}" or "DK{registrationId}"
-    const match = content?.match(/DK\s*([a-zA-Z0-9_-]+)/i);
-
-    if (!match || !match[1]) {
-      console.error("Invalid transaction content format:", content);
-      return NextResponse.json(
-        { error: "Cannot extract registration ID from content" },
-        { status: 400 },
-      );
-    }
-
-    const registrationId = match[1];
+    console.log(`📦 Processing order: ${orderCode}`);
 
     // Process payment
     const result = await processPaymentConfirmation(
-      registrationId,
+      orderCode,
       transactionId,
       amount,
       webhookData,
     );
 
-    console.log(`✅ Payment processed successfully:`, result);
+    console.log(`✅ Payment processed:`, result);
+    console.log("=".repeat(60) + "\n");
 
+    // Return success
     return NextResponse.json({
       success: true,
       message: "Payment confirmed",
       bibNumber: result.bibNumber,
     });
   } catch (error) {
-    console.error("Webhook error:", error);
+    console.error("❌ Webhook error:", error);
+    console.log("=".repeat(60) + "\n");
 
-    // Return 200 to prevent SePay from retrying
-    // Log the error for manual review
-    return NextResponse.json({
-      success: false,
-      error: (error as Error).message,
-    });
+    // Log to database
+    try {
+      //temporarily disable logging to reduce database writes
+      // await prisma.webhookLog.create({
+      //   data: {
+      //     provider: "sepay",
+      //     event: "payment",
+      //     payload: JSON.stringify(error),
+      //     status: "FAILED",
+      //     errorMessage: (error as Error).message,
+      //   },
+      // });
+    } catch (logError) {
+      console.error("Failed to log error:", logError);
+    }
+
+    // Return 200 to avoid retry
+    return NextResponse.json(
+      {
+        success: false,
+        error: (error as Error).message,
+      },
+      { status: 200 },
+    );
   }
 }
 
-// For testing webhook locally
+/**
+ * GET endpoint for testing
+ */
 export async function GET(req: NextRequest) {
   return NextResponse.json({
     message: "SePay Webhook Endpoint",
     timestamp: new Date().toISOString(),
+    webhookUrl: `${req.nextUrl.origin}/api/webhook/sepay`,
+    status: "active",
   });
 }
