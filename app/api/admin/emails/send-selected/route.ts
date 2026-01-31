@@ -60,7 +60,6 @@ export async function POST(req: NextRequest) {
           case "BIB_ANNOUNCEMENT":
             emailReact = BibAnnouncementEmail({ registration });
             subject = `Thông báo số BIB - ${registration.event.name}`;
-            
             // ✅ GEN QR CHECK-IN INLINE (không upload)
             if (registration.bibNumber) {
               try {
@@ -83,9 +82,14 @@ export async function POST(req: NextRequest) {
                   cid: `qr-checkin-${registration.bibNumber}`, // ✅ Content-ID for inline display
                 });
 
-                console.log(`✅ Generated QR for BIB ${registration.bibNumber}`);
+                console.log(
+                  `✅ Generated QR for BIB ${registration.bibNumber}`
+                );
               } catch (qrError) {
-                console.warn(`⚠️ Failed to generate QR for ${registration.bibNumber}:`, qrError);
+                console.warn(
+                  `⚠️ Failed to generate QR for ${registration.bibNumber}:`,
+                  qrError
+                );
                 // Continue sending email without QR
               }
             }

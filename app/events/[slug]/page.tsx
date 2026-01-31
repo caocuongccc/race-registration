@@ -17,6 +17,7 @@ import {
   Phone,
   Mail,
   Facebook,
+  ShoppingBag,
 } from "lucide-react";
 import Link from "next/link";
 import { toast } from "sonner";
@@ -85,7 +86,7 @@ export default function EventDetailPage() {
   const { event, distances, shirts, images } = data;
 
   const galleryImages = images.filter(
-    (img) => img.imageType === selectedImageType
+    (img) => img.imageType === selectedImageType,
   );
   const shirtImages = {
     MALE: images.filter((img) => img.imageType === "SHIRT_MALE"),
@@ -173,6 +174,20 @@ export default function EventDetailPage() {
                   Vui lòng quay lại sau
                 </p>
               </div>
+            )}
+
+            {/* ✅ NEW: Shirt Purchase Button (if available) */}
+            {event.hasShirt && (
+              <Link href={`/events/${event.slug}/order-shirt`}>
+                <Button
+                  variant="outline"
+                  className="w-full bg-purple-50 border-purple-200 text-purple-700 hover:bg-purple-100 hover:border-purple-300"
+                  size="lg"
+                >
+                  <ShoppingBag className="w-4 h-4 mr-2" />
+                  Mua áo riêng (không BIB)
+                </Button>
+              </Link>
             )}
           </div>
         </div>
@@ -440,7 +455,7 @@ export default function EventDetailPage() {
                     <span>
                       {distances.reduce(
                         (sum, d) => sum + d.currentParticipants,
-                        0
+                        0,
                       )}{" "}
                       người đã đăng ký
                     </span>
@@ -514,7 +529,7 @@ export default function EventDetailPage() {
                       const text = `Đăng ký ${event.name} ngay!`;
                       window.open(
                         `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(url)}`,
-                        "_blank"
+                        "_blank",
                       );
                     }}
                   >

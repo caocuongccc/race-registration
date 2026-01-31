@@ -62,7 +62,6 @@ export function BibAnnouncementEmail({
             <Text style={qrSubtitle}>
               Xuất trình mã này khi nhận race pack và check-in ngày thi đấu
             </Text>
-            
             {/* Reference attachment by CID */}
             <Img
               src={`cid:qr-checkin-${registration.bibNumber}`}
@@ -71,9 +70,10 @@ export function BibAnnouncementEmail({
               height="250"
               style={qrCode}
             />
-            
+
             <Text style={qrInstruction}>
-              💡 <strong>Mã QR đã đính kèm</strong> - Tải file đính kèm để in ra hoặc lưu vào điện thoại
+              💡 <strong>Mã QR đã đính kèm</strong> - Tải file đính kèm để in ra
+              hoặc lưu vào điện thoại
             </Text>
           </Section>
 

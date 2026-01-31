@@ -1,25 +1,29 @@
-import type { Metadata } from "next"
-import { Inter } from "next/font/google"
-import "./globals.css"
-import { Providers } from "./providers"
-import { Toaster } from "sonner"
+import type { Metadata } from "next";
+import { Inter } from "next/font/google";
+import "./globals.css";
+import { Providers } from "./providers";
+import { Toaster } from "sonner";
+import { Navigation } from "@/components/Navigation";
 
-const inter = Inter({ subsets: ["latin", "vietnamese"] })
+const inter = Inter({ subsets: ["latin", "vietnamese"] });
 
 export const metadata: Metadata = {
   title: "Hệ Thống Đăng Ký Giải Chạy",
   description: "Đăng ký tham gia giải chạy online",
-}
+};
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default function RootLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   return (
     <html lang="vi">
       <body className={inter.className}>
-        <Providers>
-          {children}
-        </Providers>
+        {/* <Navigation /> */}
+        <Providers>{children}</Providers>
         <Toaster position="top-right" richColors />
       </body>
     </html>
-  )
+  );
 }

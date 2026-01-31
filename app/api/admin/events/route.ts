@@ -1,29 +1,16 @@
 // app/api/admin/events/route.ts
 import { NextRequest, NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
+import {
+  getUserSession,
+  getUserAccessibleEvents,
+} from "@/lib/event-permissions";
 
 export async function GET() {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    const user = await getUserSession();
 
-    const events = await prisma.event.findMany({
-      include: {
-        _count: {
-          select: {
-            registrations: true,
-            distances: true,
-          },
-        },
-      },
-      orderBy: {
-        date: "desc",
-      },
-    });
+    // ✅ Get all events user has access to (created + assigned)
+    const events = await getUserAccessibleEvents(user.id);
 
     return NextResponse.json({ events });
   } catch (error) {

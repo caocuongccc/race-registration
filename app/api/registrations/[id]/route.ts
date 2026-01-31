@@ -4,7 +4,7 @@ import { prisma } from "@/lib/prisma";
 
 export async function GET(
   req: NextRequest,
-  context: { params: Promise<{ id: string }> }
+  context: { params: Promise<{ id: string }> },
 ) {
   try {
     const registration = await prisma.registration.findUnique({
@@ -47,7 +47,7 @@ export async function GET(
     if (!registration) {
       return NextResponse.json(
         { error: "Không tìm thấy đăng ký" },
-        { status: 404 }
+        { status: 404 },
       );
     }
 
@@ -78,6 +78,9 @@ export async function GET(
 
         registrationDate: registration.registrationDate,
         paymentDate: registration.paymentDate,
+        bibName: registration.bibName,
+        idCard: registration.idCard,
+        city: registration.city,
       },
     });
   } catch (error) {

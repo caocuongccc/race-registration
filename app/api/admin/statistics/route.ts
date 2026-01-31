@@ -15,6 +15,12 @@ export async function GET(req: NextRequest) {
 
     const whereFilter = eventId && eventId !== "all" ? { eventId } : {};
 
+    // const shirtOrdersStats = await prisma.shirtOrder.groupBy({
+    //   by: ["paymentStatus"],
+    //   where: whereFilter,
+    //   _count: true,
+    //   _sum: { totalAmount: true },
+    // });
     // --- SUMMARY COUNTS ---
     const [totalRegistrations, paidRegistrations, pendingRegistrations] =
       await Promise.all([
@@ -106,15 +112,155 @@ export async function GET(req: NextRequest) {
       _count: true,
     });
 
-    const shirtsByCategory: Record<string, number> = {};
-    shirtGroup.forEach((s: any) => {
-      if (s.shirtCategory) shirtsByCategory[s.shirtCategory] = s._count;
+    // const shirtsByCategory: Record<string, number> = {};
+    // shirtGroup.forEach((s: any) => {
+    //   if (s.shirtCategory) shirtsByCategory[s.shirtCategory] = s._count;
+    // });
+
+    // const totalShirts = Object.values(shirtsByCategory).reduce(
+    //   (a, b) => a + b,
+    //   0
+    // );
+
+    // --- ENHANCED SHIRT STATS ---
+    // 1. Shirts from Registrations (WITH_BIB)
+    const shirtsWithBib = await prisma.registration.findMany({
+      where: {
+        ...whereFilter,
+        paymentStatus: "PAID",
+        shirtCategory: { not: null },
+      },
+      select: {
+        shirtCategory: true,
+        shirtType: true,
+        shirtSize: true,
+        shirtFee: true,
+      },
     });
 
-    const totalShirts = Object.values(shirtsByCategory).reduce(
-      (a, b) => a + b,
+    // 2. Shirts from Standalone Orders
+    const standaloneOrders = await prisma.shirtOrder.findMany({
+      where: {
+        ...whereFilter,
+        orderType: "STANDALONE",
+        paymentStatus: "PAID",
+      },
+      include: {
+        items: {
+          include: {
+            shirt: true,
+          },
+        },
+      },
+    });
+
+    // Aggregate shirt data
+    const shirtDataMap = new Map<
+      string,
+      {
+        category: string;
+        type: string;
+        size: string;
+        withBib: number;
+        standalone: number;
+        total: number;
+        revenue: number;
+      }
+    >();
+
+    // Add WITH_BIB shirts
+    shirtsWithBib.forEach((reg) => {
+      const key = `${reg.shirtCategory}-${reg.shirtType}-${reg.shirtSize}`;
+      const existing = shirtDataMap.get(key) || {
+        category: reg.shirtCategory!,
+        type: reg.shirtType!,
+        size: reg.shirtSize!,
+        withBib: 0,
+        standalone: 0,
+        total: 0,
+        revenue: 0,
+      };
+      existing.withBib++;
+      existing.total++;
+      existing.revenue += reg.shirtFee;
+      shirtDataMap.set(key, existing);
+    });
+
+    // Add STANDALONE shirts
+    standaloneOrders.forEach((order) => {
+      order.items.forEach((item) => {
+        const key = `${item.shirt.category}-${item.shirt.type}-${item.shirt.size}`;
+        const existing = shirtDataMap.get(key) || {
+          category: item.shirt.category,
+          type: item.shirt.type,
+          size: item.shirt.size,
+          withBib: 0,
+          standalone: 0,
+          total: 0,
+          revenue: 0,
+        };
+        existing.standalone += item.quantity;
+        existing.total += item.quantity;
+        existing.revenue += item.totalPrice;
+        shirtDataMap.set(key, existing);
+      });
+    });
+
+    const shirtDetails = Array.from(shirtDataMap.values());
+
+    // Aggregate by category
+    const shirtsByCategory: Record<string, number> = {};
+    shirtDetails.forEach((item) => {
+      shirtsByCategory[item.category] =
+        (shirtsByCategory[item.category] || 0) + item.total;
+    });
+
+    // Aggregate by size
+    const shirtsBySize: Record<string, number> = {};
+    shirtDetails.forEach((item) => {
+      shirtsBySize[item.size] = (shirtsBySize[item.size] || 0) + item.total;
+    });
+
+    // Aggregate by status (from shirt orders)
+    const ordersByStatus = await prisma.shirtOrder.groupBy({
+      by: ["paymentStatus"],
+      where: whereFilter,
+      _count: true,
+      _sum: { totalAmount: true },
+    });
+
+    const shirtsByStatus = {
+      paid: ordersByStatus.find((s) => s.paymentStatus === "PAID")?._count || 0,
+      pending:
+        ordersByStatus.find((s) => s.paymentStatus === "PENDING")?._count || 0,
+      failed:
+        ordersByStatus.find((s) => s.paymentStatus === "FAILED")?._count || 0,
+    };
+
+    const totalShirts = shirtDetails.reduce((sum, item) => sum + item.total, 0);
+    const totalWithBib = shirtDetails.reduce(
+      (sum, item) => sum + item.withBib,
       0
     );
+    const totalStandalone = shirtDetails.reduce(
+      (sum, item) => sum + item.standalone,
+      0
+    );
+    const totalShirtRevenue = shirtDetails.reduce(
+      (sum, item) => sum + item.revenue,
+      0
+    );
+
+    const shirtStats = {
+      total: totalShirts,
+      withBib: totalWithBib,
+      standalone: totalStandalone,
+      revenue: totalShirtRevenue,
+      byCategory: shirtsByCategory,
+      bySize: shirtsBySize,
+      byStatus: shirtsByStatus,
+      details: shirtDetails,
+    };
 
     // --- AGE GROUPS ---
     const registrantsDob = await prisma.registration.findMany({
@@ -145,10 +291,7 @@ export async function GET(req: NextRequest) {
       totalRevenue,
       revenueByDistance,
       registrationsByDate,
-      shirtStats: {
-        total: totalShirts,
-        byCategory: shirtsByCategory,
-      },
+      shirtStats,
       ageGroups,
     });
   } catch (error) {

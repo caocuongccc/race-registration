@@ -2,6 +2,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useSession } from "next-auth/react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { formatCurrency } from "@/lib/utils";
 import {
@@ -11,6 +12,7 @@ import {
   Clock,
   TrendingUp,
   Calendar,
+  AlertCircle,
 } from "lucide-react";
 import {
   BarChart,
@@ -42,45 +44,154 @@ interface DashboardStats {
 interface EventItem {
   id: string;
   name: string;
+  role?: string; // User's role on this event
 }
 
 const COLORS = ["#3b82f6", "#10b981", "#f59e0b", "#ef4444", "#8b5cf6"];
 
 export default function AdminDashboard() {
+  const { data: session } = useSession();
   const [stats, setStats] = useState<DashboardStats | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [selectedEvent, setSelectedEvent] = useState<string>("all");
+  const [loading, setLoading] = useState(false);
+  const [selectedEvent, setSelectedEvent] = useState<string>("");
   const [events, setEvents] = useState<EventItem[]>([]);
+  const [isAdmin, setIsAdmin] = useState(false);
 
   useEffect(() => {
-    loadStats();
-  }, [selectedEvent]);
+    // Check if user is ADMIN
+    if (session?.user?.role === "ADMIN") {
+      setIsAdmin(true);
+      setSelectedEvent("all"); // Admin can see "all"
+    }
+  }, [session]);
 
   useEffect(() => {
     loadEvents();
   }, []);
 
+  useEffect(() => {
+    // Only load stats when:
+    // 1. ADMIN selects "all" or specific event
+    // 2. Non-admin selects specific event
+    if (selectedEvent && selectedEvent !== "") {
+      loadStats();
+    }
+  }, [selectedEvent]);
+
   const loadEvents = async () => {
     try {
       const res = await fetch("/api/admin/events");
       const data = await res.json();
-      setEvents(data.events || []);
+      const eventList = data.events || [];
+      setEvents(eventList);
+
+      // Auto-select first event for non-admin if no selection
+      if (!isAdmin && eventList.length > 0 && !selectedEvent) {
+        setSelectedEvent(eventList[0].id);
+      }
     } catch (error) {
       console.error("Failed to load events:", error);
     }
   };
 
   const loadStats = async () => {
+    if (!selectedEvent) return;
+
+    setLoading(true);
     try {
       const res = await fetch(`/api/admin/statistics?eventId=${selectedEvent}`);
       const data = await res.json();
       setStats(data);
     } catch (error) {
       console.error("Failed to load stats:", error);
+      setStats(null);
     } finally {
       setLoading(false);
     }
   };
+
+  // Show message when no event is selected
+  if (!selectedEvent || selectedEvent === "") {
+    return (
+      <div className="space-y-6">
+        <div>
+          <h1 className="text-3xl font-bold text-gray-900">Tổng quan</h1>
+          <p className="text-gray-600 mt-1">
+            Dashboard quản lý đăng ký giải chạy
+          </p>
+        </div>
+
+        <Card className="border-yellow-200 bg-yellow-50">
+          <CardContent className="pt-6">
+            <div className="flex items-start gap-4">
+              <AlertCircle className="w-6 h-6 text-yellow-600 flex-shrink-0 mt-1" />
+              <div>
+                <h3 className="font-semibold text-yellow-900 mb-2">
+                  Vui lòng chọn sự kiện
+                </h3>
+                <p className="text-yellow-800 text-sm">
+                  Chọn một sự kiện bên dưới để xem thống kê và báo cáo chi tiết.
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Event Selection */}
+        <div className="flex items-center gap-3 bg-white p-4 rounded-xl shadow-sm border border-gray-200">
+          <select
+            value={selectedEvent}
+            onChange={(e) => setSelectedEvent(e.target.value)}
+            className="
+              flex-1 px-4 py-3 rounded-lg bg-gray-50 border-2 border-gray-300 
+              text-gray-800 text-base font-medium shadow-sm
+              hover:bg-gray-100 hover:border-blue-400
+              focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500
+              transition-all
+            "
+          >
+            <option value="">-- Chọn sự kiện --</option>
+            {isAdmin && <option value="all">📊 Tất cả sự kiện</option>}
+            {events.map((event) => (
+              <option key={event.id} value={event.id}>
+                {event.name}
+                {event.role && ` (${event.role})`}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        {/* Events list preview */}
+        {events.length > 0 && (
+          <Card>
+            <CardHeader>
+              <CardTitle>Sự kiện của bạn ({events.length})</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-2">
+                {events.map((event) => (
+                  <button
+                    key={event.id}
+                    onClick={() => setSelectedEvent(event.id)}
+                    className="w-full text-left p-4 rounded-lg border-2 border-gray-200 hover:border-blue-500 hover:bg-blue-50 transition-all"
+                  >
+                    <div className="font-medium text-gray-900">
+                      {event.name}
+                    </div>
+                    {event.role && (
+                      <div className="text-sm text-gray-600 mt-1">
+                        Quyền: {event.role}
+                      </div>
+                    )}
+                  </button>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        )}
+      </div>
+    );
+  }
 
   if (loading) {
     return (
@@ -91,7 +202,31 @@ export default function AdminDashboard() {
   }
 
   if (!stats) {
-    return <div>Không thể tải thống kê</div>;
+    return (
+      <div className="space-y-6">
+        <div>
+          <h1 className="text-3xl font-bold text-gray-900">Tổng quan</h1>
+          <p className="text-gray-600 mt-1">
+            Dashboard quản lý đăng ký giải chạy
+          </p>
+        </div>
+        <Card className="border-red-200 bg-red-50">
+          <CardContent className="pt-6">
+            <div className="flex items-start gap-4">
+              <AlertCircle className="w-6 h-6 text-red-600 flex-shrink-0 mt-1" />
+              <div>
+                <h3 className="font-semibold text-red-900 mb-2">
+                  Không thể tải thống kê
+                </h3>
+                <p className="text-red-800 text-sm">
+                  Đã xảy ra lỗi khi tải dữ liệu. Vui lòng thử lại sau.
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
   }
 
   const conversionRate =
@@ -108,28 +243,25 @@ export default function AdminDashboard() {
           Dashboard quản lý đăng ký giải chạy
         </p>
       </div>
+
       {/* Event Filter */}
       <div className="flex items-center gap-3 bg-white p-4 rounded-xl shadow-sm border border-gray-200 w-full max-w-md">
-        <div className="flex items-center gap-2 text-gray-600 font-medium whitespace-nowrap">
-          <Calendar className="w-4 h-4 text-blue-600" />
-          Chọn sự kiện:
-        </div>
-
         <select
           value={selectedEvent}
           onChange={(e) => setSelectedEvent(e.target.value)}
           className="
-      flex-1 px-3 py-2 rounded-lg bg-gray-50 border border-gray-300 
-      text-gray-800 text-sm shadow-sm
-      hover:bg-gray-100 
-      focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500
-      transition-all
-    "
+            flex-1 px-3 py-2 rounded-lg bg-gray-50 border border-gray-300 
+            text-gray-800 text-sm shadow-sm
+            hover:bg-gray-100 
+            focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500
+            transition-all
+          "
         >
-          <option value="all">🔄 Tất cả sự kiện</option>
+          {isAdmin && <option value="all">📊 Tất cả sự kiện</option>}
           {events.map((event) => (
             <option key={event.id} value={event.id}>
               {event.name}
+              {event.role && ` (${event.role})`}
             </option>
           ))}
         </select>
@@ -288,7 +420,7 @@ export default function AdminDashboard() {
                                 ? "Nữ"
                                 : "Trẻ em",
                           value,
-                        })
+                        }),
                       )}
                       cx="50%"
                       cy="50%"
@@ -307,7 +439,7 @@ export default function AdminDashboard() {
                             key={`cell-${index}`}
                             fill={COLORS[index % COLORS.length]}
                           />
-                        )
+                        ),
                       )}
                     </Pie>
                     <Tooltip />
@@ -344,7 +476,7 @@ export default function AdminDashboard() {
                       </div>
                       <span className="text-lg font-bold">{count}</span>
                     </div>
-                  )
+                  ),
                 )}
               </div>
             </div>

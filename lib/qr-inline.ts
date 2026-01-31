@@ -47,6 +47,7 @@ export function generateCheckinQRData(
     shirtSize && `Size: ${shirtSize}`,
   ]
     .filter(Boolean)
+    // .join(" | ");
     .join("\r\n");
 
   return qrData;

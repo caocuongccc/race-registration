@@ -9,7 +9,12 @@ export async function GET() {
       where: {
         isPublished: true,
         status: {
-          in: ["PUBLISHED", "REGISTRATION_OPEN", "REGISTRATION_CLOSED"],
+          in: [
+            "PUBLISHED",
+            "REGISTRATION_OPEN",
+            "REGISTRATION_CLOSED",
+            "COMPLETED",
+          ],
         },
       },
       include: {
@@ -26,7 +31,7 @@ export async function GET() {
       },
       orderBy: { date: "asc" },
     });
-
+    //const events = [];
     return NextResponse.json({
       events: events.map((event) => ({
         id: event.id,
@@ -47,7 +52,7 @@ export async function GET() {
     console.error("Error fetching events:", error);
     return NextResponse.json(
       { error: "Failed to fetch events" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

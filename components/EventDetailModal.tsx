@@ -1,4 +1,4 @@
-// components/EventDetailModal.tsx
+// components/EventDetailModal.tsx - WITH BANK INFO
 "use client";
 
 import { useState } from "react";
@@ -7,11 +7,12 @@ import {
   Calendar,
   MapPin,
   Award,
-  Shirt,
   Phone,
   Mail,
   Facebook,
   ArrowRight,
+  CreditCard,
+  ShoppingBag,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { formatCurrency, formatDate } from "@/lib/utils";
@@ -71,7 +72,7 @@ export function EventDetailModal({
               <img
                 src={event.coverImageUrl || event.bannerUrl}
                 alt={event.name}
-                className="w-full h-full object-contain bg-black" // FIX: object-contain
+                className="w-full h-full object-contain bg-black"
               />
             ) : (
               <div className="w-full h-full bg-gradient-to-br from-blue-500 to-indigo-600" />
@@ -182,6 +183,47 @@ export function EventDetailModal({
                       ))}
                     </div>
                   </div>
+
+                  {/* ✅ NEW: Bank Info Display */}
+                  {event.bankAccount && (
+                    <div className="bg-yellow-50 border-2 border-yellow-300 rounded-xl p-4">
+                      <h3 className="font-bold text-lg flex items-center gap-2 mb-3">
+                        <CreditCard className="w-5 h-5 text-yellow-700" />
+                        Thông tin chuyển khoản
+                      </h3>
+
+                      <div className="grid grid-cols-2 gap-3 text-sm">
+                        <div>
+                          <div className="text-gray-600">Ngân hàng:</div>
+                          <div className="font-bold text-gray-900">
+                            {event.bankName || "MB Bank"}
+                          </div>
+                        </div>
+
+                        <div>
+                          <div className="text-gray-600">Số tài khoản:</div>
+                          <div className="font-bold text-blue-600 font-mono text-base">
+                            {event.bankAccount}
+                          </div>
+                        </div>
+
+                        <div className="col-span-2">
+                          <div className="text-gray-600">Chủ tài khoản:</div>
+                          <div className="font-bold text-gray-900">
+                            {event.bankHolder || "NGUYEN VAN A"}
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="mt-3 pt-3 border-t border-yellow-300">
+                        <p className="text-xs text-yellow-900">
+                          💡 <strong>Lưu ý:</strong> Vui lòng ghi đúng nội dung
+                          chuyển khoản theo hướng dẫn trong email xác nhận để hệ
+                          thống tự động xác nhận thanh toán.
+                        </p>
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 {/* Right sidebar */}
@@ -191,17 +233,48 @@ export function EventDetailModal({
                       <div className="text-sm opacity-90">Giá từ</div>
                       <div className="text-3xl font-bold my-2">
                         {formatCurrency(
-                          Math.min(...distances.map((d) => d.price))
+                          distances.length
+                            ? Math.min(...distances.map((d) => d.price))
+                            : 0
                         )}
                       </div>
-                      <Link
-                        href={`/events/${event.slug}/register`}
-                        onClick={onClose}
-                      >
-                        <Button className="w-full bg-white text-blue-600 hover:bg-gray-100">
-                          Đăng ký ngay
-                        </Button>
-                      </Link>
+                      {event.allowRegistration ? (
+                        <Link
+                          href={`/events/${event.slug}/register`}
+                          onClick={onClose}
+                        >
+                          <Button className="w-full bg-white text-blue-600 hover:bg-gray-100">
+                            Đăng ký ngay
+                          </Button>
+                        </Link>
+                      ) : (
+                        <div>
+                          <Button
+                            className="w-full bg-white/20 cursor-not-allowed"
+                            disabled
+                          >
+                            Chưa mở đăng ký
+                          </Button>
+                          <p className="text-xs opacity-75 mt-2">
+                            Vui lòng quay lại sau
+                          </p>
+                        </div>
+                      )}
+                      {/* ✅ NEW: Shirt Purchase Button */}
+                      {event.hasShirt && (
+                        <div>
+                          <Link href={`/events/${event.slug}/order-shirt`}>
+                            <Button
+                              variant="outline"
+                              className="w-full bg-purple-50 border-purple-200 text-purple-700 hover:bg-purple-100 hover:border-purple-300 mt-2"
+                              size="lg"
+                            >
+                              <ShoppingBag className="w-5 h-5 mr-2" />
+                              Mua áo kỷ niệm riêng (không kèm BIB)
+                            </Button>
+                          </Link>
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -211,7 +284,6 @@ export function EventDetailModal({
             {/* GALLERY */}
             {selectedTab === "gallery" && (
               <div className="space-y-4">
-                {/* type buttons */}
                 <div className="flex gap-2 flex-wrap">
                   {["GALLERY", "VENUE", "COURSE_MAP"].map((type) => (
                     <button
@@ -232,27 +304,6 @@ export function EventDetailModal({
                   ))}
                 </div>
 
-                {/* images */}
-                {/* {galleryImages.length > 0 ? (
-                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                    {galleryImages.map((img, i) => (
-                      <div
-                        key={i}
-                        className="border rounded-lg overflow-hidden cursor-pointer bg-black h-40 flex items-center justify-center"
-                        onClick={() => setLightboxImage(img.imageUrl)}
-                      >
-                        <img
-                          src={img.imageUrl}
-                          className="w-full h-full object-contain" // FIX
-                        />
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="text-center py-10 text-gray-500">
-                    Không có ảnh
-                  </div>
-                )} */}
                 {galleryImages.length > 0 ? (
                   <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
                     {galleryImages.map((img, i) => (
@@ -279,26 +330,6 @@ export function EventDetailModal({
             {/* SHIRTS */}
             {selectedTab === "shirts" && (
               <div className="space-y-4">
-                {/* {allShirtImages.length > 0 ? (
-                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                    {allShirtImages.map((img, i) => (
-                      <div
-                        key={i}
-                        className="rounded-lg border overflow-hidden bg-black cursor-pointer h-60 flex items-center justify-center"
-                        onClick={() => setLightboxImage(img.imageUrl)}
-                      >
-                        <img
-                          src={img.imageUrl}
-                          className="w-full h-full object-contain" // FIX
-                        />
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="text-center py-12 text-gray-500">
-                    Không có áo đấu
-                  </div>
-                )} */}
                 {allShirtImages.length > 0 ? (
                   <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
                     {allShirtImages.map((img, i) => (
@@ -309,7 +340,7 @@ export function EventDetailModal({
                       >
                         <img
                           src={img.imageUrl}
-                          className="w-full h-full object-contain" // FIX
+                          className="w-full h-full object-contain"
                         />
                       </div>
                     ))}
@@ -334,11 +365,13 @@ export function EventDetailModal({
               <Button variant="outline" onClick={onClose} size="sm">
                 Đóng
               </Button>
-              <Link href={`/events/${event.slug}/register`} onClick={onClose}>
-                <Button size="sm">
-                  Đăng ký ngay <ArrowRight className="ml-1 w-4 h-4" />
-                </Button>
-              </Link>
+              {event.allowRegistration && (
+                <Link href={`/events/${event.slug}/register`} onClick={onClose}>
+                  <Button size="sm">
+                    Đăng ký ngay <ArrowRight className="ml-1 w-4 h-4" />
+                  </Button>
+                </Link>
+              )}
             </div>
           </div>
         </div>

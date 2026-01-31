@@ -147,6 +147,8 @@ export async function sendRacePackInfoEmails(eventId: string) {
               registrationId: registration.id,
               emailType: "RACE_PACK_INFO",
               status: "SENT",
+              recipientEmail: registration.email,
+              emailProvider: "resend",
             },
           });
 
@@ -164,6 +166,8 @@ export async function sendRacePackInfoEmails(eventId: string) {
               emailType: "RACE_PACK_INFO",
               status: "FAILED",
               errorMessage: (error as Error).message,
+              recipientEmail: registration.email,
+              emailProvider: "resend",
             },
           });
 
