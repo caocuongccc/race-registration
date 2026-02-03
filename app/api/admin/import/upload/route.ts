@@ -7,15 +7,16 @@ import * as XLSX from "xlsx";
 
 // Helper: Parse date from DD/MM/YYYY format
 function parseDate(dateStr: string): Date | null {
+  console.log("Parsing date:", dateStr);
   if (!dateStr) return null;
 
   const parts = dateStr.trim().split("/");
   if (parts.length !== 3) return null;
-
+  console.log("Date parts:", parts);
   const day = parseInt(parts[0]);
   const month = parseInt(parts[1]) - 1; // Month is 0-indexed
   const year = parseInt(parts[2]);
-
+  console.log("Parsed date:", day, month, year);
   if (isNaN(day) || isNaN(month) || isNaN(year)) return null;
 
   return new Date(year, month, day);
@@ -32,7 +33,7 @@ function parseGender(genderStr: string): "MALE" | "FEMALE" | null {
 
 // Helper: Parse shirt category
 function parseShirtCategory(
-  categoryStr: string
+  categoryStr: string,
 ): "MALE" | "FEMALE" | "KID" | null {
   if (!categoryStr) return null;
   const normalized = categoryStr.trim().toLowerCase();
@@ -81,7 +82,7 @@ export async function POST(req: NextRequest) {
     if (!file || !eventId) {
       return NextResponse.json(
         { error: "Missing file or eventId" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -111,7 +112,7 @@ export async function POST(req: NextRequest) {
     if (rows.length === 0) {
       return NextResponse.json(
         { error: "File Excel không có dữ liệu" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -137,32 +138,42 @@ export async function POST(req: NextRequest) {
 
       try {
         // Validate required fields
-        if (
-          !row["Họ tên"] ||
-          !row["Email"] ||
-          !row["Số điện thoại"] ||
-          !row["Ngày sinh (DD/MM/YYYY)"] ||
-          !row["Giới tính (Nam/Nữ)"] ||
-          !row["Cự ly"]
-        ) {
-          throw new Error("Thiếu thông tin bắt buộc");
+        const requiredFields = [
+          { key: "Họ tên", label: "Họ tên" },
+          { key: "Email", label: "Email" },
+          { key: "Số điện thoại", label: "Số điện thoại" },
+          { key: "Ngày sinh", label: "Ngày sinh" },
+          { key: "Giới tính", label: "Giới tính" },
+          { key: "Cự ly", label: "Cự ly" },
+        ];
+
+        const missingFields = requiredFields
+          .filter((f) => !row[f.key])
+          .map((f) => f.label);
+
+        if (missingFields.length > 0) {
+          console.log("Processing row:", rowNum);
+          console.log("Row data:", row);
+          throw new Error(
+            `Thiếu thông tin bắt buộc: ${missingFields.join(", ")}`,
+          );
         }
 
         // Parse date
-        const dob = parseDate(row["Ngày sinh (DD/MM/YYYY)"]);
+        const dob = parseDate(row["Ngày sinh"]);
         if (!dob) {
           throw new Error("Ngày sinh không hợp lệ (phải là DD/MM/YYYY)");
         }
 
         // Parse gender
-        const gender = parseGender(row["Giới tính (Nam/Nữ)"]);
+        const gender = parseGender(row["Giới tính"]);
         if (!gender) {
           throw new Error("Giới tính không hợp lệ (phải là Nam hoặc Nữ)");
         }
 
         // Find distance
         const distance = event.distances.find(
-          (d) => d.name.toLowerCase() === row["Cự ly"].toLowerCase().trim()
+          (d) => d.name.toLowerCase() === row["Cự ly"].toLowerCase().trim(),
         );
         if (!distance) {
           throw new Error(`Không tìm thấy cự ly: ${row["Cự ly"]}`);
@@ -185,7 +196,7 @@ export async function POST(req: NextRequest) {
               (s) =>
                 s.category === shirtCategory &&
                 s.type === shirtType &&
-                s.size === shirtSize
+                s.size === shirtSize,
             );
 
             if (shirt) {
@@ -193,7 +204,7 @@ export async function POST(req: NextRequest) {
               shirtFee = shirt.price;
             } else {
               console.warn(
-                `Không tìm thấy áo: ${shirtCategory} ${shirtType} ${shirtSize}`
+                `Không tìm thấy áo: ${shirtCategory} ${shirtType} ${shirtSize}`,
               );
             }
           }
@@ -214,7 +225,7 @@ export async function POST(req: NextRequest) {
             shirtId,
             importBatchId: batch.id,
             registrationSource: "EXCEL",
-
+            bibName: row["Họ tên"].toString().trim(),
             fullName: row["Họ tên"].toString().trim(),
             email: row["Email"].toString().trim(),
             phone: row["Số điện thoại"].toString().trim(),
@@ -267,7 +278,7 @@ export async function POST(req: NextRequest) {
           data: row,
           error: error.message,
         });
-        console.error(`Row ${rowNum} error:`, error.message);
+        console.error(`Row ${rowNum} error:`, error.message + "\n" + error.row);
       }
     }
 
@@ -305,7 +316,7 @@ export async function POST(req: NextRequest) {
     console.error("Excel import error:", error);
     return NextResponse.json(
       { error: "Failed to process Excel file" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
