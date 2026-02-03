@@ -13,7 +13,7 @@ import { sendPaymentConfirmationEmailGmailFirst } from "@/lib/email-service-gmai
  */
 async function generateBibNumber(
   registrationId: string,
-  distanceId: string
+  distanceId: string,
 ): Promise<string> {
   const distance = await prisma.distance.findUnique({
     where: { id: distanceId },
@@ -42,7 +42,7 @@ async function generateBibNumber(
  */
 export async function POST(
   req: NextRequest,
-  context: { params: Promise<{ id: string }> }
+  context: { params: Promise<{ id: string }> },
 ) {
   try {
     const session = await getServerSession(authOptions);
@@ -66,7 +66,7 @@ export async function POST(
     if (!registration) {
       return NextResponse.json(
         { error: "Registration not found" },
-        { status: 404 }
+        { status: 404 },
       );
     }
 
@@ -74,11 +74,15 @@ export async function POST(
     if (registration.paymentStatus === "PAID") {
       return NextResponse.json({ error: "Already confirmed" }, { status: 400 });
     }
-
+    console.log(
+      "📝 Manual payment confirmation for registration:",
+      registrationId,
+    );
+    console.log("📝 registration.distanceId:", registration.distanceId);
     // Generate BIB number
     const bibNumber = await generateBibNumber(
       registrationId,
-      registration.distanceId
+      registration.distanceId,
     );
 
     // Generate check-in QR code
@@ -91,7 +95,7 @@ export async function POST(
       registration.phone,
       registration.shirtCategory,
       registration.shirtType,
-      registration.shirtSize
+      registration.shirtSize,
     );
 
     // Update registration
@@ -124,7 +128,7 @@ export async function POST(
         });
 
         return updated;
-      }
+      },
     );
 
     // ✅ GMAIL FIRST: Send confirmation email with Gmail priority
@@ -160,7 +164,7 @@ export async function POST(
     console.error("❌ Manual confirmation error:", error);
     return NextResponse.json(
       { error: "Failed to confirm payment" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -170,7 +174,7 @@ export async function POST(
  */
 export async function DELETE(
   req: NextRequest,
-  context: { params: Promise<{ id: string }> }
+  context: { params: Promise<{ id: string }> },
 ) {
   try {
     const session = await getServerSession(authOptions);
@@ -188,7 +192,7 @@ export async function DELETE(
     if (!registration) {
       return NextResponse.json(
         { error: "Registration not found" },
-        { status: 404 }
+        { status: 404 },
       );
     }
 
@@ -209,7 +213,7 @@ export async function DELETE(
     console.error("Cancel payment error:", error);
     return NextResponse.json(
       { error: "Failed to cancel payment" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

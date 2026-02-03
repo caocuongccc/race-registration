@@ -253,8 +253,13 @@ export async function POST(req: NextRequest) {
       console.log("📱 Generating offline payment QR...");
 
       try {
+        const description =
+          registration.phone +
+          " " +
+          (registration.shirtCategory ? ` ${registration.shirtCategory}` : "") +
+          (registration.shirtSize ? ` ${registration.shirtSize}` : "");
         qrPaymentUrl = await generatePaymentQR(
-          registration.id,
+          description,
           totalAmount,
           // fullName,
           // phone,

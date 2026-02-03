@@ -6,7 +6,7 @@ import QRCode from "qrcode";
  */
 async function uploadToImgBB(
   base64Image: string,
-  fileName: string
+  fileName: string,
 ): Promise<string> {
   try {
     const apiKey = process.env.IMGBB_API_KEY;
@@ -62,7 +62,7 @@ async function uploadToImgBB(
  */
 export async function generateAndUploadQR(
   data: string,
-  fileName: string
+  fileName: string,
 ): Promise<string> {
   try {
     // Generate QR code as base64
@@ -135,7 +135,7 @@ export async function generateCheckinQR(
   phone: string,
   shirtCategory: string | null,
   shirtType: string | null,
-  shirtSize: string | null
+  shirtSize: string | null,
 ): Promise<string> {
   const qrData = [
     "THÔNG TIN ĐĂNG KÝ CHECK-IN",
@@ -149,7 +149,7 @@ export async function generateCheckinQR(
     `Kích thước áo: ${shirtSize}`,
   ]
     .filter(Boolean)
-    .join(" | "); // Dùng | thay vì \n
+    .join("\r\n"); // Dùng | thay vì \n
 
   return await generateAndUploadQR(qrData, `checkin-qr-${bibNumber}`);
 }
@@ -186,7 +186,7 @@ export async function generateCheckinQR(
  */
 export async function generatePaymentQR(
   registrationId: string,
-  amount: number
+  amount: number,
 ): Promise<string> {
   const accountNo = process.env.SEPAY_ACCOUNT_NUMBER || "0123456789";
   const accountName = process.env.SEPAY_BANK_HOLDER || "NGUYEN VAN A";
@@ -225,7 +225,7 @@ function generateVietQRString(params: {
       ]
         .map(
           (item) =>
-            `${item.id}${String(item.value.length).padStart(2, "0")}${item.value}`
+            `${item.id}${String(item.value.length).padStart(2, "0")}${item.value}`,
         )
         .join(""),
     },
@@ -238,7 +238,7 @@ function generateVietQRString(params: {
       value: [{ id: "08", value: description }]
         .map(
           (item) =>
-            `${item.id}${String(item.value.length).padStart(2, "0")}${item.value}`
+            `${item.id}${String(item.value.length).padStart(2, "0")}${item.value}`,
         )
         .join(""),
     },
@@ -248,7 +248,7 @@ function generateVietQRString(params: {
   let qrString = payload
     .map(
       (item) =>
-        `${item.id}${String(item.value.length).padStart(2, "0")}${item.value}`
+        `${item.id}${String(item.value.length).padStart(2, "0")}${item.value}`,
     )
     .join("");
 

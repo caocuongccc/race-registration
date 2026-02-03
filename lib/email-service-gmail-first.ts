@@ -19,7 +19,7 @@ interface EmailOptions {
  */
 export async function sendEmailGmailFirst(
   options: EmailOptions,
-  emailConfigId?: string
+  emailConfigId?: string,
 ): Promise<{ success: boolean; provider: "gmail" | "resend"; error?: string }> {
   const { to, subject, react, attachments, fromName, fromEmail } = options;
 
@@ -142,7 +142,7 @@ export async function sendRegistrationPendingEmailGmailFirst(data: {
       fromName,
       fromEmail,
     },
-    emailConfig?.id
+    emailConfig?.id,
   );
 
   if (!result.success) {
@@ -151,7 +151,7 @@ export async function sendRegistrationPendingEmailGmailFirst(data: {
 
   // Log which provider was used
   console.log(
-    `📨 Registration email sent via ${result.provider.toUpperCase()}`
+    `📨 Registration email sent via ${result.provider.toUpperCase()}`,
   );
 }
 
@@ -185,8 +185,10 @@ export async function sendPaymentConfirmationEmailGmailFirst(data: {
       await import("@/emails/payment-confirmed");
     emailReact = PaymentConfirmedEmail({ registration, event });
     subject =
-      emailConfig?.subjectPaymentConfirmed ||
-      `Thanh toán thành công - Số BIB ${registration.bibNumber}`;
+      emailConfig?.subjectPaymentConfirmed?.replace?.(
+        "{{bibNumber}}",
+        registration.bibNumber,
+      ) || `Thanh toán thành công - Số BIB ${registration.bibNumber}`;
 
     // Attach QR checkin
     if (registration.qrCheckinUrl && emailConfig?.attachQrCheckin) {
@@ -215,7 +217,7 @@ export async function sendPaymentConfirmationEmailGmailFirst(data: {
       fromName,
       fromEmail,
     },
-    emailConfig?.id
+    emailConfig?.id,
   );
 
   if (!result.success) {
