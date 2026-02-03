@@ -21,7 +21,7 @@ async function main() {
     });
 
     console.log(
-      `✅ Updated ${eventsUpdated.count} events with requireOnlinePayment`
+      `✅ Updated ${eventsUpdated.count} events with requireOnlinePayment`,
     );
 
     // 2. Update existing email configs with new fields

@@ -22,11 +22,8 @@ export function generateSepayQR(
   orderCode: string,
   accountName?: string,
 ): string {
-  // Format nội dung: Mã đơn hàng để SePay webhook match được
-  // Ví dụ: "DH123456" hoặc "ORDER123456"
   const description = `DH ${orderCode}`;
 
-  // Build QR URL
   const params = new URLSearchParams({
     acc: accountNumber,
     bank: bankCode,
@@ -34,113 +31,49 @@ export function generateSepayQR(
     des: description,
   });
 
-  // Optional: Add account name
   if (accountName) {
     params.append("accountName", accountName);
   }
 
-  // Optional: Template (compact, print, etc.)
   params.append("template", "compact");
 
   return `https://qr.sepay.vn/img?${params.toString()}`;
 }
 
 /**
- * Parse webhook data from SePay
- * Webhook sẽ chứa thông tin giao dịch ngân hàng
+ * Get bank account info
+ * Priority:
+ * 1. Event-specific account (từ database)
+ * 2. Default account (từ env)
  */
-export interface SepayWebhookData {
-  id: number;
-  gateway: string; // Tên ngân hàng: VCB, VPBank, BIDV...
-  transactionDate: string; // "2024-01-07 14:02:37"
-  accountNumber: string;
-  subAccount: string | null;
-  transferType: string; // "in" hoặc "out"
-  transferAmount: number;
-  accumulated: number;
-  code: string; // Mã đơn hàng từ nội dung CK
-  content: string; // Nội dung chuyển khoản đầy đủ
-  description: string;
-  bankBrandName: string;
-  bankAbbreviation: string;
-  virtualAccount: string | null;
-  virtualAccountName: string | null;
-  corresponsiveName: string | null;
-  corresponsiveAccount: string | null;
-  corresponsiveBankId: string | null;
-  corresponsiveBankName: string | null;
-}
-
-/**
- * Parse and extract order code from webhook
- */
-export function parseSepayWebhook(webhookData: any): {
-  orderCode: string | null;
-  amount: number;
-  transactionId: string;
-  transactionDate: string;
-  bankName: string;
-  content: string;
-} {
-  // Extract order code from 'code' field hoặc 'content'
-  let orderCode = webhookData.code || null;
-
-  // Nếu không có code, parse từ content
-  if (!orderCode && webhookData.content) {
-    // Match pattern: "DH 123456" hoặc "ORDER123456"
-    const match = webhookData.content.match(/DH\s*(\w+)|ORDER\s*(\w+)/i);
-    if (match) {
-      orderCode = match[1] || match[2];
-    }
-  }
-
-  return {
-    orderCode,
-    amount: parseInt(webhookData.transferAmount) || 0,
-    transactionId: webhookData.id?.toString() || `sepay_${Date.now()}`,
-    transactionDate: webhookData.transactionDate || new Date().toISOString(),
-    bankName: webhookData.gateway || webhookData.bankAbbreviation || "Unknown",
-    content: webhookData.content || "",
-  };
-}
-
-/**
- * Verify webhook authenticity (if SePay provides signature)
- * Hiện tại SePay webhook không có signature verification
- * Bạn nên whitelist IP của SePay
- */
-export function verifySepayWebhook(webhookData: any): boolean {
-  // Check required fields
-  if (!webhookData.id || !webhookData.transferAmount) {
-    return false;
-  }
-
-  // Check transfer type is "in" (tiền vào)
-  if (webhookData.transferType !== "in") {
-    return false;
-  }
-
-  // Optional: Check webhook từ IP whitelist
-  // SePay IPs: Cần hỏi support để lấy danh sách IP
-
-  return true;
-}
-
-/**
- * Get account info from env
- */
-export function getSepayAccountInfo(): {
+export function getBankAccountInfo(
+  eventBankAccount?: {
+    accountNumber: string;
+    bankCode: string;
+    accountName: string;
+  } | null,
+): {
   accountNumber: string;
   bankCode: string;
   accountName: string;
 } {
+  // Use event-specific account if provided
+  if (eventBankAccount?.accountNumber && eventBankAccount?.bankCode) {
+    return {
+      accountNumber: eventBankAccount.accountNumber,
+      bankCode: eventBankAccount.bankCode,
+      accountName: eventBankAccount.accountName || "",
+    };
+  }
+
+  // Fallback to default account from env
   const accountNumber = process.env.SEPAY_ACCOUNT_NUMBER;
   const bankCode = process.env.SEPAY_BANK_CODE;
   const accountName = process.env.SEPAY_ACCOUNT_NAME;
 
   if (!accountNumber || !bankCode) {
     throw new Error(
-      "Missing SePay config. Need SEPAY_ACCOUNT_NUMBER and SEPAY_BANK_CODE",
+      "Missing bank account config. Need SEPAY_ACCOUNT_NUMBER and SEPAY_BANK_CODE in env, or event-specific account in database",
     );
   }
 
@@ -153,10 +86,16 @@ export function getSepayAccountInfo(): {
 
 /**
  * Create payment QR for order
+ * Supports event-specific bank account
  */
 export async function createSepayPayment(
   orderCode: string,
   amount: number,
+  eventBankAccount?: {
+    accountNumber: string;
+    bankCode: string;
+    accountName: string;
+  } | null,
 ): Promise<{
   success: boolean;
   qrUrl?: string;
@@ -167,7 +106,14 @@ export async function createSepayPayment(
   error?: string;
 }> {
   try {
-    const { accountNumber, bankCode, accountName } = getSepayAccountInfo();
+    const { accountNumber, bankCode, accountName } =
+      getBankAccountInfo(eventBankAccount);
+
+    console.log("💳 Using bank account:", {
+      bank: bankCode,
+      account: accountNumber.substring(0, 4) + "****",
+      isEventSpecific: !!eventBankAccount,
+    });
 
     const qrUrl = generateSepayQR(
       accountNumber,
@@ -197,47 +143,64 @@ export async function createSepayPayment(
 }
 
 /**
- * Query transaction from SePay API (if using API plan)
- * POST https://my.sepay.vn/userapi/{bank_code}/{account_number}/transactions
- * Authorization: Bearer {token}
+ * Parse webhook data
  */
-export async function querySepayTransaction(orderCode: string) {
-  try {
-    const apiToken = process.env.SEPAY_API_TOKEN;
-    const { accountNumber, bankCode } = getSepayAccountInfo();
+export interface SepayWebhookData {
+  id: number;
+  gateway: string;
+  transactionDate: string;
+  accountNumber: string;
+  subAccount: string | null;
+  transferType: string;
+  transferAmount: number;
+  accumulated: number;
+  code: string;
+  content: string;
+  description: string;
+  bankBrandName: string;
+  bankAbbreviation: string;
+}
 
-    if (!apiToken) {
-      throw new Error("SEPAY_API_TOKEN not configured");
+export function parseSepayWebhook(webhookData: any): {
+  orderCode: string | null;
+  amount: number;
+  transactionId: string;
+  transactionDate: string;
+  bankName: string;
+  content: string;
+  accountNumber: string; // Account nhận tiền
+} {
+  let orderCode = webhookData.code || null;
+
+  if (!orderCode && webhookData.content) {
+    const match = webhookData.content.match(/DH\s*(\w+)|ORDER\s*(\w+)/i);
+    if (match) {
+      orderCode = match[1] || match[2];
     }
-
-    const response = await fetch(
-      `https://my.sepay.vn/userapi/${bankCode}/${accountNumber}/transactions`,
-      {
-        method: "GET",
-        headers: {
-          Authorization: `Bearer ${apiToken}`,
-          "Content-Type": "application/json",
-        },
-      },
-    );
-
-    if (!response.ok) {
-      throw new Error(`API error: ${response.status}`);
-    }
-
-    const data = await response.json();
-
-    // Find transaction with matching order code
-    const transaction = data.transactions?.find(
-      (t: any) =>
-        t.code === orderCode ||
-        t.content?.includes(orderCode) ||
-        t.content?.includes(`DH ${orderCode}`),
-    );
-
-    return transaction || null;
-  } catch (error) {
-    console.error("❌ Query transaction error:", error);
-    return null;
   }
+
+  return {
+    orderCode,
+    amount: parseInt(webhookData.transferAmount) || 0,
+    transactionId: webhookData.id?.toString() || `sepay_${Date.now()}`,
+    transactionDate: webhookData.transactionDate || new Date().toISOString(),
+    bankName: webhookData.gateway || webhookData.bankAbbreviation || "Unknown",
+    content: webhookData.content || "",
+    accountNumber: webhookData.accountNumber || "", // ✅ Account nhận tiền
+  };
+}
+
+/**
+ * Verify webhook authenticity
+ */
+export function verifySepayWebhook(webhookData: any): boolean {
+  if (!webhookData.id || !webhookData.transferAmount) {
+    return false;
+  }
+
+  if (webhookData.transferType !== "in") {
+    return false;
+  }
+
+  return true;
 }

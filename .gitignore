@@ -45,3 +45,4 @@ next.config.ts
 prisma/seed-huong-thuy.ts
 prisma/seed.ts
 prisma/seed.ts
+/*.sql

@@ -10,11 +10,14 @@ interface SelectProps extends SelectHTMLAttributes<HTMLSelectElement> {
 export const Select = forwardRef<HTMLSelectElement, SelectProps>(
   ({ className, label, error, id, children, ...props }, ref) => {
     const selectId = id || label?.toLowerCase().replace(/\s+/g, "-");
-    
+
     return (
       <div className="w-full">
         {label && (
-          <label htmlFor={selectId} className="block text-sm font-medium text-gray-700 mb-1">
+          <label
+            htmlFor={selectId}
+            className="block text-sm font-medium text-gray-700 mb-1"
+          >
             {label}
             {props.required && <span className="text-red-500 ml-1">*</span>}
           </label>
@@ -27,18 +30,16 @@ export const Select = forwardRef<HTMLSelectElement, SelectProps>(
             "focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent",
             "disabled:cursor-not-allowed disabled:opacity-50",
             error && "border-red-500 focus:ring-red-500",
-            className
+            className,
           )}
           {...props}
         >
           {children}
         </select>
-        {error && (
-          <p className="mt-1 text-sm text-red-600">{error}</p>
-        )}
+        {error && <p className="mt-1 text-sm text-red-600">{error}</p>}
       </div>
     );
-  }
+  },
 );
 
 Select.displayName = "Select";

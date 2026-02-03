@@ -8,17 +8,18 @@ datasource db {
 }
 
 model User {
-  id            String         @id @default(cuid())
-  email         String         @unique
-  password      String
-  name          String?
-  role          UserRole       @default(ADMIN)
-  createdAt     DateTime       @default(now())
-  updatedAt     DateTime       @updatedAt
-  eventUsers    EventUser[]
-  events        Event[]
-  importBatches ImportBatch[]
-  registrations Registration[]
+  id                 String         @id @default(cuid())
+  email              String         @unique
+  password           String
+  name               String?
+  role               UserRole       @default(ADMIN)
+  createdAt          DateTime       @default(now())
+  updatedAt          DateTime       @updatedAt
+  eventUsers         EventUser[]
+  events             Event[]
+  importBatches      ImportBatch[]
+  registrations      Registration[]
+  racePacksCollected Registration[] @relation("RacePackCollector")
 
   @@map("users")
 }
@@ -51,10 +52,10 @@ model Event {
   hasShirt             Boolean        @default(false)
   requireOnlinePayment Boolean        @default(true)
   sendBibImmediately   Boolean        @default(true)
-  bankName             String?
-  bankAccount          String?
-  bankHolder           String?
-  bankCode             String?
+  bankName             String?        @db.Text
+  bankAccount          String?        @db.Text
+  bankHolder           String?        @db.Text
+  bankCode             String?        @db.Text
   createdById          String
   createdAt            DateTime       @default(now())
   updatedAt            DateTime       @updatedAt
@@ -155,13 +156,27 @@ model EventShirt {
   @@map("event_shirts")
 }
 
+model WebhookLog {
+  id           String   @id @default(cuid())
+  provider     String // "sepay", "momo", "vnpay"...
+  event        String // "payment", "refund"...
+  payload      String   @db.Text // JSON string
+  status       String // "SUCCESS", "FAILED"
+  errorMessage String?  @db.Text
+  createdAt    DateTime @default(now())
+
+  @@index([provider, createdAt])
+  @@index([status])
+  @@map("webhook_logs")
+}
+
 model Registration {
-  id         String  @id @default(cuid())
-  eventId    String
-  distanceId String
-  shirtId    String?
-  fullName   String
-  bibName    String? // NEW: Name to show on BIB
+  id                    String              @id @default(cuid())
+  eventId               String
+  distanceId            String
+  shirtId               String?
+  fullName              String
+  bibName               String? // NEW: Name to show on BIB
   email                 String
   phone                 String
   dob                   DateTime
@@ -194,6 +209,12 @@ model Registration {
   registrationSource    RegistrationSource? @default(ONLINE)
   importBatchId         String?
   distanceGoalId        String?
+  // ✅ THÊM mới
+  racePackCollected     Boolean             @default(false)
+  racePackCollectedAt   DateTime?
+  racePackCollectedBy   String?
+  racePackPhoto         String?
+  racePackNotes         String?
   emailLogs             EmailLog[]
   payments              Payment[]
   distanceGoal          DistanceGoal?       @relation(fields: [distanceGoalId], references: [id])
@@ -203,6 +224,7 @@ model Registration {
   shirt                 EventShirt?         @relation(fields: [shirtId], references: [id])
   user                  User?               @relation(fields: [userId], references: [id])
   shirtOrders           ShirtOrder[]
+  collectedBy           User?               @relation("RacePackCollector", fields: [racePackCollectedBy], references: [id])
 
   @@index([importBatchId])
   @@index([eventId, paymentStatus])

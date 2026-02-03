@@ -196,10 +196,26 @@ export async function POST(req: NextRequest) {
       // SEPAY QR PAYMENT FLOW
       // ============================================
       console.log("📱 Creating SePay QR payment...");
+      // ============================================
+      // CÁCH 1: Lấy bank info từ Event fields
+      // ============================================
+      const eventBankAccount =
+        event.bankAccount && event.bankCode
+          ? {
+              accountNumber: event.bankAccount,
+              bankCode: event.bankCode,
+              accountName: event.bankHolder || "",
+            }
+          : null;
 
+      console.log("💳 Bank account:", {
+        isEventSpecific: !!eventBankAccount,
+        bank: eventBankAccount?.bankCode || "DEFAULT",
+      });
       const sepayResult = await createSepayPayment(
         registration.id, // Use registration ID as order code
         totalAmount,
+        eventBankAccount,
       );
 
       if (sepayResult.success && sepayResult.qrUrl) {

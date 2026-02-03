@@ -71,8 +71,24 @@ async function processPaymentConfirmation(
       };
     }
 
+    // ============================================
+    // VERIFY ACCOUNT NUMBER MATCHES
+    // ============================================
+    const receivedAccountNumber = webhookData.accountNumber;
+
+    // CÁCH 1: Event có fields bank account
+    const eventAccountNumber =
+      registration.event.bankAccount || process.env.SEPAY_ACCOUNT_NUMBER;
     console.log(`💰 Amount: ${amount}, Expected: ${registration.totalAmount}`);
 
+    if (receivedAccountNumber && receivedAccountNumber !== eventAccountNumber) {
+      console.warn(
+        `⚠️ Account mismatch: received ${receivedAccountNumber}, expected ${eventAccountNumber}`,
+      );
+      // Có thể chấp nhận hoặc reject tùy business logic
+      // Nếu chạy nhiều events với nhiều accounts khác nhau,
+      // cần verify đúng account
+    }
     // Verify amount (allow small difference)
     const amountDiff = Math.abs(amount - registration.totalAmount);
     if (amountDiff > 1000) {
@@ -254,16 +270,15 @@ export async function POST(req: NextRequest) {
 
     // Log to database
     try {
-      //temporarily disable logging to reduce database writes
-      // await prisma.webhookLog.create({
-      //   data: {
-      //     provider: "sepay",
-      //     event: "payment",
-      //     payload: JSON.stringify(error),
-      //     status: "FAILED",
-      //     errorMessage: (error as Error).message,
-      //   },
-      // });
+      await prisma.webhookLog.create({
+        data: {
+          provider: "sepay",
+          event: "payment",
+          payload: JSON.stringify(error),
+          status: "FAILED",
+          errorMessage: (error as Error).message,
+        },
+      });
     } catch (logError) {
       console.error("Failed to log error:", logError);
     }
