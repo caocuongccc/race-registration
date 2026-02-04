@@ -3,88 +3,118 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Html5QrcodeScanner } from "html5-qrcode";
+import { Html5Qrcode } from "html5-qrcode";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, Camera } from "lucide-react";
 import Link from "next/link";
+import { toast } from "sonner";
 
 export default function ScanPage() {
   const router = useRouter();
-  const scannerRef = useRef<Html5QrcodeScanner>();
+  const scannerRef = useRef<Html5Qrcode>();
   const [isScanning, setIsScanning] = useState(false);
+  const qrCodeRef = useRef<Html5Qrcode | null>(null);
 
   useEffect(() => {
-    // Initialize scanner
-    const scanner = new Html5QrcodeScanner(
-      "qr-reader",
-      {
-        fps: 10,
-        qrbox: { width: 250, height: 250 },
-        aspectRatio: 1.0,
-        showTorchButtonIfSupported: true,
-        showZoomSliderIfSupported: true,
-      },
-      false,
-    );
+    let isMounted = true;
 
-    scanner.render(onScanSuccess, onScanError);
-    scannerRef.current = scanner;
-    setIsScanning(true);
+    const startScanner = async () => {
+      try {
+        const html5QrCode = new Html5Qrcode("qr-reader");
+        qrCodeRef.current = html5QrCode;
+
+        const cameras = await Html5Qrcode.getCameras();
+        if (!cameras || cameras.length === 0) {
+          toast.error("Không tìm thấy camera");
+          return;
+        }
+
+        // Ưu tiên camera sau
+        const backCamera =
+          cameras.find((c) => c.label.toLowerCase().includes("back")) ||
+          cameras[cameras.length - 1];
+
+        if (!isMounted) return;
+
+        await html5QrCode.start(
+          backCamera.id,
+          {
+            fps: 10,
+            qrbox: { width: 250, height: 250 },
+            aspectRatio: 1,
+          },
+          (decodedText) => {
+            onScanSuccess(decodedText);
+            html5QrCode.stop().catch(() => {});
+          },
+          () => {},
+        );
+      } catch (err) {
+        console.error("QR start error:", err);
+        toast.error("Không thể mở camera. Vui lòng dùng Chrome/Safari." + err);
+      }
+    };
+
+    startScanner();
 
     return () => {
-      if (scannerRef.current) {
-        scannerRef.current.clear().catch(console.error);
+      isMounted = false;
+      if (qrCodeRef.current) {
+        qrCodeRef.current.stop().catch(() => {});
+        qrCodeRef.current.clear();
       }
     };
   }, []);
 
-  function onScanSuccess(decodedText: string) {
+  const onScanSuccess = async (decodedText: string) => {
     console.log("✅ QR scanned:", decodedText);
 
-    // Stop scanner
+    // 1️⃣ DỪNG CAMERA NGAY (quan trọng nhất)
     if (scannerRef.current) {
-      scannerRef.current.clear().catch(console.error);
+      try {
+        await scannerRef.current.stop();
+        await scannerRef.current.clear();
+      } catch (err) {
+        console.warn("Stop scanner error:", err);
+      }
     }
 
-    // Extract registration ID
-    let registrationId = decodedText;
+    // 2️⃣ Parse registrationId
+    let registrationId = "";
 
-    // If QR contains URL, extract ID
     try {
-      // Format 1: https://domain.com/checkin?id=xxx
-      if (decodedText.includes("?id=")) {
+      // Case 1: URL có query ?id=
+      if (decodedText.startsWith("http")) {
         const url = new URL(decodedText);
-        registrationId = url.searchParams.get("id") || "";
+
+        if (url.searchParams.get("id")) {
+          registrationId = url.searchParams.get("id")!;
+        }
+        // Case 2: /checkin/{id}
+        else if (url.pathname.includes("/checkin/")) {
+          registrationId = url.pathname.split("/checkin/")[1] || "";
+        }
       }
-      // Format 2: https://domain.com/checkin/xxx
-      else if (decodedText.includes("/checkin/")) {
-        const parts = decodedText.split("/checkin/");
-        registrationId = parts[1] || "";
-      }
-      // Format 3: Just ID
-      else if (!decodedText.includes("http")) {
-        registrationId = decodedText;
+      // Case 3: chỉ là ID
+      else {
+        registrationId = decodedText.trim();
       }
     } catch (error) {
       console.error("Parse QR error:", error);
     }
 
+    // 3️⃣ Validate ID
     if (!registrationId) {
       alert("QR code không hợp lệ");
-      // Restart scanner
-      window.location.reload();
       return;
     }
 
-    // Navigate to confirm page
-    router.push(`/mobile/confirm/${registrationId}`);
-  }
+    console.log("➡️ Registration ID:", registrationId);
 
-  function onScanError(error: string) {
-    // Ignore frequent scan errors (too noisy)
-    // console.log(error);
-  }
+    // 4️⃣ Điều hướng
+    router.replace(`/mobile/confirm/${registrationId}`);
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-blue-50 to-gray-50 p-4">
