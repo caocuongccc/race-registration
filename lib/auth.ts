@@ -12,7 +12,7 @@ export const authOptions: NextAuthOptions = {
   },
 
   jwt: {
-    encryption: false, // 👈 BẮT BUỘC TRONG NEXT.JS 16
+    encryption: true, // 👈 BẮT BUỘC TRONG NEXT.JS 16
     maxAge: 60 * 60 * 24 * 30,
   },
 
@@ -44,7 +44,7 @@ export const authOptions: NextAuthOptions = {
 
         const isPasswordValid = await compare(
           credentials.password,
-          user.password
+          user.password,
         );
 
         if (!isPasswordValid) {

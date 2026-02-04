@@ -147,6 +147,7 @@ export async function generateCheckinQR(
     `Loại áo: ${shirtCategory}`,
     `Loại áo: ${shirtType}`,
     `Kích thước áo: ${shirtSize}`,
+    `RID: ${registrationId}`,
   ]
     .filter(Boolean)
     .join("\r\n"); // Dùng | thay vì \n

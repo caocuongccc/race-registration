@@ -70,49 +70,29 @@ export default function ScanPage() {
   const onScanSuccess = async (decodedText: string) => {
     console.log("✅ QR scanned:", decodedText);
 
-    // 1️⃣ DỪNG CAMERA NGAY (quan trọng nhất)
     if (scannerRef.current) {
       try {
         await scannerRef.current.stop();
         await scannerRef.current.clear();
       } catch (err) {
-        console.warn("Stop scanner error:", err);
+        toast.warning("Stop scanner error: " + err);
       }
     }
 
-    // 2️⃣ Parse registrationId
     let registrationId = "";
 
-    try {
-      // Case 1: URL có query ?id=
-      if (decodedText.startsWith("http")) {
-        const url = new URL(decodedText);
+    const match = decodedText.match(/RID:([^\r\n]+)$/);
 
-        if (url.searchParams.get("id")) {
-          registrationId = url.searchParams.get("id")!;
-        }
-        // Case 2: /checkin/{id}
-        else if (url.pathname.includes("/checkin/")) {
-          registrationId = url.pathname.split("/checkin/")[1] || "";
-        }
-      }
-      // Case 3: chỉ là ID
-      else {
-        registrationId = decodedText.trim();
-      }
-    } catch (error) {
-      console.error("Parse QR error:", error);
+    if (match) {
+      registrationId = match[1].trim();
     }
 
-    // 3️⃣ Validate ID
     if (!registrationId) {
-      alert("QR code không hợp lệ");
+      toast.error("QR không hợp lệ (không tìm thấy Registration ID)");
       return;
     }
 
     console.log("➡️ Registration ID:", registrationId);
-
-    // 4️⃣ Điều hướng
     router.replace(`/mobile/confirm/${registrationId}`);
   };
 
