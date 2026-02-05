@@ -45,6 +45,7 @@ export default function ScanPage() {
             aspectRatio: 1,
           },
           (decodedText) => {
+            toast.success("QR code đã được quét! " + decodedText);
             onScanSuccess(decodedText);
             html5QrCode.stop().catch(() => {});
           },
