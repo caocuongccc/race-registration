@@ -146,10 +146,10 @@ export default function EventDetailPage() {
               </div>
               <div className="flex items-center gap-2">
                 <Users className="w-5 h-5 text-blue-600" />
-                <span>
+                {/* <span>
                   {distances.reduce((sum, d) => sum + d.currentParticipants, 0)}{" "}
                   người đã đăng ký
-                </span>
+                </span> */}
               </div>
             </div>
 
@@ -452,13 +452,13 @@ export default function EventDetailPage() {
                   </div>
                   <div className="flex items-center gap-2">
                     <Users className="w-4 h-4" />
-                    <span>
+                    {/* <span>
                       {distances.reduce(
                         (sum, d) => sum + d.currentParticipants,
                         0,
                       )}{" "}
                       người đã đăng ký
-                    </span>
+                    </span> */}
                   </div>
                 </div>
               </CardContent>
