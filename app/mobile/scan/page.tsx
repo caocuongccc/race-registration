@@ -83,12 +83,23 @@ export default function ScanPage() {
 
     const registrationId = match[1];
 
-    // ⛔ QUAN TRỌNG: đợi browser settle
+    // Dừng scanner trước
+    if (qrCodeRef.current) {
+      try {
+        await qrCodeRef.current.stop();
+        await qrCodeRef.current.clear();
+      } catch {}
+    }
+
+    // Tăng delay lên một chút (mobile cần nhiều thời gian hơn để release camera)
     setTimeout(() => {
       startTransition(() => {
-        router.push(`/mobile/confirm/${registrationId}`);
+        router.refresh(); // <-- thêm dòng này để tránh cache trang confirm
+        router.replace(`/mobile/confirm/${registrationId}`, {
+          scroll: false, // tránh scroll nhảy lung tung
+        });
       });
-    }, 300);
+    }, 600); // thử 400 → 600 → 800 nếu vẫn lỗi
   };
 
   return (
