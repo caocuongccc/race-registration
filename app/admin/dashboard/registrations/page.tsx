@@ -85,7 +85,7 @@ export default function RegistrationsPage() {
   const [sourceFilter, setSourceFilter] = useState("all");
 
   // ✅ OPTIMIZATION 3: Debounce search - only trigger API after 800ms of no typing
-  const debouncedSearch = useDebounce(searchInput, 800);
+  const debouncedSearch = useDebounce(searchInput, 3000);
 
   // Filters
   const [searchQuery, setSearchQuery] = useState("");
@@ -213,7 +213,7 @@ export default function RegistrationsPage() {
   const handleExport = useCallback(async () => {
     try {
       const res = await fetch(
-        `/api/admin/registrations/export?eventId=${selectedEvent}`
+        `/api/admin/registrations/export?eventId=${selectedEvent}`,
       );
       const blob = await res.blob();
       const url = window.URL.createObjectURL(blob);
@@ -240,7 +240,7 @@ export default function RegistrationsPage() {
             body: JSON.stringify({
               notes: "Xác nhận thanh toán thủ công bởi admin",
             }),
-          }
+          },
         );
 
         const result = await res.json();
@@ -257,7 +257,7 @@ export default function RegistrationsPage() {
         setConfirming(null);
       }
     },
-    [loadRegistrations]
+    [loadRegistrations],
   );
 
   // ✅ OPTIMIZATION 11: Memoize reject payment handler
@@ -268,7 +268,7 @@ export default function RegistrationsPage() {
       try {
         const res = await fetch(
           `/api/admin/registrations/${registrationId}/confirm-payment`,
-          { method: "DELETE" }
+          { method: "DELETE" },
         );
 
         const result = await res.json();
@@ -283,7 +283,7 @@ export default function RegistrationsPage() {
         toast.error("Không thể hủy đăng ký");
       }
     },
-    [loadRegistrations]
+    [loadRegistrations],
   );
 
   // ✅ OPTIMIZATION 12: Memoize status badge component
@@ -315,25 +315,25 @@ export default function RegistrationsPage() {
   // ✅ OPTIMIZATION 13: Memoize unique distances
   const uniqueDistances = useMemo(
     () => [...new Set(registrations.map((r) => r.distance.name))],
-    [registrations]
+    [registrations],
   );
 
   // ✅ OPTIMIZATION 14: Memoize stats
   const stats = useMemo(() => {
     const paidCount = registrations.filter(
-      (r) => r.paymentStatus === "PAID"
+      (r) => r.paymentStatus === "PAID",
     ).length;
     const pendingCount = registrations.filter(
-      (r) => r.paymentStatus === "PENDING"
+      (r) => r.paymentStatus === "PENDING",
     ).length;
     return { paidCount, pendingCount };
   }, [registrations]);
 
   const paidCount = filteredRegistrations.filter(
-    (r) => r.paymentStatus === "PAID"
+    (r) => r.paymentStatus === "PAID",
   ).length;
   const pendingCount = filteredRegistrations.filter(
-    (r) => r.paymentStatus === "PENDING"
+    (r) => r.paymentStatus === "PENDING",
   ).length;
 
   if (loading) {
@@ -550,7 +550,7 @@ export default function RegistrationsPage() {
                                 onClick={() =>
                                   window.open(
                                     `/registrations/${r.id}/payment`,
-                                    "_blank"
+                                    "_blank",
                                   )
                                 }
                                 placeholder="Xem chi tiết."
