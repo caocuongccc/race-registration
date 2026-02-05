@@ -34,7 +34,7 @@ export function EventDetailModal({
   onClose,
 }: EventDetailModalProps) {
   const [selectedTab, setSelectedTab] = useState<"info" | "gallery" | "shirts">(
-    "info"
+    "info",
   );
   const [selectedImageType, setSelectedImageType] = useState("GALLERY");
   const [lightboxImage, setLightboxImage] = useState<string | null>(null);
@@ -42,14 +42,14 @@ export function EventDetailModal({
   if (!isOpen) return null;
 
   const galleryImages = images.filter(
-    (img) => img.imageType === selectedImageType
+    (img) => img.imageType === selectedImageType,
   );
 
   const allShirtImages = images.filter(
     (img) =>
       img.imageType === "SHIRT_MALE" ||
       img.imageType === "SHIRT_FEMALE" ||
-      img.imageType === "SHIRT_KID"
+      img.imageType === "SHIRT_KID",
   );
 
   return (
@@ -171,14 +171,14 @@ export function EventDetailModal({
                               {formatCurrency(d.price)}
                             </span>
                           </div>
-                          <div className="text-xs text-gray-600 flex justify-between">
+                          {/* <div className="text-xs text-gray-600 flex justify-between">
                             <span>Đã ĐK: {d.currentParticipants}</span>
                             {d.maxParticipants && (
                               <span>
                                 Còn: {d.maxParticipants - d.currentParticipants}
                               </span>
                             )}
-                          </div>
+                          </div> */}
                         </div>
                       ))}
                     </div>
@@ -235,7 +235,7 @@ export function EventDetailModal({
                         {formatCurrency(
                           distances.length
                             ? Math.min(...distances.map((d) => d.price))
-                            : 0
+                            : 0,
                         )}
                       </div>
                       {event.allowRegistration ? (
