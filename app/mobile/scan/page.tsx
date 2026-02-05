@@ -1,7 +1,7 @@
 // app/mobile/scan/page.tsx
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { startTransition, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Html5Qrcode } from "html5-qrcode";
 import { Card, CardContent } from "@/components/ui/card";
@@ -68,32 +68,27 @@ export default function ScanPage() {
   }, []);
 
   const onScanSuccess = async (decodedText: string) => {
-    console.log("✅ QR scanned:", decodedText);
-
     if (scannerRef.current) {
       try {
         await scannerRef.current.stop();
         await scannerRef.current.clear();
-      } catch (err) {
-        toast.warning("Stop scanner error: " + err);
-      }
+      } catch {}
     }
 
-    let registrationId = "";
-
-    const match = decodedText.match(/RID:([^\r\n]+)$/);
-
-    if (match) {
-      registrationId = match[1].trim();
-    }
-
-    if (!registrationId) {
-      toast.error("QR không hợp lệ (không tìm thấy Registration ID)");
+    const match = decodedText.match(/RID:\s*([^\r\n]+)\s*$/);
+    if (!match) {
+      alert("QR không hợp lệ");
       return;
     }
 
-    console.log("➡️ Registration ID:", registrationId);
-    router.replace(`/mobile/confirm/${registrationId}`);
+    const registrationId = match[1];
+
+    // ⛔ QUAN TRỌNG: đợi browser settle
+    setTimeout(() => {
+      startTransition(() => {
+        router.push(`/mobile/confirm/${registrationId}`);
+      });
+    }, 300);
   };
 
   return (
