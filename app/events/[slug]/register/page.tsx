@@ -441,14 +441,14 @@ export default function RegistrationPage() {
                     <div className="text-2xl font-bold text-blue-600 mt-2">
                       {formatCurrency(distance.price)}
                     </div>
-                    {distance.maxParticipants && (
+                    {/* {distance.maxParticipants && (
                       <div className="text-xs text-gray-500 mt-2">
                         Còn{" "}
                         {distance.maxParticipants -
                           distance.currentParticipants}{" "}
                         chỗ
                       </div>
-                    )}
+                    )} */}
                     {!distance.isAvailable && (
                       <div className="absolute top-2 right-2 bg-red-500 text-white text-xs px-2 py-1 rounded">
                         Hết chỗ
