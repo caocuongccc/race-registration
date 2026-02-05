@@ -67,14 +67,7 @@ export default function ScanPage() {
     };
   }, []);
 
-  const onScanSuccess = async (decodedText: string) => {
-    if (scannerRef.current) {
-      try {
-        await scannerRef.current.stop();
-        await scannerRef.current.clear();
-      } catch {}
-    }
-
+  const onScanSuccess = (decodedText: string) => {
     const match = decodedText.match(/RID:\s*([^\r\n]+)\s*$/);
     if (!match) {
       alert("QR không hợp lệ");
@@ -83,23 +76,20 @@ export default function ScanPage() {
 
     const registrationId = match[1];
 
-    // Dừng scanner trước
+    // Dừng scanner ngay lập tức
     if (qrCodeRef.current) {
-      try {
-        await qrCodeRef.current.stop();
-        await qrCodeRef.current.clear();
-      } catch {}
+      qrCodeRef.current
+        .stop()
+        .then(() => qrCodeRef.current?.clear())
+        .catch(() => {});
     }
 
-    // Tăng delay lên một chút (mobile cần nhiều thời gian hơn để release camera)
+    // Chuyển hướng mà KHÔNG chờ promise của stop()
     setTimeout(() => {
       startTransition(() => {
-        router.refresh(); // <-- thêm dòng này để tránh cache trang confirm
-        router.replace(`/mobile/confirm/${registrationId}`, {
-          scroll: false, // tránh scroll nhảy lung tung
-        });
+        router.replace(`/mobile/confirm/${registrationId}`);
       });
-    }, 600); // thử 400 → 600 → 800 nếu vẫn lỗi
+    }, 300);
   };
 
   return (
