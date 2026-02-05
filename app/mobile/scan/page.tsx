@@ -67,6 +67,7 @@ export default function ScanPage() {
     };
   }, []);
 
+  // app/mobile/scan/page.tsx
   const onScanSuccess = (decodedText: string) => {
     const match = decodedText.match(/RID:\s*([^\r\n]+)\s*$/);
     if (!match) {
@@ -76,27 +77,20 @@ export default function ScanPage() {
 
     const registrationId = match[1].trim();
 
-    // Dừng scanner NGAY LẬP TỨC, không await để tránh block
+    // 1. Dừng scanner NGAY
     if (qrCodeRef.current) {
-      qrCodeRef.current
-        .stop()
-        .catch((err) => console.warn("Stop camera error:", err))
-        .finally(() => {
-          qrCodeRef.current?.clear().catch(() => {});
-        });
+      qrCodeRef.current.stop().catch(() => {});
+      qrCodeRef.current.clear().catch(() => {});
+      qrCodeRef.current = null; // Clear reference
     }
 
-    // Delay đủ để browser release camera stream (mobile cần lâu hơn)
-    setTimeout(() => {
-      // Refresh RSC payload để tránh cache/hydration stale
-      router.refresh();
+    // 2. Show loading state
+    toast.loading("Đang tải thông tin...");
 
-      startTransition(() => {
-        router.replace(`/mobile/confirm/${registrationId}`, {
-          scroll: false,
-        });
-      });
-    }, 800); // Tăng lên 800-1000ms nếu vẫn lỗi
+    // 3. Delay navigation để đảm bảo cleanup hoàn tất
+    setTimeout(() => {
+      router.push(`/mobile/confirm/${registrationId}`);
+    }, 800); // Giảm xuống 500ms
   };
 
   return (
