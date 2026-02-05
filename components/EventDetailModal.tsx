@@ -171,14 +171,6 @@ export function EventDetailModal({
                               {formatCurrency(d.price)}
                             </span>
                           </div>
-                          {/* <div className="text-xs text-gray-600 flex justify-between">
-                            <span>Đã ĐK: {d.currentParticipants}</span>
-                            {d.maxParticipants && (
-                              <span>
-                                Còn: {d.maxParticipants - d.currentParticipants}
-                              </span>
-                            )}
-                          </div> */}
                         </div>
                       ))}
                     </div>
@@ -356,10 +348,10 @@ export function EventDetailModal({
 
           {/* FOOTER */}
           <div className="border-t p-4 flex justify-between items-center">
-            <span className="text-sm text-gray-600">
+            {/* <span className="text-sm text-gray-600">
               {distances.reduce((s, d) => s + d.currentParticipants, 0)} người
               đã đăng ký
-            </span>
+            </span> */}
 
             <div className="flex gap-2">
               <Button variant="outline" onClick={onClose} size="sm">
