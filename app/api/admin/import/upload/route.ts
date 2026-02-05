@@ -1,4 +1,4 @@
-// app/api/admin/import/upload/route.ts
+// app/api/admin/import/upload/route.ts - FIXED SHIRT FEE CALCULATION
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
@@ -7,16 +7,15 @@ import * as XLSX from "xlsx";
 
 // Helper: Parse date from DD/MM/YYYY format
 function parseDate(dateStr: string): Date | null {
-  console.log("Parsing date:", dateStr);
   if (!dateStr) return null;
 
   const parts = dateStr.trim().split("/");
   if (parts.length !== 3) return null;
-  console.log("Date parts:", parts);
+
   const day = parseInt(parts[0]);
   const month = parseInt(parts[1]) - 1; // Month is 0-indexed
   const year = parseInt(parts[2]);
-  console.log("Parsed date:", day, month, year);
+
   if (isNaN(day) || isNaN(month) || isNaN(year)) return null;
 
   return new Date(year, month, day);
@@ -152,8 +151,6 @@ export async function POST(req: NextRequest) {
           .map((f) => f.label);
 
         if (missingFields.length > 0) {
-          console.log("Processing row:", rowNum);
-          console.log("Row data:", row);
           throw new Error(
             `Thiếu thông tin bắt buộc: ${missingFields.join(", ")}`,
           );
@@ -179,43 +176,72 @@ export async function POST(req: NextRequest) {
           throw new Error(`Không tìm thấy cự ly: ${row["Cự ly"]}`);
         }
 
-        // Parse shirt info (optional)
+        // ✅ IMPROVED SHIRT HANDLING - Calculate fee correctly
         let shirtId = null;
         let shirtCategory = null;
         let shirtType = null;
         let shirtSize = null;
         let shirtFee = 0;
 
-        if (row["Loại áo (Nam/Nữ/Trẻ em)"]) {
-          shirtCategory = parseShirtCategory(row["Loại áo (Nam/Nữ/Trẻ em)"]);
-          shirtType = parseShirtType(row["Kiểu áo (Có tay/3 lỗ)"]);
+        // Check if shirt columns are filled
+        const hasShirtCategory = row["Loại áo"];
+        const hasShirtType = row["Kiểu áo"];
+        const hasShirtSize = row["Size áo"];
+
+        if (hasShirtCategory && hasShirtType && hasShirtSize) {
+          // Parse shirt info
+          shirtCategory = parseShirtCategory(row["Loại áo"]);
+          shirtType = parseShirtType(row["Kiểu áo"]);
           shirtSize = row["Size áo"]?.toString().toUpperCase().trim();
 
-          if (shirtCategory && shirtType && shirtSize) {
-            const shirt = event.shirts.find(
-              (s) =>
-                s.category === shirtCategory &&
-                s.type === shirtType &&
-                s.size === shirtSize,
+          if (!shirtCategory || !shirtType || !shirtSize) {
+            throw new Error(
+              "Thông tin áo không hợp lệ. Vui lòng chọn đúng từ dropdown.",
             );
-
-            if (shirt) {
-              shirtId = shirt.id;
-              shirtFee = shirt.price;
-            } else {
-              console.warn(
-                `Không tìm thấy áo: ${shirtCategory} ${shirtType} ${shirtSize}`,
-              );
-            }
           }
+
+          // Find matching shirt in event
+          const shirt = event.shirts.find(
+            (s) =>
+              s.category === shirtCategory &&
+              s.type === shirtType &&
+              s.size === shirtSize &&
+              s.isAvailable,
+          );
+
+          if (!shirt) {
+            throw new Error(
+              `Không tìm thấy áo: ${shirtCategory} ${shirtType} ${shirtSize} trong sự kiện. Hoặc áo đã hết hàng.`,
+            );
+          }
+
+          // Check stock
+          const remainingStock = shirt.stockQuantity - shirt.soldQuantity;
+          if (remainingStock <= 0) {
+            throw new Error(
+              `Áo ${shirtCategory} ${shirtType} ${shirtSize} đã hết hàng`,
+            );
+          }
+
+          shirtId = shirt.id;
+          shirtFee = shirt.price;
+        } else if (hasShirtCategory || hasShirtType || hasShirtSize) {
+          // Partial shirt info - error
+          throw new Error(
+            "Nếu chọn áo, phải điền đầy đủ: Loại áo, Kiểu áo, Size áo. Hoặc để trống cả 3 nếu không mua áo.",
+          );
         }
 
         // BIB number (optional - if provided in Excel)
-        const providedBibNumber = row["Số BIB (tùy chọn)"]?.toString().trim();
+        const providedBibNumber = row["Số BIB"]?.toString().trim();
 
-        // Calculate total amount
+        // ✅ CALCULATE TOTAL AMOUNT CORRECTLY
         const raceFee = distance.price;
         const totalAmount = raceFee + shirtFee;
+
+        console.log(
+          `Row ${rowNum}: raceFee=${raceFee}, shirtFee=${shirtFee}, total=${totalAmount}`,
+        );
 
         // Create registration
         await prisma.registration.create({
@@ -233,6 +259,12 @@ export async function POST(req: NextRequest) {
             gender,
             idCard: row["CCCD"]?.toString().trim() || null,
             address: row["Địa chỉ"]?.toString().trim() || null,
+            city: row["Thành phố"]?.toString().trim() || null,
+            emergencyContactName:
+              row["Người liên hệ khẩn cấp"]?.toString().trim() || null,
+            emergencyContactPhone:
+              row["SĐT khẩn cấp"]?.toString().trim() || null,
+            bloodType: row["Nhóm máu"]?.toString().trim() || null,
 
             shirtCategory,
             shirtType,
@@ -258,7 +290,7 @@ export async function POST(req: NextRequest) {
           },
         });
 
-        // Update shirt sold quantity
+        // ✅ Update shirt sold quantity if shirt was selected
         if (shirtId) {
           await prisma.eventShirt.update({
             where: { id: shirtId },
@@ -278,7 +310,7 @@ export async function POST(req: NextRequest) {
           data: row,
           error: error.message,
         });
-        console.error(`Row ${rowNum} error:`, error.message + "\n" + error.row);
+        console.error(`Row ${rowNum} error:`, error.message);
       }
     }
 

@@ -34,6 +34,7 @@ const navigationConfig = {
 
     { name: "Thống kê", href: "/admin/dashboard/statistics", icon: BarChart3 },
     { name: "Email", href: "/admin/dashboard/emails", icon: Mail },
+    { name: "Email Logs", href: "/admin/dashboard/email-logs", icon: Mail },
     { name: "Upload Excel", href: "/admin/dashboard/import", icon: Upload },
   ],
   ORGANIZER: [

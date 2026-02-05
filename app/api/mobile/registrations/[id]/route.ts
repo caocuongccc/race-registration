@@ -1,4 +1,4 @@
-// app/api/mobile/registrations/[id]/route.ts
+// app/api/mobile/registrations/[id]/route.ts - FIXED VERSION
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { prisma } from "@/lib/prisma";
@@ -18,10 +18,15 @@ export async function GET(
     if (!session?.user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
+
     const registration = await prisma.registration.findUnique({
       where: { id: params.id },
       include: {
-        distance: true,
+        distance: {
+          select: {
+            name: true,
+          },
+        },
         event: {
           select: {
             id: true,
@@ -29,7 +34,14 @@ export async function GET(
             date: true,
           },
         },
-        shirt: true,
+        shirt: {
+          select: {
+            category: true,
+            type: true,
+            size: true,
+            price: true,
+          },
+        },
         collectedBy: {
           select: {
             name: true,
@@ -38,6 +50,7 @@ export async function GET(
         },
       },
     });
+
     if (!registration) {
       return NextResponse.json(
         { error: "Registration not found" },
