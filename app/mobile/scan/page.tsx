@@ -70,26 +70,33 @@ export default function ScanPage() {
   const onScanSuccess = (decodedText: string) => {
     const match = decodedText.match(/RID:\s*([^\r\n]+)\s*$/);
     if (!match) {
-      alert("QR không hợp lệ");
+      toast.error("QR không hợp lệ");
       return;
     }
 
-    const registrationId = match[1];
+    const registrationId = match[1].trim();
 
-    // Dừng scanner ngay lập tức
+    // Dừng scanner NGAY LẬP TỨC, không await để tránh block
     if (qrCodeRef.current) {
       qrCodeRef.current
         .stop()
-        .then(() => qrCodeRef.current?.clear())
-        .catch(() => {});
+        .catch((err) => console.warn("Stop camera error:", err))
+        .finally(() => {
+          qrCodeRef.current?.clear().catch(() => {});
+        });
     }
 
-    // Chuyển hướng mà KHÔNG chờ promise của stop()
+    // Delay đủ để browser release camera stream (mobile cần lâu hơn)
     setTimeout(() => {
+      // Refresh RSC payload để tránh cache/hydration stale
+      router.refresh();
+
       startTransition(() => {
-        router.replace(`/mobile/confirm/${registrationId}`);
+        router.replace(`/mobile/confirm/${registrationId}`, {
+          scroll: false,
+        });
       });
-    }, 300);
+    }, 800); // Tăng lên 800-1000ms nếu vẫn lỗi
   };
 
   return (

@@ -61,6 +61,7 @@ export default function ConfirmPage() {
   /* ================= FETCH DATA ================= */
 
   const fetchRegistration = useCallback(async () => {
+    toast.error("registrationId " + registrationId);
     if (!registrationId) return;
 
     try {
