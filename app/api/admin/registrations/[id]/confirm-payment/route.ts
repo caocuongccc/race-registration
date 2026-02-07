@@ -33,7 +33,42 @@ async function generateBibNumber(
     },
   });
 
-  const bibNumber = `${distance.bibPrefix}${String(paidCount + 1).padStart(3, "0")}`;
+  const basePrefix = distance.bibPrefix;
+  const MAX_PER_PREFIX = 999;
+
+  // ✅ CASE 1: Numeric prefix (17, 57) → Auto increment
+  if (/^\d+$/.test(basePrefix)) {
+    const prefixIncrement = Math.floor(paidCount / MAX_PER_PREFIX);
+    const numberInCurrentPrefix = (paidCount % MAX_PER_PREFIX) + 1;
+    const numericPrefix = parseInt(basePrefix) + prefixIncrement;
+    const finalPrefix = String(numericPrefix);
+    const bibNumber = `${finalPrefix}${String(numberInCurrentPrefix).padStart(3, "0")}`;
+
+    console.log(`📊 BIB (Numeric Prefix):
+    - Base: ${basePrefix} → Current: ${finalPrefix}
+    - Paid: ${paidCount} → BIB: ${bibNumber}
+    `);
+
+    return bibNumber;
+  }
+
+  // ✅ CASE 2: Alphanumeric prefix (5K, 10K) → Fixed range
+  if (paidCount >= MAX_PER_PREFIX) {
+    throw new Error(
+      `❌ Đã hết BIB cho cự ly ${distance.name} (prefix: ${basePrefix}). ` +
+        `Tối đa ${MAX_PER_PREFIX} VĐV. ` +
+        `Hiện tại: ${paidCount} VĐV đã thanh toán.`,
+    );
+  }
+
+  const bibNumber = `${basePrefix}${String(paidCount + 1).padStart(3, "0")}`;
+
+  console.log(`📊 BIB (Alpha Prefix):
+  - Prefix: ${basePrefix}
+  - Paid: ${paidCount}/${MAX_PER_PREFIX}
+  - BIB: ${bibNumber}
+  `);
+
   return bibNumber;
 }
 
