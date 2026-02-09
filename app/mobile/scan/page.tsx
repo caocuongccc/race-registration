@@ -1,4 +1,4 @@
-// app/mobile/scan/page.tsx - FINAL FIX
+// app/mobile/scan/page.tsx - ULTIMATE FIX
 "use client";
 
 import { useEffect, useRef, useState } from "react";
@@ -7,29 +7,24 @@ import { Html5Qrcode } from "html5-qrcode";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, Camera, Loader2 } from "lucide-react";
-import Link from "next/link";
 import { toast } from "sonner";
 
 export default function ScanPage() {
   const router = useRouter();
   const qrCodeRef = useRef<Html5Qrcode | null>(null);
   const [isScanning, setIsScanning] = useState(false);
-  const [isProcessing, setIsProcessing] = useState(false);
-  const hasNavigatedRef = useRef(false);
+  const [isNavigating, setIsNavigating] = useState(false);
   const isMountedRef = useRef(true);
-  const cleanupTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const isCleaningUpRef = useRef(false);
 
   useEffect(() => {
     isMountedRef.current = true;
-    hasNavigatedRef.current = false;
+    isCleaningUpRef.current = false;
 
     const startScanner = async () => {
-      // Don't start if already navigated
-      if (hasNavigatedRef.current) return;
+      if (isCleaningUpRef.current) return;
 
       try {
-        setIsScanning(true);
-
         const html5QrCode = new Html5Qrcode("qr-reader");
         qrCodeRef.current = html5QrCode;
 
@@ -37,20 +32,15 @@ export default function ScanPage() {
         if (!cameras || cameras.length === 0) {
           if (isMountedRef.current) {
             toast.error("Không tìm thấy camera");
-            setIsScanning(false);
           }
           return;
         }
 
-        // Prefer back camera
         const backCamera =
           cameras.find((c) => c.label.toLowerCase().includes("back")) ||
           cameras[cameras.length - 1];
 
-        // Check again before starting
-        if (!isMountedRef.current || hasNavigatedRef.current) {
-          return;
-        }
+        if (!isMountedRef.current || isCleaningUpRef.current) return;
 
         await html5QrCode.start(
           backCamera.id,
@@ -60,19 +50,15 @@ export default function ScanPage() {
             aspectRatio: 1,
           },
           (decodedText) => {
-            // Only process if still mounted and not already processing
             if (
-              !isMountedRef.current ||
-              hasNavigatedRef.current ||
-              isProcessing
+              isMountedRef.current &&
+              !isCleaningUpRef.current &&
+              !isNavigating
             ) {
-              return;
+              handleScanSuccess(decodedText);
             }
-            handleScanSuccess(decodedText);
           },
-          () => {
-            // Error callback - do nothing
-          },
+          () => {},
         );
 
         if (isMountedRef.current) {
@@ -80,49 +66,56 @@ export default function ScanPage() {
         }
       } catch (err: any) {
         console.error("QR start error:", err);
-        if (isMountedRef.current && !hasNavigatedRef.current) {
-          toast.error("Không thể mở camera. Vui lòng thử lại.");
-          setIsScanning(false);
+        if (isMountedRef.current) {
+          toast.error("Không thể mở camera");
         }
       }
     };
 
     startScanner();
 
-    // Cleanup function
     return () => {
-      console.log("🧹 Cleanup started");
       isMountedRef.current = false;
+      isCleaningUpRef.current = true;
 
-      // Clear any pending timeouts
-      if (cleanupTimeoutRef.current) {
-        clearTimeout(cleanupTimeoutRef.current);
-      }
-
-      // Stop camera
       if (qrCodeRef.current) {
         qrCodeRef.current
           .stop()
           .then(() => {
-            console.log("✅ Camera stopped");
             qrCodeRef.current?.clear();
           })
-          .catch((err) => {
-            console.warn("⚠️ Camera cleanup warning:", err);
-          });
+          .catch(() => {});
       }
     };
   }, []);
 
-  const handleScanSuccess = (decodedText: string) => {
-    // Double check
-    if (hasNavigatedRef.current || isProcessing || !isMountedRef.current) {
-      return;
+  const cleanupAndNavigate = async (path: string) => {
+    if (isCleaningUpRef.current) return;
+
+    isCleaningUpRef.current = true;
+    setIsNavigating(true);
+
+    // Stop camera
+    if (qrCodeRef.current) {
+      try {
+        await qrCodeRef.current.stop();
+        qrCodeRef.current.clear();
+      } catch (err) {
+        console.warn("Camera cleanup warning:", err);
+      }
     }
 
-    console.log("📱 QR Scanned:", decodedText);
+    // Wait for cleanup then navigate
+    setTimeout(() => {
+      if (isMountedRef.current) {
+        window.location.href = path; // Force full page reload
+      }
+    }, 300);
+  };
 
-    // Extract registration ID
+  const handleScanSuccess = (decodedText: string) => {
+    if (isNavigating || isCleaningUpRef.current) return;
+
     const match = decodedText.match(/RID:\s*([^\r\n]+)\s*$/);
     if (!match) {
       toast.error("QR không hợp lệ");
@@ -130,65 +123,15 @@ export default function ScanPage() {
     }
 
     const registrationId = match[1].trim();
+    toast.loading("Đang tải...", { id: "scan" });
 
-    // Lock immediately
-    hasNavigatedRef.current = true;
-    setIsProcessing(true);
-
-    console.log("🔒 Navigation locked");
-
-    // Stop camera IMMEDIATELY
-    const stopCamera = async () => {
-      if (qrCodeRef.current) {
-        try {
-          await qrCodeRef.current.stop();
-          qrCodeRef.current.clear();
-          console.log("✅ Camera stopped successfully");
-        } catch (err) {
-          console.warn("⚠️ Camera stop warning:", err);
-        }
-      }
-    };
-
-    stopCamera();
-
-    // Show loading
-    toast.loading("Đang tải thông tin...", { id: "scan-loading" });
-
-    // Navigate after delay to ensure cleanup
-    cleanupTimeoutRef.current = setTimeout(() => {
-      if (!isMountedRef.current) return;
-
-      console.log("🚀 Navigating to confirm page");
-      toast.dismiss("scan-loading");
-
-      // Use replace instead of push to prevent back button issues
-      router.replace(`/mobile/confirm/${registrationId}`);
-    }, 800); // Increased delay for better reliability
+    cleanupAndNavigate(`/mobile/confirm/${registrationId}`);
   };
 
-  const handleBackButton = () => {
-    hasNavigatedRef.current = true;
-    setIsProcessing(true);
+  const handleBack = () => {
+    if (isNavigating || isCleaningUpRef.current) return;
 
-    // Stop camera before navigating back
-    if (qrCodeRef.current) {
-      qrCodeRef.current
-        .stop()
-        .then(() => {
-          qrCodeRef.current?.clear();
-          // Small delay before navigation
-          setTimeout(() => {
-            router.replace("/mobile");
-          }, 300);
-        })
-        .catch(() => {
-          // Navigate anyway even if stop fails
-          router.replace("/mobile");
-        });
-    } else {
-      router.replace("/mobile");
-    }
+    cleanupAndNavigate("/mobile");
   };
 
   return (
@@ -199,8 +142,8 @@ export default function ScanPage() {
           <Button
             variant="outline"
             size="sm"
-            onClick={handleBackButton}
-            disabled={isProcessing}
+            onClick={handleBack}
+            disabled={isNavigating}
           >
             <ArrowLeft className="w-4 h-4 mr-1" />
             Quay lại
@@ -211,11 +154,10 @@ export default function ScanPage() {
         {/* Scanner Card */}
         <Card className="shadow-lg">
           <CardContent className="p-6">
-            {isProcessing ? (
+            {isNavigating ? (
               <div className="text-center py-12">
                 <Loader2 className="w-12 h-12 animate-spin text-blue-600 mx-auto mb-4" />
                 <p className="text-gray-600 font-medium">Đang xử lý...</p>
-                <p className="text-sm text-gray-500 mt-2">Vui lòng đợi...</p>
               </div>
             ) : (
               <>
@@ -245,14 +187,7 @@ export default function ScanPage() {
                       <li>• Hướng QR code vào khung camera</li>
                       <li>• Giữ điện thoại thẳng và ổn định</li>
                       <li>• Đảm bảo đủ ánh sáng</li>
-                      <li>• QR code nằm trong khung vuông</li>
                     </ul>
-                  </div>
-
-                  <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
-                    <p className="text-sm text-yellow-800">
-                      ⚠️ QR code nằm trong email xác nhận thanh toán của runner
-                    </p>
                   </div>
                 </div>
               </>
@@ -261,23 +196,15 @@ export default function ScanPage() {
         </Card>
 
         {/* Manual Entry Link */}
-        {!isProcessing && (
+        {!isNavigating && (
           <div className="mt-4 text-center">
-            <Link href="/mobile/search">
-              <Button
-                variant="ghost"
-                className="text-blue-600"
-                onClick={() => {
-                  // Mark as navigated to prevent scan processing
-                  hasNavigatedRef.current = true;
-                  if (qrCodeRef.current) {
-                    qrCodeRef.current.stop().catch(() => {});
-                  }
-                }}
-              >
-                Hoặc tìm kiếm thủ công →
-              </Button>
-            </Link>
+            <Button
+              variant="ghost"
+              className="text-blue-600"
+              onClick={() => cleanupAndNavigate("/mobile/search")}
+            >
+              Hoặc tìm kiếm thủ công →
+            </Button>
           </div>
         )}
       </div>
