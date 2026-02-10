@@ -93,21 +93,16 @@ export default function RegistrationPage() {
     if (params?.slug) {
       setEventSlug(params.slug as string);
     }
-    console.log("Params changed:", params);
   }, [params]);
 
   useEffect(() => {
-    console.log("Event slug changed:", eventSlug);
     if (!eventSlug) return;
 
     async function loadEvent() {
       try {
         const res = await fetch(`/api/events/${eventSlug}`);
-        console.log("Fetching event data for slug:", eventSlug);
-        console.log("Fetching event data for slug:", res);
         if (!res.ok) throw new Error("Không tìm thấy sự kiện");
         const data = await res.json();
-        console.log("Event data:", data);
         // ✅ Check if registration is allowed
         if (!data.event.allowRegistration) {
           toast.error("Sự kiện này chưa mở đăng ký");
@@ -674,7 +669,7 @@ export default function RegistrationPage() {
                     Loại áo
                   </label>
                   <div className="grid grid-cols-4 gap-3">
-                    {["", "MALE", "FEMALE"].map((cat) => (
+                    {["", "MALE", "FEMALE", "KID"].map((cat) => (
                       <label key={cat} className="relative">
                         <input
                           type="radio"
@@ -693,7 +688,9 @@ export default function RegistrationPage() {
                               ? "Không mua"
                               : cat === "MALE"
                                 ? "Áo Nam"
-                                : "Áo Nữ"}
+                                : cat === "FEMALE"
+                                  ? "Áo Nữ"
+                                  : "Áo Trẻ Em"}
                           </div>
                         </div>
                       </label>

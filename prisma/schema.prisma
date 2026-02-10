@@ -425,6 +425,12 @@ enum ShirtSize {
   XL
   XXL
   XXXL
+  KID_5
+  KID_7
+  KID_9
+  KID_11
+  KID_13
+  KID_15
 }
 
 enum RegistrationSource {

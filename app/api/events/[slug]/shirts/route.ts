@@ -7,7 +7,7 @@ import { prisma } from "@/lib/prisma";
 
 export async function GET(
   req: NextRequest,
-  context: { params: Promise<{ slug: string }> }
+  context: { params: Promise<{ slug: string }> },
 ) {
   try {
     const slug = (await context.params).slug;
@@ -38,13 +38,12 @@ export async function GET(
         isAvailable: true,
       },
     });
-
     return NextResponse.json({ shirts });
   } catch (error) {
     console.error("Error fetching shirts:", error);
     return NextResponse.json(
       { error: "Failed to fetch shirts" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
