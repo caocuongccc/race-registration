@@ -108,6 +108,9 @@ export async function POST(req: NextRequest) {
     // Convert to JSON
     const rows: any[] = XLSX.utils.sheet_to_json(sheet);
 
+    // ✅ Get first email
+    const firstEmail = rows[0]?.["Email"]?.toString().trim();
+
     if (rows.length === 0) {
       return NextResponse.json(
         { error: "File Excel không có dữ liệu" },
@@ -123,6 +126,7 @@ export async function POST(req: NextRequest) {
         uploadedBy: session.user.id,
         totalRows: rows.length,
         status: "PROCESSING",
+        contactEmail: firstEmail, // ✅ NEW
       },
     });
 
@@ -130,6 +134,7 @@ export async function POST(req: NextRequest) {
     const errors: any[] = [];
     let successCount = 0;
     let failedCount = 0;
+    let totalShirts = 0; // ✅ NEW
 
     for (let i = 0; i < rows.length; i++) {
       const row = rows[i];
@@ -292,6 +297,9 @@ export async function POST(req: NextRequest) {
 
         // ✅ Update shirt sold quantity if shirt was selected
         if (shirtId) {
+          // ✅ Count shirts
+          totalShirts++;
+
           await prisma.eventShirt.update({
             where: { id: shirtId },
             data: {
@@ -328,6 +336,7 @@ export async function POST(req: NextRequest) {
         status: finalStatus,
         successCount,
         failedCount,
+        totalShirts, // ✅ NEW
         errorLog: errors.length > 0 ? errors : null,
         completedAt: new Date(),
       },
@@ -341,6 +350,8 @@ export async function POST(req: NextRequest) {
         successCount,
         failedCount,
         status: finalStatus,
+        contactEmail: firstEmail, // ✅ NEW
+        totalShirts, // ✅ NEW
       },
       errors: errors.slice(0, 10), // Return first 10 errors for display
     });

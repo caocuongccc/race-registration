@@ -304,17 +304,25 @@ model EmailLog {
 }
 
 model ImportBatch {
-  id             String         @id @default(dbgenerated("(gen_random_uuid())::text"))
-  eventId        String
-  fileName       String
-  uploadedBy     String
-  totalRows      Int
-  successCount   Int            @default(0)
-  failedCount    Int            @default(0)
-  status         ImportStatus   @default(PROCESSING)
-  errorLog       Json?
-  createdAt      DateTime       @default(now())
-  completedAt    DateTime?
+  id           String       @id @default(dbgenerated("(gen_random_uuid())::text"))
+  eventId      String
+  fileName     String
+  uploadedBy   String
+  totalRows    Int
+  successCount Int          @default(0)
+  failedCount  Int          @default(0)
+  status       ImportStatus @default(PROCESSING)
+  errorLog     Json?
+  createdAt    DateTime     @default(now())
+  completedAt  DateTime?
+
+  // ✅ NEW FIELDS
+  contactEmail  String? // Email đầu tiên trong batch
+  bibRangeStart String? // BIB đầu tiên (17001)
+  bibRangeEnd   String? // BIB cuối (17100)
+  totalShirts   Int     @default(0) // Tổng số áo đã đặt
+  qrBatchUrl    String? // QR code cho batch
+
   event          Event          @relation(fields: [eventId], references: [id])
   uploadedByUser User           @relation(fields: [uploadedBy], references: [id])
   registrations  Registration[]

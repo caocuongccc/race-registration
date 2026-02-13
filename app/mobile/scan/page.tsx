@@ -1,4 +1,4 @@
-// app/mobile/scan/page.tsx - ULTIMATE FIX
+// app/mobile/scan/page.tsx - UPDATED WITH BATCH QR SUPPORT
 "use client";
 
 import { useEffect, useRef, useState } from "react";
@@ -116,16 +116,52 @@ export default function ScanPage() {
   const handleScanSuccess = (decodedText: string) => {
     if (isNavigating || isCleaningUpRef.current) return;
 
-    const match = decodedText.match(/RID:\s*([^\r\n]+)\s*$/);
-    if (!match) {
-      toast.error("QR không hợp lệ");
+    console.log("📱 QR Scanned:", decodedText);
+
+    // ✅ CHECK 1: Is it a BATCH QR code?
+    try {
+      const parsed = JSON.parse(decodedText);
+
+      if (parsed.type === "batch" && parsed.batchId) {
+        console.log("📦 Batch QR detected:", parsed.batchId);
+        toast.loading("Đang tải batch...", { id: "scan" });
+        cleanupAndNavigate(`/mobile/batch/${parsed.batchId}`);
+        return;
+      }
+    } catch (e) {
+      // Not JSON, continue to check individual QR
+    }
+
+    // ✅ CHECK 2: Is it an INDIVIDUAL QR code?
+    // Format 1: "RID: <registration-id>"
+    const matchRID = decodedText.match(/RID:\s*([^\r\n]+)\s*$/);
+    if (matchRID) {
+      const registrationId = matchRID[1].trim();
+      console.log("👤 Individual QR detected:", registrationId);
+      toast.loading("Đang tải thông tin...", { id: "scan" });
+      cleanupAndNavigate(`/mobile/confirm/${registrationId}`);
       return;
     }
 
-    const registrationId = match[1].trim();
-    toast.loading("Đang tải...", { id: "scan" });
+    // ✅ CHECK 3: Is it a MULTI-LINE QR with registration ID?
+    // Format 2: Multiple lines with "BIB: xxx" and somewhere has registration ID
+    const lines = decodedText.split("\n");
+    for (const line of lines) {
+      if (line.includes("Registration ID:") || line.includes("ID:")) {
+        const idMatch = line.match(/[a-zA-Z0-9-_]{20,}/); // UUID pattern
+        if (idMatch) {
+          const registrationId = idMatch[0];
+          console.log("👤 Multi-line QR detected:", registrationId);
+          toast.loading("Đang tải thông tin...", { id: "scan" });
+          cleanupAndNavigate(`/mobile/confirm/${registrationId}`);
+          return;
+        }
+      }
+    }
 
-    cleanupAndNavigate(`/mobile/confirm/${registrationId}`);
+    // ❌ Invalid QR
+    toast.error("QR không hợp lệ");
+    console.warn("Invalid QR format:", decodedText);
   };
 
   const handleBack = () => {
@@ -187,6 +223,22 @@ export default function ScanPage() {
                       <li>• Hướng QR code vào khung camera</li>
                       <li>• Giữ điện thoại thẳng và ổn định</li>
                       <li>• Đảm bảo đủ ánh sáng</li>
+                    </ul>
+                  </div>
+
+                  {/* QR Type Info */}
+                  <div className="bg-green-50 border border-green-200 rounded-lg p-3">
+                    <p className="text-sm text-green-800 font-medium mb-2">
+                      ✅ Hỗ trợ 2 loại QR:
+                    </p>
+                    <ul className="space-y-1 text-xs text-green-700">
+                      <li>
+                        • <strong>QR cá nhân:</strong> Check-in 1 VĐV
+                      </li>
+                      <li>
+                        • <strong>QR đăng ký theo nhóm:</strong> Xem danh sách
+                        nhiều VĐV
+                      </li>
                     </ul>
                   </div>
                 </div>

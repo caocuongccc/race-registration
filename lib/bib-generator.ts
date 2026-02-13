@@ -14,7 +14,7 @@ import { prisma } from "@/lib/prisma";
 export async function generateBibNumber(
   eventId: string,
   bibPrefix: string,
-  distanceGoalId?: string | null
+  distanceGoalId?: string | null,
 ): Promise<string> {
   // Build where clause based on whether we have a goal
   const whereClause: any = {
@@ -156,4 +156,96 @@ export async function getBibStats(eventId: string) {
   }
 
   return Object.values(stats).sort((a, b) => a.prefix.localeCompare(b.prefix));
+}
+
+export async function generateBibNumberHybrid(
+  registrationId: string,
+  distanceId: string,
+  distanceGoalId?: string | null,
+): Promise<string> {
+  const distance = await prisma.distance.findUnique({
+    where: { id: distanceId },
+    include: {
+      distanceGoals: distanceGoalId
+        ? {
+            where: { id: distanceGoalId },
+          }
+        : false,
+    },
+  });
+
+  if (!distance) {
+    throw new Error("Distance not found");
+  }
+
+  // Determine BIB prefix (from goal or distance)
+  let basePrefix = distance.bibPrefix;
+
+  if (
+    distanceGoalId &&
+    distance.distanceGoals &&
+    distance.distanceGoals.length > 0
+  ) {
+    basePrefix = distance.distanceGoals[0].bibPrefix || distance.bibPrefix;
+  }
+
+  // Count existing BIBs with this prefix
+  const whereClause: any = {
+    distanceId,
+    paymentStatus: "PAID",
+    bibNumber: {
+      not: null,
+      startsWith: basePrefix,
+    },
+  };
+
+  if (distanceGoalId) {
+    whereClause.distanceGoalId = distanceGoalId;
+  } else {
+    whereClause.distanceGoalId = null;
+  }
+
+  const paidCount = await prisma.registration.count({
+    where: whereClause,
+  });
+
+  const MAX_PER_PREFIX = 999;
+
+  // ✅ CASE 1: Numeric prefix (17, 57) → Auto increment
+  if (/^\d+$/.test(basePrefix)) {
+    const prefixIncrement = Math.floor(paidCount / MAX_PER_PREFIX);
+    const numberInCurrentPrefix = (paidCount % MAX_PER_PREFIX) + 1;
+    const numericPrefix = parseInt(basePrefix) + prefixIncrement;
+    const finalPrefix = String(numericPrefix);
+    const bibNumber = `${finalPrefix}${String(numberInCurrentPrefix).padStart(3, "0")}`;
+
+    console.log(`📊 BIB Generated (Numeric):
+    - Base: ${basePrefix}
+    - Count: ${paidCount}
+    - Increment: ${prefixIncrement}
+    - Final Prefix: ${finalPrefix}
+    - BIB: ${bibNumber}
+    `);
+
+    return bibNumber;
+  }
+
+  // ✅ CASE 2: Alphanumeric prefix (5K, 10K) → Fixed range
+  if (paidCount >= MAX_PER_PREFIX) {
+    throw new Error(
+      `❌ Đã hết BIB cho cự ly ${distance.name} (prefix: ${basePrefix}). ` +
+        `Tối đa ${MAX_PER_PREFIX} VĐV. ` +
+        `Hiện tại: ${paidCount} VĐV đã thanh toán.`,
+    );
+  }
+
+  const bibNumber = `${basePrefix}${String(paidCount + 1).padStart(3, "0")}`;
+
+  console.log(`📊 BIB Generated (Alpha):
+  - Prefix: ${basePrefix}
+  - Count: ${paidCount}/${MAX_PER_PREFIX}
+  - BIB: ${bibNumber}
+  `);
+
+  return bibNumber;
 }
