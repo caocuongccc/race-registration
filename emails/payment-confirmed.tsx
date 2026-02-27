@@ -1,14 +1,17 @@
 // emails/payment-confirmed.tsx
+// QUICK FIX: Shorter text to prevent overflow
+
 import {
-  Html,
-  Head,
   Body,
   Container,
+  Head,
+  Heading,
+  Html,
+  Preview,
   Section,
   Text,
   Img,
   Hr,
-  Button,
 } from "@react-email/components";
 
 interface PaymentConfirmedEmailProps {
@@ -29,8 +32,9 @@ export function PaymentConfirmedEmail({
 
   const formatDate = (date: Date) => {
     return new Intl.DateTimeFormat("vi-VN", {
+      weekday: "long",
       day: "2-digit",
-      month: "2-digit",
+      month: "long",
       year: "numeric",
     }).format(new Date(date));
   };
@@ -48,260 +52,199 @@ export function PaymentConfirmedEmail({
   return (
     <Html>
       <Head />
+      <Preview>
+        Thanh toán thành công - {event.name} - BIB {registration.bibNumber}
+      </Preview>
       <Body style={main}>
         <Container style={container}>
+          {/* Logo */}
           {event.logoUrl && (
-            <Img
-              src={event.logoUrl}
-              alt={event.name}
-              width="200"
-              style={logo}
-            />
+            <div style={{ textAlign: "center", marginBottom: "24px" }}>
+              <Img
+                src={event.logoUrl}
+                alt={event.name}
+                width="160"
+                style={{ maxWidth: "100%" }}
+              />
+            </div>
           )}
 
-          {/* Success Badge */}
-          <Section style={successBadge}>
+          {/* Success Header */}
+          <div style={successHeader}>
             <Text style={successIcon}>✅</Text>
-            <Text style={successTitle}>THANH TOÁN THÀNH CÔNG!</Text>
-          </Section>
+            <Heading style={h1}>Thanh toán thành công!</Heading>
+          </div>
 
-          <Text style={paragraph}>
+          {/* Greeting */}
+          <Text style={text}>
             Xin chào <strong>{registration.fullName}</strong>,
           </Text>
 
-          <Text style={paragraph}>
-            Chúc mừng! Chúng tôi đã nhận được thanh toán của bạn. Đăng ký tham
-            gia <strong>{event.name}</strong> của bạn đã được xác nhận.
+          <Text style={text}>
+            Chúng tôi đã nhận thanh toán của bạn cho{" "}
+            <strong>{event.name}</strong>.
           </Text>
 
-          {/* BIB Number Highlight */}
-          <Section style={bibBox}>
-            <Text style={bibLabel}>🏃 SỐ BIB CỦA BẠN</Text>
+          {/* BIB Number */}
+          <div style={bibBox}>
+            <Text style={bibTitle}>🎯 Số BIB</Text>
             <Text style={bibNumber}>{registration.bibNumber}</Text>
-            <Text style={bibNote}>
-              Vui lòng ghi nhớ số BIB để nhận race pack
-            </Text>
-          </Section>
+            <Text style={bibNote}>Ghi nhớ số BIB này</Text>
+          </div>
 
-          {/* Payment Details */}
-          <Section style={infoBox}>
-            <Text style={infoTitle}>💰 CHI TIẾT THANH TOÁN</Text>
+          {/* Payment Info */}
+          <div style={infoBox}>
+            <Text style={sectionTitle}>💳 Thanh toán</Text>
+            <div style={{ marginTop: "12px" }}>
+              <div style={row}>
+                <span style={label}>Số tiền:</span>
+                <span style={value}>
+                  {formatCurrency(registration.totalAmount)}
+                </span>
+              </div>
+              <div style={row}>
+                <span style={label}>Thời gian:</span>
+                <span style={value}>
+                  {formatDateTime(registration.paymentDate)}
+                </span>
+              </div>
+              <div style={row}>
+                <span style={label}>Trạng thái:</span>
+                <span
+                  style={{ ...value, color: "#16a34a", fontWeight: "bold" }}
+                >
+                  ✓ Đã thanh toán
+                </span>
+              </div>
+            </div>
+          </div>
 
-            <table style={infoTable}>
-              <tbody>
-                <tr>
-                  <td style={labelCell}>Số tiền:</td>
-                  <td style={valueCell}>
-                    <strong>{formatCurrency(registration.totalAmount)}</strong>
-                  </td>
-                </tr>
-                <tr>
-                  <td style={labelCell}>Thời gian:</td>
-                  <td style={valueCell}>
-                    {formatDateTime(registration.paymentDate)}
-                  </td>
-                </tr>
-                <tr>
-                  <td style={labelCell}>Trạng thái:</td>
-                  <td style={paidStatus}>Đã thanh toán</td>
-                </tr>
-              </tbody>
-            </table>
-          </Section>
+          {/* Event Info */}
+          <div style={eventBox}>
+            <Text style={sectionTitle}>📅 Sự kiện</Text>
+            <div style={{ marginTop: "12px" }}>
+              <div style={row}>
+                <span style={label}>Tên:</span>
+                <span style={value}>{event.name}</span>
+              </div>
+              <div style={row}>
+                <span style={label}>Ngày:</span>
+                <span style={value}>{formatDate(event.date)}</span>
+              </div>
+              <div style={row}>
+                <span style={label}>Cự ly:</span>
+                <span style={value}>{registration.distance?.name}</span>
+              </div>
+            </div>
+          </div>
 
-          {/* Registration Summary */}
-          <Section style={summaryBox}>
-            <Text style={infoTitle}>📋 THÔNG TIN ĐĂNG KÝ</Text>
+          {/* Runner Info */}
+          <div style={infoBox2}>
+            <Text style={sectionTitle}>👤 Thông tin</Text>
+            <div style={{ marginTop: "12px" }}>
+              <div style={row}>
+                <span style={label}>Họ tên:</span>
+                <span style={value}>{registration.fullName}</span>
+              </div>
+              <div style={row}>
+                <span style={label}>Email:</span>
+                <span style={value}>{registration.email}</span>
+              </div>
+              <div style={row}>
+                <span style={label}>SĐT:</span>
+                <span style={value}>{registration.phone}</span>
+              </div>
+              {registration.shirtSize && (
+                <div style={row}>
+                  <span style={label}>Áo:</span>
+                  <span style={value}>
+                    {registration.shirtCategory === "MALE" ? "Nam" : "Nữ"} -
+                    Size {registration.shirtSize}
+                  </span>
+                </div>
+              )}
+            </div>
+          </div>
 
-            <table style={infoTable}>
-              <tbody>
-                <tr>
-                  <td style={labelCell}>Họ tên:</td>
-                  <td style={valueCell}>{registration.fullName}</td>
-                </tr>
-                <tr>
-                  <td style={labelCell}>Tên trên bib:</td>
-                  <td style={valueCell}>
-                    {registration.bibName || registration.fullName}
-                  </td>
-                </tr>
-                <tr>
-                  <td style={labelCell}>Số BIB:</td>
-                  <td style={valueCell}>
-                    <strong style={{ color: "#2563eb" }}>
-                      {registration.bibNumber}
-                    </strong>
-                  </td>
-                </tr>
-                <tr>
-                  <td style={labelCell}>Cự ly:</td>
-                  <td style={valueCell}>{registration.distance?.name}</td>
-                </tr>
-                <tr>
-                  <td style={labelCell}>Email:</td>
-                  <td style={valueCell}>{registration.email}</td>
-                </tr>
-                <tr>
-                  <td style={labelCell}>Số điện thoại:</td>
-                  <td style={valueCell}>{registration.phone}</td>
-                </tr>
+          {/* QR Code */}
+          <div style={qrBox}>
+            <Text style={qrTitle}>📱 QR Check-in</Text>
+            <Text style={qrDesc}>Xuất trình QR này khi nhận race pack</Text>
 
-                {registration.shirtSize && (
-                  <tr>
-                    <td style={labelCell}>Áo:</td>
-                    <td style={valueCell}>
-                      {registration.shirtCategory === "MALE"
-                        ? "Nam"
-                        : registration.shirtCategory === "FEMALE"
-                          ? "Nữ"
-                          : "Trẻ em"}{" "}
-                      -{" "}
-                      {registration.shirtType === "SHORT_SLEEVE"
-                        ? "Có tay"
-                        : "3 lỗ"}{" "}
-                      - Size {registration.shirtSize}
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </Section>
-
-          {/* Check-in QR Code */}
-          <Section style={qrSection}>
-            <Text style={qrTitle}>📱 MÃ QR CHECK-IN</Text>
-            <Text style={qrSubtitle}>
-              Xuất trình mã QR này khi nhận race pack và check-in ngày thi đấu
-            </Text>
-
-            {registration.qrCheckinUrl && (
+            <div style={{ textAlign: "center", margin: "16px 0" }}>
               <Img
-                src={registration.qrCheckinUrl}
-                alt="QR Check-in"
-                width="250"
-                height="250"
-                style={qrCode}
+                src="cid:qrcheckin"
+                alt={`QR Code - BIB ${registration.bibNumber}`}
+                width="260"
+                height="260"
+                style={{
+                  border: "3px solid #cbd5e1",
+                  borderRadius: "12px",
+                  padding: "8px",
+                  backgroundColor: "#fff",
+                  maxWidth: "100%",
+                }}
               />
-            )}
+            </div>
 
-            <Text style={qrInstruction}>
-              💡 <strong>Lưu lại ảnh QR này</strong> hoặc mang theo email khi
-              đến nhận race pack
-            </Text>
-          </Section>
+            <div style={qrHint}>💡 Lưu email này hoặc chụp QR</div>
+          </div>
 
-          {/* Race Pack Info */}
+          {/* Race Pack */}
           {event.racePackLocation && (
-            <Section style={racePackBox}>
-              <Text style={infoTitle}>📦 THÔNG TIN NHẬN RACE PACK</Text>
-
-              <table style={infoTable}>
-                <tbody>
-                  <tr>
-                    <td style={labelCell}>Địa điểm:</td>
-                    <td style={valueCell}>{event.racePackLocation}</td>
-                  </tr>
-                  {event.racePackTime && (
-                    <tr>
-                      <td style={labelCell}>Thời gian:</td>
-                      <td style={valueCell}>{event.racePackTime}</td>
-                    </tr>
-                  )}
-                  <tr>
-                    <td style={labelCell}>Mang theo:</td>
-                    <td style={valueCell}>
-                      CCCD/CMND + Mã QR (trên email này)
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
-            </Section>
+            <div style={packBox}>
+              <Text style={sectionTitle}>📦 Nhận race pack</Text>
+              <div style={{ marginTop: "12px" }}>
+                <div style={row}>
+                  <span style={label}>Nơi:</span>
+                  <span style={value}>{event.racePackLocation}</span>
+                </div>
+                {event.racePackTime && (
+                  <div style={row}>
+                    <span style={label}>Giờ:</span>
+                    <span style={value}>{event.racePackTime}</span>
+                  </div>
+                )}
+                <div style={row}>
+                  <span style={label}>Mang:</span>
+                  <span style={value}>
+                    <strong>CCCD + QR code</strong>
+                  </span>
+                </div>
+              </div>
+            </div>
           )}
 
-          {/* Race Day Info */}
-          <Section style={raceDayBox}>
-            <Text style={infoTitle}>🏁 THÔNG TIN NGÀY THI ĐẤU</Text>
+          {/* Notes */}
+          <div style={noteBox}>
+            <Text style={noteTitle}>⚠️ Lưu ý</Text>
+            <div style={{ marginTop: "8px" }}>
+              <div style={noteItem}>
+                • Nhớ BIB: <strong>{registration.bibNumber}</strong>
+              </div>
+              <div style={noteItem}>• Mang CCCD + QR code</div>
+              <div style={noteItem}>• Đến sớm 30 phút</div>
+            </div>
+          </div>
 
-            <table style={infoTable}>
-              <tbody>
-                <tr>
-                  <td style={labelCell}>Ngày thi đấu:</td>
-                  <td style={valueCell}>
-                    <strong>{formatDate(event.date)}</strong>
-                  </td>
-                </tr>
-                <tr>
-                  <td style={labelCell}>Địa điểm:</td>
-                  <td style={valueCell}>{event.location}</td>
-                </tr>
-                {event.address && (
-                  <tr>
-                    <td style={labelCell}>Địa chỉ:</td>
-                    <td style={valueCell}>{event.address}</td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
+          {/* Contact */}
+          <Hr style={{ borderColor: "#e5e7eb", margin: "24px 20px" }} />
 
-            {event.raceDaySchedule && (
-              <Section style={scheduleBox}>
-                <Text style={scheduleTitle}>📅 Lịch trình:</Text>
-                <div
-                  style={scheduleContent}
-                  dangerouslySetInnerHTML={{ __html: event.raceDaySchedule }}
-                />
-              </Section>
-            )}
-          </Section>
-
-          {/* Important Notes */}
-          <Section style={noteBox}>
-            <Text style={noteTitle}>⚠️ LƯU Ý QUAN TRỌNG</Text>
-            <ul style={noteList}>
-              <li>
-                <strong>Nhớ số BIB: {registration.bibNumber}</strong> - Đây là
-                số thứ tự của bạn trong giải
-              </li>
-              <li>
-                Mang theo CCCD/CMND và mã QR trên email này khi nhận race pack
-              </li>
-              <li>Đến sớm ít nhất 30 phút trước giờ xuất phát để check-in</li>
-              <li>Mặc trang phục thể thao phù hợp, mang theo nước uống</li>
-              <li>Tuân thủ hướng dẫn của BTC và tình nguyện viên</li>
-              <li>Không sử dụng tai nghe khi chạy để đảm bảo an toàn</li>
-            </ul>
-          </Section>
-
-          {/* Footer */}
-          <Hr style={hr} />
-
-          <Text style={footer}>
-            <strong>Liên hệ hỗ trợ:</strong>
-            <br />
+          <div style={{ margin: "0 20px 20px 20px" }}>
+            <Text style={contactTitle}>📞 Liên hệ</Text>
             {event.hotline && (
-              <>
-                📞 Hotline: {event.hotline}
-                <br />
-              </>
+              <div style={contactItem}>Hotline: {event.hotline}</div>
             )}
             {event.emailSupport && (
-              <>
-                📧 Email: {event.emailSupport}
-                <br />
-              </>
+              <div style={contactItem}>Email: {event.emailSupport}</div>
             )}
-            {event.facebookUrl && <>👥 Facebook: {event.facebookUrl}</>}
-          </Text>
+          </div>
 
+          {/* Footer */}
           <Text style={footer}>
-            Chúc bạn có một mùa giải thành công và đạt được mục tiêu của mình!
-            🎯
-          </Text>
-
-          <Text style={footer}>
-            Trân trọng,
+            Chúc bạn có trải nghiệm tuyệt vời! 🏃
             <br />
-            <strong>Ban tổ chức {event.name}</strong>
+            <strong>BTC {event.name}</strong>
           </Text>
         </Container>
       </Body>
@@ -309,238 +252,212 @@ export function PaymentConfirmedEmail({
   );
 }
 
-// Styles
+// ==================== STYLES ====================
+
 const main = {
   backgroundColor: "#f6f9fc",
-  fontFamily:
-    '-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Ubuntu,sans-serif',
+  fontFamily: "-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif",
 };
 
 const container = {
   backgroundColor: "#ffffff",
   margin: "0 auto",
   padding: "20px",
-  maxWidth: "600px",
-  borderRadius: "8px",
+  maxWidth: "560px",
+  width: "100%",
 };
 
-const logo = {
-  margin: "0 auto 20px",
-  display: "block",
-};
-
-const successBadge = {
+const successHeader = {
   textAlign: "center" as const,
-  backgroundColor: "#dcfce7",
-  padding: "24px",
-  borderRadius: "12px",
-  margin: "20px 0",
-  border: "2px solid #16a34a",
+  padding: "0 20px",
+  marginBottom: "20px",
 };
 
 const successIcon = {
-  fontSize: "48px",
-  margin: "0",
+  fontSize: "40px",
+  margin: "16px 0 0 0",
 };
 
-const successTitle = {
+const h1 = {
+  color: "#16a34a",
   fontSize: "24px",
-  fontWeight: "bold" as const,
-  color: "#15803d",
-  margin: "8px 0 0",
+  fontWeight: "700",
+  margin: "8px 0 0 0",
+  textAlign: "center" as const,
 };
 
-const paragraph = {
-  fontSize: "16px",
-  lineHeight: "24px",
-  color: "#374151",
-  margin: "16px 0",
+const text = {
+  color: "#1f2937",
+  fontSize: "14px",
+  lineHeight: "22px",
+  padding: "0 20px",
+  margin: "10px 0",
 };
 
 const bibBox = {
-  textAlign: "center" as const,
-  backgroundColor: "#eff6ff",
-  padding: "32px",
+  background: "linear-gradient(135deg, #dbeafe, #bfdbfe)",
+  border: "3px solid #3b82f6",
   borderRadius: "12px",
-  margin: "24px 0",
-  border: "3px solid #2563eb",
+  margin: "20px 20px",
+  padding: "20px 16px",
+  textAlign: "center" as const,
 };
 
-const bibLabel = {
-  fontSize: "16px",
-  fontWeight: "600" as const,
+const bibTitle = {
+  fontSize: "15px",
+  fontWeight: "700",
   color: "#1e40af",
-  margin: "0 0 12px",
+  margin: "0",
 };
 
 const bibNumber = {
-  fontSize: "56px",
-  fontWeight: "bold" as const,
+  fontSize: "40px",
+  fontWeight: "900",
   color: "#2563eb",
-  margin: "0",
-  letterSpacing: "2px",
+  fontFamily: "'Courier New',monospace",
+  margin: "8px 0",
+  letterSpacing: "3px",
 };
 
 const bibNote = {
-  fontSize: "14px",
+  fontSize: "12px",
   color: "#64748b",
-  margin: "12px 0 0",
+  margin: "0",
 };
 
 const infoBox = {
-  backgroundColor: "#f9fafb",
-  padding: "20px",
-  borderRadius: "8px",
-  margin: "20px 0",
+  background: "#f0fdf4",
+  border: "2px solid #86efac",
+  borderRadius: "10px",
+  margin: "16px 20px",
+  padding: "16px",
 };
 
-const summaryBox = {
-  backgroundColor: "#fefce8",
-  padding: "20px",
-  borderRadius: "8px",
-  margin: "20px 0",
-  border: "1px solid #fbbf24",
+const eventBox = {
+  background: "#fef3c7",
+  border: "2px solid #fde047",
+  borderRadius: "10px",
+  margin: "16px 20px",
+  padding: "16px",
 };
 
-const racePackBox = {
-  backgroundColor: "#f0f9ff",
-  padding: "20px",
-  borderRadius: "8px",
-  margin: "20px 0",
-  border: "1px solid #38bdf8",
+const infoBox2 = {
+  background: "#f3f4f6",
+  border: "2px solid #d1d5db",
+  borderRadius: "10px",
+  margin: "16px 20px",
+  padding: "16px",
 };
 
-const raceDayBox = {
-  backgroundColor: "#fef2f2",
-  padding: "20px",
-  borderRadius: "8px",
-  margin: "20px 0",
-  border: "1px solid #f87171",
+const packBox = {
+  background: "#eff6ff",
+  border: "2px solid #93c5fd",
+  borderRadius: "10px",
+  margin: "16px 20px",
+  padding: "16px",
 };
 
-const infoTitle = {
-  fontSize: "18px",
-  fontWeight: "bold" as const,
+const sectionTitle = {
+  fontSize: "15px",
+  fontWeight: "700",
   color: "#1f2937",
-  margin: "0 0 16px",
+  margin: "0",
 };
 
-const infoTable = {
-  width: "100%",
-  fontSize: "14px",
+const row = {
+  display: "block",
+  marginBottom: "8px",
+  wordWrap: "break-word" as const,
+  fontSize: "13px",
 };
 
-const labelCell = {
-  padding: "8px 0",
+const label = {
   color: "#6b7280",
-  width: "40%",
-  verticalAlign: "top" as const,
+  fontWeight: "600",
+  marginRight: "6px",
+  display: "inline-block",
+  minWidth: "60px",
 };
 
-const valueCell = {
-  padding: "8px 0",
+const value = {
   color: "#111827",
-  fontWeight: "500" as const,
-  verticalAlign: "top" as const,
+  fontWeight: "500",
+  wordWrap: "break-word" as const,
 };
 
-const paidStatus = {
-  ...valueCell,
-  color: "#16a34a",
-  fontWeight: "bold" as const,
-};
-
-const qrSection = {
-  textAlign: "center" as const,
-  backgroundColor: "#f9fafb",
-  padding: "24px",
-  borderRadius: "8px",
-  margin: "24px 0",
+const qrBox = {
+  margin: "20px 20px",
+  padding: "16px",
+  background: "#fafafa",
   border: "2px dashed #cbd5e1",
+  borderRadius: "10px",
+  textAlign: "center" as const,
 };
 
 const qrTitle = {
-  fontSize: "20px",
-  fontWeight: "bold" as const,
-  color: "#1f2937",
-  margin: "0 0 8px",
-};
-
-const qrSubtitle = {
-  fontSize: "14px",
-  color: "#6b7280",
-  margin: "0 0 20px",
-};
-
-const qrCode = {
-  margin: "0 auto 20px",
-  border: "2px solid #e5e7eb",
-  borderRadius: "8px",
-  backgroundColor: "#ffffff",
-  padding: "8px",
-};
-
-const qrInstruction = {
-  fontSize: "14px",
-  color: "#374151",
-  backgroundColor: "#fef3c7",
-  padding: "12px",
-  borderRadius: "6px",
+  fontSize: "16px",
+  fontWeight: "700",
+  color: "#1e40af",
   margin: "0",
 };
 
-const scheduleBox = {
-  backgroundColor: "#ffffff",
-  padding: "16px",
+const qrDesc = {
+  fontSize: "13px",
+  color: "#64748b",
+  margin: "4px 0 0 0",
+};
+
+const qrHint = {
+  fontSize: "12px",
+  color: "#475569",
+  background: "#fef3c7",
+  padding: "10px",
   borderRadius: "6px",
-  marginTop: "16px",
-};
-
-const scheduleTitle = {
-  fontSize: "14px",
-  fontWeight: "600" as const,
-  color: "#374151",
-  margin: "0 0 8px",
-};
-
-const scheduleContent = {
-  fontSize: "14px",
-  lineHeight: "22px",
-  color: "#4b5563",
+  margin: "12px auto 0",
+  display: "inline-block",
+  maxWidth: "90%",
 };
 
 const noteBox = {
-  backgroundColor: "#fef2f2",
-  padding: "20px",
-  borderRadius: "8px",
-  margin: "20px 0",
+  background: "#fef2f2",
   border: "2px solid #fca5a5",
+  borderRadius: "10px",
+  margin: "16px 20px",
+  padding: "16px",
 };
 
 const noteTitle = {
-  fontSize: "16px",
-  fontWeight: "bold" as const,
+  fontSize: "15px",
+  fontWeight: "700",
   color: "#991b1b",
-  margin: "0 0 12px",
-};
-
-const noteList = {
-  fontSize: "14px",
-  lineHeight: "24px",
-  color: "#7f1d1d",
-  paddingLeft: "20px",
   margin: "0",
 };
 
-const hr = {
-  borderColor: "#e5e7eb",
-  margin: "24px 0",
+const noteItem = {
+  fontSize: "12px",
+  lineHeight: "20px",
+  color: "#7f1d1d",
+  marginBottom: "6px",
+};
+
+const contactTitle = {
+  fontSize: "14px",
+  fontWeight: "700",
+  color: "#374151",
+  margin: "0 0 8px 0",
+};
+
+const contactItem = {
+  fontSize: "12px",
+  color: "#6b7280",
+  marginBottom: "4px",
 };
 
 const footer = {
-  fontSize: "14px",
-  lineHeight: "22px",
   color: "#6b7280",
+  fontSize: "13px",
   textAlign: "center" as const,
+  padding: "0 20px",
+  lineHeight: "20px",
   margin: "16px 0",
 };

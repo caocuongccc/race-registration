@@ -20,7 +20,7 @@ export async function POST(req: NextRequest) {
     if (!eventId) {
       return NextResponse.json(
         { error: "Event ID is required" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -69,14 +69,15 @@ export async function POST(req: NextRequest) {
                 emailType: emailType || "RACE_PACK_INFO",
                 subject: `Thông tin quan trọng - ${registration.event.name}`,
                 status: "SENT",
+                recipientEmail: registration.email,
+                emailProvider: "resend",
               },
             });
-
             sent++;
           } catch (error) {
             console.error(
               `Failed to send email to ${registration.email}:`,
-              error
+              error,
             );
 
             // Log email failure
@@ -87,12 +88,14 @@ export async function POST(req: NextRequest) {
                 subject: `Thông tin quan trọng - ${registration.event.name}`,
                 status: "FAILED",
                 errorMessage: (error as Error).message,
+                recipientEmail: registration.email,
+                emailProvider: "resend",
               },
             });
 
             failed++;
           }
-        })
+        }),
       );
 
       // Wait 1 second between batches to avoid rate limiting
@@ -111,7 +114,7 @@ export async function POST(req: NextRequest) {
     console.error("Bulk email error:", error);
     return NextResponse.json(
       { error: "Failed to send bulk emails" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

@@ -6,19 +6,43 @@ import { prisma } from "@/lib/prisma";
 import * as XLSX from "xlsx";
 
 // Helper: Parse date from DD/MM/YYYY format
-function parseDate(dateStr: string): Date | null {
-  if (!dateStr) return null;
+export function parseDate(dateStr: string): Date | null {
+  if (dateStr == null) return null;
 
-  const parts = dateStr.trim().split("/");
-  if (parts.length !== 3) return null;
+  const str = String(dateStr).trim();
+  if (!str || str === "null" || str === "undefined") return null;
 
-  const day = parseInt(parts[0]);
-  const month = parseInt(parts[1]) - 1; // Month is 0-indexed
-  const year = parseInt(parts[2]);
+  // Match d/M/yyyy or dd/MM/yyyy
+  const match = str.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
 
-  if (isNaN(day) || isNaN(month) || isNaN(year)) return null;
+  if (!match) return null;
 
-  return new Date(year, month, day);
+  var day = Number(match[1]);
+  var month = Number(match[2]) - 1; // JS month is 0-indexed
+  const year = Number(match[3]);
+  if (day.toString().length < 2) {
+    day = Number("0" + day);
+  }
+  if ((month + 1).toString().length < 2) {
+    month = Number("0" + (month + 1)) - 1;
+  }
+  // Validate ranges
+  if (year < 1900 || year > 2100) return null;
+  if (month < 0 || month > 11) return null;
+  if (day < 1 || day > 31) return null;
+
+  const date = new Date(year, month, day);
+
+  // Final validation (handles 31/02, etc.)
+  if (
+    date.getFullYear() !== year ||
+    date.getMonth() !== month ||
+    date.getDate() !== day
+  ) {
+    return null;
+  }
+
+  return date;
 }
 
 // Helper: Parse gender
@@ -144,7 +168,7 @@ export async function POST(req: NextRequest) {
         // Validate required fields
         const requiredFields = [
           { key: "Họ tên", label: "Họ tên" },
-          { key: "Email", label: "Email" },
+
           { key: "Số điện thoại", label: "Số điện thoại" },
           { key: "Ngày sinh", label: "Ngày sinh" },
           { key: "Giới tính", label: "Giới tính" },

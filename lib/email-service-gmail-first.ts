@@ -1,4 +1,6 @@
 // lib/email-service-gmail-first.ts
+// FIXED: Send QR as CID attachment, not inline base64
+
 import { Resend } from "resend";
 import nodemailer from "nodemailer";
 import { prisma } from "./prisma";
@@ -12,16 +14,43 @@ interface EmailOptions {
   attachments?: any[];
   fromName?: string;
   fromEmail?: string;
+  qrCode?: string; // ✅ NEW: QR code base64 data URL
 }
 
 /**
  * ✅ GMAIL FIRST - Send email with Gmail priority, fallback to Resend
+ * ✅ FIXED: Support QR as CID attachment
  */
 export async function sendEmailGmailFirst(
   options: EmailOptions,
   emailConfigId?: string,
 ): Promise<{ success: boolean; provider: "gmail" | "resend"; error?: string }> {
-  const { to, subject, react, attachments, fromName, fromEmail } = options;
+  const {
+    to,
+    subject,
+    react,
+    attachments = [],
+    fromName,
+    fromEmail,
+    qrCode,
+  } = options;
+
+  // ✅ Prepare QR attachment if provided
+  let qrAttachment: any = null;
+  if (qrCode && qrCode.startsWith("data:image/png;base64,")) {
+    const base64Data = qrCode.split("base64,")[1];
+    qrAttachment = {
+      filename: "qr-checkin.png",
+      content: base64Data,
+      encoding: "base64",
+      cid: "qrcheckin", // ✅ Content-ID for inline reference
+    };
+  }
+
+  // Combine attachments
+  const allAttachments = qrAttachment
+    ? [...attachments, qrAttachment]
+    : attachments;
 
   // ============================================
   // 1. TRY GMAIL FIRST
@@ -40,8 +69,8 @@ export async function sendEmailGmailFirst(
           pass: process.env.GMAIL_APP_PASSWORD,
         },
       });
+
       const { renderToStaticMarkup } = await import("react-dom/server");
-      // Render React component to HTML
       const emailHtml = renderToStaticMarkup(react);
 
       await gmailTransporter.sendMail({
@@ -49,7 +78,7 @@ export async function sendEmailGmailFirst(
         to,
         subject,
         html: emailHtml,
-        attachments,
+        attachments: allAttachments, // ✅ Include QR with CID
       });
 
       console.log(`✅ Email sent via Gmail SMTP to ${to}`);
@@ -57,8 +86,6 @@ export async function sendEmailGmailFirst(
     } catch (gmailError: any) {
       console.warn(`⚠️ Gmail failed for ${to}:`, gmailError.message);
       console.log("🔄 Falling back to Resend...");
-
-      // Continue to Resend fallback
     }
   } else {
     console.log("⚠️ Gmail not configured, using Resend directly");
@@ -68,12 +95,13 @@ export async function sendEmailGmailFirst(
   // 2. FALLBACK TO RESEND
   // ============================================
   try {
+    // ✅ Resend also supports CID attachments
     await resend.emails.send({
       from: `${fromName || process.env.FROM_NAME} <${fromEmail || process.env.FROM_EMAIL}>`,
       to,
       subject,
       react,
-      attachments,
+      attachments: allAttachments,
     });
 
     console.log(`✅ Email sent via Resend to ${to}`);
@@ -90,6 +118,84 @@ export async function sendEmailGmailFirst(
 }
 
 /**
+ * ✅ Send payment confirmation email (Gmail first)
+ * FIXED: Pass QR code for CID attachment
+ */
+export async function sendPaymentConfirmationEmailGmailFirst(data: {
+  registration: any;
+  event: any;
+}): Promise<void> {
+  const { registration, event } = data;
+
+  const emailConfig = await prisma.emailConfig.findUnique({
+    where: { eventId: event.id },
+  });
+
+  const fromName = emailConfig?.fromName || process.env.FROM_NAME;
+  const fromEmail = emailConfig?.fromEmail || process.env.FROM_EMAIL;
+
+  const sendBibNow = event.sendBibImmediately ?? true;
+
+  let emailReact;
+  let subject;
+
+  if (sendBibNow) {
+    const { PaymentConfirmedEmail } =
+      await import("@/emails/payment-confirmed");
+
+    // ✅ Pass registration without qrCode in data
+    // QR will be sent as CID attachment
+    emailReact = PaymentConfirmedEmail({
+      registration,
+      event,
+    });
+
+    subject =
+      emailConfig?.subjectPaymentConfirmed?.replace?.(
+        "{{bibNumber}}",
+        registration.bibNumber,
+      ) || `Thanh toán thành công - Số BIB ${registration.bibNumber}`;
+  } else {
+    const { PaymentReceivedNoBibEmail } =
+      await import("@/emails/payment-received-no-bib");
+    emailReact = PaymentReceivedNoBibEmail({ registration, event });
+    subject =
+      emailConfig?.subjectPaymentReceivedNoBib ||
+      `Đã nhận thanh toán - ${event.name}`;
+  }
+
+  // ✅ Send with QR as CID attachment
+  const result = await sendEmailGmailFirst(
+    {
+      to: registration.email,
+      subject,
+      react: emailReact,
+      fromName,
+      fromEmail,
+      qrCode: registration.qrCode, // ✅ Pass QR for CID attachment
+    },
+    emailConfig?.id,
+  );
+
+  if (!result.success) {
+    throw new Error(`Failed to send email: ${result.error}`);
+  }
+
+  await prisma.emailLog.create({
+    data: {
+      registrationId: registration.id,
+      emailType: sendBibNow ? "PAYMENT_CONFIRMED" : "PAYMENT_RECEIVED_NO_BIB",
+      subject,
+      status: "SENT",
+      recipientEmail: registration.email,
+      emailProvider: result.provider,
+    },
+  });
+
+  console.log(`✅ Payment email sent via ${result.provider.toUpperCase()}`);
+}
+
+/**
  * ✅ Send registration pending email (Gmail first)
  */
 export async function sendRegistrationPendingEmailGmailFirst(data: {
@@ -100,7 +206,6 @@ export async function sendRegistrationPendingEmailGmailFirst(data: {
 }): Promise<void> {
   const { registration, event, isNewUser, temporaryPassword } = data;
 
-  // Get email config
   const emailConfig = await prisma.emailConfig.findUnique({
     where: { eventId: event.id },
   });
@@ -108,18 +213,6 @@ export async function sendRegistrationPendingEmailGmailFirst(data: {
   const fromName = emailConfig?.fromName || process.env.FROM_NAME;
   const fromEmail = emailConfig?.fromEmail || process.env.FROM_EMAIL;
 
-  // Prepare attachments
-  let attachments: any[] = [];
-  if (registration.qrPaymentUrl && emailConfig?.attachQrPayment) {
-    if (registration.qrPaymentUrl.startsWith("http")) {
-      attachments.push({
-        filename: `qr-thanh-toan-${registration.id}.png`,
-        path: registration.qrPaymentUrl,
-      });
-    }
-  }
-
-  // Import email template
   const { RegistrationPendingEmail } =
     await import("@/emails/registration-pending");
 
@@ -138,7 +231,6 @@ export async function sendRegistrationPendingEmailGmailFirst(data: {
         isNewUser,
         temporaryPassword,
       }),
-      attachments,
       fromName,
       fromEmail,
     },
@@ -149,90 +241,7 @@ export async function sendRegistrationPendingEmailGmailFirst(data: {
     throw new Error(`Failed to send email: ${result.error}`);
   }
 
-  // Log which provider was used
   console.log(
     `📨 Registration email sent via ${result.provider.toUpperCase()}`,
   );
-}
-
-/**
- * ✅ Send payment confirmation email (Gmail first)
- */
-export async function sendPaymentConfirmationEmailGmailFirst(data: {
-  registration: any;
-  event: any;
-}): Promise<void> {
-  const { registration, event } = data;
-
-  // Get email config
-  const emailConfig = await prisma.emailConfig.findUnique({
-    where: { eventId: event.id },
-  });
-
-  const fromName = emailConfig?.fromName || process.env.FROM_NAME;
-  const fromEmail = emailConfig?.fromEmail || process.env.FROM_EMAIL;
-
-  // Check if we should send BIB immediately
-  const sendBibNow = event.sendBibImmediately ?? true;
-
-  let emailReact;
-  let subject;
-  let attachments: any[] = [];
-
-  if (sendBibNow) {
-    // CASE 1: Send full confirmation with BIB
-    const { PaymentConfirmedEmail } =
-      await import("@/emails/payment-confirmed");
-    emailReact = PaymentConfirmedEmail({ registration, event });
-    subject =
-      emailConfig?.subjectPaymentConfirmed?.replace?.(
-        "{{bibNumber}}",
-        registration.bibNumber,
-      ) || `Thanh toán thành công - Số BIB ${registration.bibNumber}`;
-
-    // Attach QR checkin
-    if (registration.qrCheckinUrl && emailConfig?.attachQrCheckin) {
-      attachments.push({
-        filename: `qr-checkin-${registration.bibNumber}.png`,
-        path: registration.qrCheckinUrl,
-      });
-    }
-  } else {
-    // CASE 2: Send payment received without BIB
-    const { PaymentReceivedNoBibEmail } =
-      await import("@/emails/payment-received-no-bib");
-    emailReact = PaymentReceivedNoBibEmail({ registration, event });
-    subject =
-      emailConfig?.subjectPaymentReceivedNoBib ||
-      `Đã nhận thanh toán - ${event.name}`;
-  }
-
-  // Send email (Gmail first)
-  const result = await sendEmailGmailFirst(
-    {
-      to: registration.email,
-      subject,
-      react: emailReact,
-      attachments,
-      fromName,
-      fromEmail,
-    },
-    emailConfig?.id,
-  );
-
-  if (!result.success) {
-    throw new Error(`Failed to send email: ${result.error}`);
-  }
-
-  // Log email
-  await prisma.emailLog.create({
-    data: {
-      registrationId: registration.id,
-      emailType: sendBibNow ? "PAYMENT_CONFIRMED" : "PAYMENT_RECEIVED_NO_BIB",
-      subject,
-      status: "SENT",
-      recipientEmail: registration.email,
-      emailProvider: "gmail",
-    },
-  });
 }

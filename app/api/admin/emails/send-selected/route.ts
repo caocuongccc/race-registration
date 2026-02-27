@@ -17,14 +17,20 @@ export async function POST(req: NextRequest) {
 
     const { registrationIds, emailType } = await req.json();
 
-    if (!registrationIds || !Array.isArray(registrationIds) || registrationIds.length === 0) {
+    if (
+      !registrationIds ||
+      !Array.isArray(registrationIds) ||
+      registrationIds.length === 0
+    ) {
       return NextResponse.json(
         { error: "Registration IDs required" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
-    console.log(`📧 Sending ${emailType} to ${registrationIds.length} registrations...`);
+    console.log(
+      `📧 Sending ${emailType} to ${registrationIds.length} registrations...`,
+    );
 
     // Get registrations with full data
     const registrations = await prisma.registration.findMany({
@@ -42,7 +48,7 @@ export async function POST(req: NextRequest) {
     if (registrations.length === 0) {
       return NextResponse.json(
         { error: "No valid registrations found" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -72,7 +78,7 @@ export async function POST(req: NextRequest) {
                   registration.phone,
                   registration.shirtCategory,
                   registration.shirtType,
-                  registration.shirtSize
+                  registration.shirtSize,
                 );
 
                 attachments.push({
@@ -83,12 +89,12 @@ export async function POST(req: NextRequest) {
                 });
 
                 console.log(
-                  `✅ Generated QR for BIB ${registration.bibNumber}`
+                  `✅ Generated QR for BIB ${registration.bibNumber}`,
                 );
               } catch (qrError) {
                 console.warn(
                   `⚠️ Failed to generate QR for ${registration.bibNumber}:`,
-                  qrError
+                  qrError,
                 );
                 // Continue sending email without QR
               }
@@ -127,20 +133,26 @@ export async function POST(req: NextRequest) {
               emailType: emailType,
               subject: subject,
               status: "SENT",
+              recipientEmail: registration.email,
+              emailProvider: result.provider,
             },
           });
 
           sent++;
-          console.log(`✅ Sent to ${registration.email} via ${result.provider}`);
+          console.log(
+            `✅ Sent to ${registration.email} via ${result.provider}`,
+          );
         } else {
           throw new Error(result.error || "Failed to send");
         }
 
         // Small delay between emails to avoid rate limits
-        await new Promise(resolve => setTimeout(resolve, 1000));
-
+        await new Promise((resolve) => setTimeout(resolve, 1000));
       } catch (error: any) {
-        console.error(`❌ Failed to send to ${registration.email}:`, error.message);
+        console.error(
+          `❌ Failed to send to ${registration.email}:`,
+          error.message,
+        );
 
         // Log failure
         await prisma.emailLog.create({
@@ -150,6 +162,8 @@ export async function POST(req: NextRequest) {
             subject: `${emailType} - ${registration.event.name}`,
             status: "FAILED",
             errorMessage: error.message,
+            recipientEmail: registration.email,
+            emailProvider: "gmail_first",
           },
         });
 
@@ -163,12 +177,11 @@ export async function POST(req: NextRequest) {
       failed,
       total: registrations.length,
     });
-
   } catch (error) {
     console.error("Send selected emails error:", error);
     return NextResponse.json(
       { error: "Failed to send emails" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

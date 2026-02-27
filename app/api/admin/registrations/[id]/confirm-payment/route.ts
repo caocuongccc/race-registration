@@ -1,11 +1,13 @@
-// app/api/admin/registrations/[id]/confirm-payment/route.ts - GMAIL FIRST
+// app/api/admin/registrations/[id]/confirm-payment/route.ts
+// UPDATED: Generate QR inline, no ImgBB upload
+
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { Prisma } from "@prisma/client";
-import { generateCheckinQR } from "@/lib/imgbb";
-// ✅ CHANGE: Import Gmail-first service
+import { generateIndividualQR } from "@/lib/qr-individual";
+import { generateBibNumberHybrid } from "@/lib/bib-generator";
 import { sendPaymentConfirmationEmailGmailFirst } from "@/lib/email-service-gmail-first";
 
 /**
@@ -109,31 +111,43 @@ export async function POST(
     if (registration.paymentStatus === "PAID") {
       return NextResponse.json({ error: "Already confirmed" }, { status: 400 });
     }
+
     console.log(
       "📝 Manual payment confirmation for registration:",
       registrationId,
     );
     console.log("📝 registration.distanceId:", registration.distanceId);
+
     // Generate BIB number
     const bibNumber = await generateBibNumber(
       registrationId,
       registration.distanceId,
     );
 
-    // Generate check-in QR code
-    const qrCheckinUrl = await generateCheckinQR(
-      registrationId,
-      bibNumber,
-      registration.fullName,
-      registration.gender,
-      registration.dob,
-      registration.phone,
-      registration.shirtCategory,
-      registration.shirtType,
-      registration.shirtSize,
-    );
+    console.log(`✅ BIB generated: ${bibNumber}`);
 
-    // Update registration
+    // ✅ Generate check-in QR code INLINE (no ImgBB upload)
+    console.log("🔄 Generating QR code inline...");
+    let qrCode = "";
+    try {
+      qrCode = await generateIndividualQR(
+        registrationId,
+        bibNumber,
+        registration.fullName,
+        registration.gender,
+        registration.dob,
+        registration.phone,
+        registration.shirtCategory,
+        registration.shirtType,
+        registration.shirtSize,
+      );
+      console.log("✅ QR code generated successfully");
+    } catch (qrError: any) {
+      console.error("❌ QR generation failed:", qrError.message);
+      // Continue without QR - email will show fallback
+    }
+
+    // ✅ Update registration - NO qrCheckinUrl saved to DB
     const updatedRegistration = await prisma.$transaction(
       async (tx: Prisma.TransactionClient) => {
         const updated = await tx.registration.update({
@@ -141,7 +155,7 @@ export async function POST(
           data: {
             paymentStatus: "PAID",
             bibNumber: bibNumber,
-            qrCheckinUrl: qrCheckinUrl,
+            // ❌ NO qrCheckinUrl - QR not saved to DB
             paymentDate: new Date(),
             notes: notes || "Xác nhận thủ công bởi admin",
           },
@@ -166,13 +180,21 @@ export async function POST(
       },
     );
 
-    // ✅ GMAIL FIRST: Send confirmation email with Gmail priority
+    console.log("✅ Registration updated to PAID");
 
+    // ✅ Send email with inline QR
     try {
+      console.log("📧 Sending confirmation email...");
+
       await sendPaymentConfirmationEmailGmailFirst({
-        registration: updatedRegistration,
+        registration: {
+          ...updatedRegistration,
+          qrCode, // ✅ Pass QR inline (not from DB)
+        },
         event: registration.event,
       });
+
+      console.log("✅ Email sent successfully");
     } catch (emailError: any) {
       console.error("❌ Failed to send confirmation email:", emailError);
 
@@ -184,6 +206,8 @@ export async function POST(
           subject: `Thanh toán thành công - Số BIB ${bibNumber}`,
           status: "FAILED",
           errorMessage: emailError.message || "Unknown error",
+          recipientEmail: registration.email,
+          emailProvider: "gmail_first",
         },
       });
 
@@ -195,7 +219,7 @@ export async function POST(
       bibNumber: bibNumber,
       registration: updatedRegistration,
     });
-  } catch (error) {
+  } catch (error: any) {
     console.error("❌ Manual confirmation error:", error);
     return NextResponse.json(
       { error: "Failed to confirm payment" },
@@ -236,7 +260,7 @@ export async function DELETE(
       where: { id: registrationId },
       data: {
         paymentStatus: "FAILED",
-        notes: "Hủy bởi admin nhan viên",
+        notes: "Hủy bởi admin nhân viên",
       },
     });
 
