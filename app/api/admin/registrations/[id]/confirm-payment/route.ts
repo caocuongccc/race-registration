@@ -259,8 +259,11 @@ export async function DELETE(
     await prisma.registration.update({
       where: { id: registrationId },
       data: {
-        paymentStatus: "FAILED",
-        notes: "Hủy bởi admin nhân viên",
+        paymentStatus: "PENDING",
+        notes: `Hủy thanh toán bởi admin - ${new Date().toLocaleString("vi-VN")}`,
+        bibNumber: null,
+        qrCheckinUrl: null,
+        paymentDate: null,
       },
     });
 
