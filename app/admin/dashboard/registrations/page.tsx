@@ -28,6 +28,7 @@ interface Registration {
   email: string;
   phone: string;
   bibNumber: string | null;
+  bibName: string;
   totalAmount: number;
   paymentStatus: string;
   registrationDate: Date;
@@ -466,6 +467,9 @@ export default function RegistrationsPage() {
                       <th className="px-6 py-3 text-left text-xs">STT</th>
                       <th className="px-6 py-3 text-left text-xs">BIB</th>
                       <th className="px-6 py-3 text-left text-xs">Họ tên</th>
+                      <th className="px-6 py-3 text-left text-xs">
+                        Tên trên bib
+                      </th>
                       <th className="px-6 py-3 text-left text-xs">Liên hệ</th>
                       <th className="px-6 py-3 text-left text-xs">Cự ly</th>
                       <th className="px-6 py-3 text-left text-xs">Số tiền</th>
@@ -503,7 +507,10 @@ export default function RegistrationsPage() {
                           </td>
 
                           <td className="px-6 py-4">{r.fullName}</td>
-
+                          <td className="px-6 py-4">
+                            {r.bibName}
+                            <br />
+                          </td>
                           <td className="px-6 py-4 text-sm text-gray-600">
                             {r.email}
                             <br />
