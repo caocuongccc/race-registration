@@ -1,4 +1,4 @@
-// app/api/admin/registrations/export/route.ts
+// app/api/admin/registrations/export/route.ts - FIXED SHIRT COUNTING
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
@@ -31,7 +31,7 @@ export async function GET(req: NextRequest) {
     if (!eventId || eventId === "all") {
       return NextResponse.json(
         { error: "Vui lòng chọn sự kiện cụ thể" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -126,7 +126,7 @@ export async function GET(req: NextRequest) {
         "Phí áo": r.shirtFee,
         "Tổng tiền": r.totalAmount,
         "Ngày đăng ký": new Date(r.registrationDate).toLocaleDateString(
-          "vi-VN"
+          "vi-VN",
         ),
         "Ngày thanh toán": r.paymentDate
           ? new Date(r.paymentDate).toLocaleDateString("vi-VN")
@@ -140,7 +140,7 @@ export async function GET(req: NextRequest) {
       const colWidths = Object.keys(distanceData[0] || {}).map((key) => {
         const maxLen = Math.max(
           key.length,
-          ...distanceData.map((row: any) => String(row[key]).length)
+          ...distanceData.map((row: any) => String(row[key]).length),
         );
         return { wch: Math.min(maxLen + 2, maxWidth) };
       });
@@ -156,9 +156,12 @@ export async function GET(req: NextRequest) {
     // ===================================
     // SHEET: SHIRT STATISTICS (Thống kê áo)
     // ===================================
+    // ✅ FIX: Chỉ đếm những registration thực sự mua áo (có shirtId hoặc shirtFee > 0)
     const shirtsWithSize = registrations.filter(
-      (r) => r.shirtSize && r.shirtCategory && r.shirtType
+      (r) => r.shirtId || (r.shirtFee && r.shirtFee > 0),
     );
+
+    console.log(`📊 Shirt statistics: ${shirtsWithSize.length} shirts found`);
 
     if (shirtsWithSize.length > 0) {
       // Group by category, type, size
@@ -168,9 +171,17 @@ export async function GET(req: NextRequest) {
       > = {};
 
       shirtsWithSize.forEach((r) => {
-        const category = r.shirtCategory!;
-        const type = r.shirtType!;
-        const size = r.shirtSize!;
+        // ✅ FIX: Skip if missing shirt info (safety check)
+        if (!r.shirtCategory || !r.shirtType || !r.shirtSize) {
+          console.warn(
+            `⚠️ Registration ${r.id} has shirtId/shirtFee but missing shirt details`,
+          );
+          return;
+        }
+
+        const category = r.shirtCategory;
+        const type = r.shirtType;
+        const size = r.shirtSize;
 
         if (!shirtStats[category]) shirtStats[category] = {};
         if (!shirtStats[category][type]) shirtStats[category][type] = {};
@@ -183,13 +194,19 @@ export async function GET(req: NextRequest) {
       // Build shirt data
       const shirtData: any[] = [];
 
+      // ✅ FIX: Recalculate total từ shirtStats để đảm bảo chính xác
+      const actualShirtCount = Object.values(shirtStats)
+        .flatMap((types) => Object.values(types))
+        .flatMap((sizes) => Object.values(sizes))
+        .reduce((sum, count) => sum + count, 0);
+
       // Header
       shirtData.push([
         "THỐNG KÊ ÁO KỶ NIỆM",
         "",
         "",
         "",
-        `Tổng: ${shirtsWithSize.length} áo`,
+        `Tổng: ${actualShirtCount} áo`,
       ]);
       shirtData.push([]);
 
@@ -211,7 +228,7 @@ export async function GET(req: NextRequest) {
           // Subtotal for this type
           const typeTotal = Object.values(sizes).reduce(
             (sum, count) => sum + count,
-            0
+            0,
           );
           shirtData.push(["", "Tổng " + typeName, typeTotal]);
         });
@@ -227,9 +244,13 @@ export async function GET(req: NextRequest) {
       // Size breakdown
       shirtData.push(["PHÂN BỐ THEO SIZE"]);
       const sizeBreakdown: Record<string, number> = {};
+
+      // ✅ FIX: Chỉ đếm từ shirtsWithSize đã được filter
       shirtsWithSize.forEach((r) => {
-        const size = r.shirtSize!;
-        sizeBreakdown[size] = (sizeBreakdown[size] || 0) + 1;
+        if (r.shirtSize) {
+          const size = r.shirtSize;
+          sizeBreakdown[size] = (sizeBreakdown[size] || 0) + 1;
+        }
       });
 
       Object.entries(sizeBreakdown)
@@ -240,6 +261,18 @@ export async function GET(req: NextRequest) {
         .forEach(([size, count]) => {
           shirtData.push([size, count]);
         });
+
+      // ✅ NEW: Add verification row
+      shirtData.push([]);
+      shirtData.push(["KIỂM TRA"]);
+      shirtData.push(["Tổng từ thống kê", actualShirtCount]);
+      shirtData.push(["Tổng từ registrations", shirtsWithSize.length]);
+      shirtData.push([
+        "Khớp?",
+        actualShirtCount === shirtsWithSize.length
+          ? "✓ Đúng"
+          : "✗ SAI - Cần kiểm tra lại",
+      ]);
 
       const wsShirts = XLSX.utils.aoa_to_sheet(shirtData);
       wsShirts["!cols"] = [{ wch: 20 }, { wch: 15 }, { wch: 15 }];
@@ -263,7 +296,7 @@ export async function GET(req: NextRequest) {
     console.error("Export error:", error);
     return NextResponse.json(
       { error: "Failed to export data" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

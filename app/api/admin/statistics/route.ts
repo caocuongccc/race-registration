@@ -15,12 +15,6 @@ export async function GET(req: NextRequest) {
 
     const whereFilter = eventId && eventId !== "all" ? { eventId } : {};
 
-    // const shirtOrdersStats = await prisma.shirtOrder.groupBy({
-    //   by: ["paymentStatus"],
-    //   where: whereFilter,
-    //   _count: true,
-    //   _sum: { totalAmount: true },
-    // });
     // --- SUMMARY COUNTS ---
     const [totalRegistrations, paidRegistrations, pendingRegistrations] =
       await Promise.all([
@@ -92,7 +86,7 @@ export async function GET(req: NextRequest) {
     });
 
     const registrationsByDate = Array.from(
-      registrationsByDateMap.entries()
+      registrationsByDateMap.entries(),
     ).map(([date, count]) => ({
       date: new Date(date).toLocaleDateString("vi-VN", {
         day: "2-digit",
@@ -101,34 +95,13 @@ export async function GET(req: NextRequest) {
       count,
     }));
 
-    // --- SHIRT STATS ---
-    const shirtGroup = await prisma.registration.groupBy({
-      by: ["shirtCategory"],
-      where: {
-        ...whereFilter,
-        paymentStatus: "PAID",
-        shirtCategory: { not: null },
-      },
-      _count: true,
-    });
-
-    // const shirtsByCategory: Record<string, number> = {};
-    // shirtGroup.forEach((s: any) => {
-    //   if (s.shirtCategory) shirtsByCategory[s.shirtCategory] = s._count;
-    // });
-
-    // const totalShirts = Object.values(shirtsByCategory).reduce(
-    //   (a, b) => a + b,
-    //   0
-    // );
-
     // --- ENHANCED SHIRT STATS ---
-    // 1. Shirts from Registrations (WITH_BIB)
+    // ✅ FIX: Chỉ đếm registrations thực sự mua áo (có shirtId)
     const shirtsWithBib = await prisma.registration.findMany({
       where: {
         ...whereFilter,
         paymentStatus: "PAID",
-        shirtCategory: { not: null },
+        shirtId: { not: null }, // ✅ FIXED: Chỉ đếm registrations có shirtId
       },
       select: {
         shirtCategory: true,
@@ -137,6 +110,10 @@ export async function GET(req: NextRequest) {
         shirtFee: true,
       },
     });
+
+    console.log(
+      `📊 [Statistics] Found ${shirtsWithBib.length} shirts with BIB`,
+    );
 
     // 2. Shirts from Standalone Orders
     const standaloneOrders = await prisma.shirtOrder.findMany({
@@ -154,6 +131,10 @@ export async function GET(req: NextRequest) {
       },
     });
 
+    console.log(
+      `📊 [Statistics] Found ${standaloneOrders.length} standalone orders`,
+    );
+
     // Aggregate shirt data
     const shirtDataMap = new Map<
       string,
@@ -170,11 +151,19 @@ export async function GET(req: NextRequest) {
 
     // Add WITH_BIB shirts
     shirtsWithBib.forEach((reg) => {
+      // ✅ SAFETY CHECK: Skip if missing data
+      if (!reg.shirtCategory || !reg.shirtType || !reg.shirtSize) {
+        console.warn(
+          `⚠️ [Statistics] Registration has shirtId but missing shirt details`,
+        );
+        return;
+      }
+
       const key = `${reg.shirtCategory}-${reg.shirtType}-${reg.shirtSize}`;
       const existing = shirtDataMap.get(key) || {
-        category: reg.shirtCategory!,
-        type: reg.shirtType!,
-        size: reg.shirtSize!,
+        category: reg.shirtCategory,
+        type: reg.shirtType,
+        size: reg.shirtSize,
         withBib: 0,
         standalone: 0,
         total: 0,
@@ -182,7 +171,7 @@ export async function GET(req: NextRequest) {
       };
       existing.withBib++;
       existing.total++;
-      existing.revenue += reg.shirtFee;
+      existing.revenue += reg.shirtFee || 0;
       shirtDataMap.set(key, existing);
     });
 
@@ -240,16 +229,23 @@ export async function GET(req: NextRequest) {
     const totalShirts = shirtDetails.reduce((sum, item) => sum + item.total, 0);
     const totalWithBib = shirtDetails.reduce(
       (sum, item) => sum + item.withBib,
-      0
+      0,
     );
     const totalStandalone = shirtDetails.reduce(
       (sum, item) => sum + item.standalone,
-      0
+      0,
     );
     const totalShirtRevenue = shirtDetails.reduce(
       (sum, item) => sum + item.revenue,
-      0
+      0,
     );
+
+    // ✅ LOG for debugging
+    console.log(`📊 [Statistics Summary]`);
+    console.log(`   Total shirts: ${totalShirts}`);
+    console.log(`   With BIB: ${totalWithBib}`);
+    console.log(`   Standalone: ${totalStandalone}`);
+    console.log(`   Revenue: ${totalShirtRevenue}`);
 
     const shirtStats = {
       total: totalShirts,
@@ -298,7 +294,7 @@ export async function GET(req: NextRequest) {
     console.error("Statistics API error:", error);
     return NextResponse.json(
       { error: "Failed to load statistics" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
