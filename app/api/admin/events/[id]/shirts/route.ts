@@ -1,15 +1,16 @@
-// ============================================
-// app/api/admin/events/[id]/shirts/route.ts
-// ============================================
+// app/api/admin/events/[id]/shirts/route.ts - FIXED
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
-// GET all shirts for event
+/**
+ * GET - Lấy danh sách áo
+ * ✅ FIX: Không return success: true để tránh false toast
+ */
 export async function GET(
   req: NextRequest,
-  context: { params: Promise<{ id: string }> }
+  context: { params: Promise<{ id: string }> },
 ) {
   try {
     const session = await getServerSession(authOptions);
@@ -24,20 +25,24 @@ export async function GET(
       orderBy: [{ category: "asc" }, { type: "asc" }, { size: "asc" }],
     });
 
+    // ✅ FIX: Return plain data, no success flag
     return NextResponse.json({ shirts });
   } catch (error) {
     console.error("Error fetching shirts:", error);
     return NextResponse.json(
       { error: "Failed to fetch shirts" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
 
-// POST create/update multiple shirts
+/**
+ * POST - Lưu cấu hình áo
+ * ✅ Chỉ POST mới có success flag
+ */
 export async function POST(
   req: NextRequest,
-  context: { params: Promise<{ id: string }> }
+  context: { params: Promise<{ id: string }> },
 ) {
   try {
     const session = await getServerSession(authOptions);
@@ -48,19 +53,16 @@ export async function POST(
     const eventId = (await context.params).id;
     const { shirts } = await req.json();
 
-    // Validate input
     if (!Array.isArray(shirts)) {
       return NextResponse.json(
         { error: "Shirts must be an array" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
-    // Delete removed shirts and create/update others
     const result = await prisma.$transaction(async (tx) => {
       const existingIds = shirts.filter((s) => !s.isNew).map((s) => s.id);
 
-      // Delete shirts not in the list
       await tx.eventShirt.deleteMany({
         where: {
           eventId,
@@ -70,7 +72,6 @@ export async function POST(
         },
       });
 
-      // Upsert each shirt
       const updated = await Promise.all(
         shirts.map(async (shirt) => {
           const data = {
@@ -91,30 +92,31 @@ export async function POST(
               data,
             });
           }
-        })
+        }),
       );
 
       return updated;
     });
 
+    // ✅ POST có success flag để trigger toast
     return NextResponse.json({
       success: true,
+      message: "Đã lưu cấu hình áo",
       shirts: result,
     });
   } catch (error: any) {
     console.error("Error saving shirts:", error);
 
-    // Handle unique constraint violation
     if (error.code === "P2002") {
       return NextResponse.json(
         { error: "Mẫu áo này đã tồn tại (trùng loại + kiểu + size)" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
     return NextResponse.json(
       { error: "Failed to save shirts" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

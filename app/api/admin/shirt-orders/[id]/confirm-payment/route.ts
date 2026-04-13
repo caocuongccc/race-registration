@@ -12,7 +12,7 @@ import { ShirtOrderConfirmedEmail } from "@/emails/shirt-order-confirmed";
 
 export async function POST(
   req: NextRequest,
-  context: { params: Promise<{ id: string }> }
+  context: { params: Promise<{ id: string }> },
 ) {
   try {
     const session = await getServerSession(authOptions);
@@ -78,7 +78,7 @@ export async function POST(
         });
 
         console.log(
-          `✅ Shirt order email sent via ${result.provider.toUpperCase()}`
+          `✅ Shirt order email sent via ${result.provider.toUpperCase()}`,
         );
       }
     } catch (emailError: any) {
@@ -94,7 +94,41 @@ export async function POST(
     console.error("Error confirming payment:", error);
     return NextResponse.json(
       { error: "Failed to confirm payment" },
-      { status: 500 }
+      { status: 500 },
+    );
+  }
+}
+
+export async function DELETE(
+  req: NextRequest,
+  context: { params: Promise<{ id: string }> },
+) {
+  try {
+    const session = await getServerSession(authOptions);
+    if (!session) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const orderId = (await context.params).id;
+
+    // Cancel order
+    const order = await prisma.shirtOrder.update({
+      where: { id: orderId },
+      data: {
+        paymentStatus: "FAILED",
+      },
+    });
+
+    return NextResponse.json({
+      success: true,
+      message: "Đã hủy đơn hàng",
+      order,
+    });
+  } catch (error) {
+    console.error("Error canceling order:", error);
+    return NextResponse.json(
+      { error: "Failed to cancel order" },
+      { status: 500 },
     );
   }
 }

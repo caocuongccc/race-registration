@@ -21,7 +21,9 @@ import {
   Contact,
   Settings2,
   User,
+  FormInputIcon,
 } from "lucide-react";
+import { FormFieldConfigManager } from "@/components/FormFieldConfigManager";
 
 export default function EditEventPage() {
   const params = useParams();
@@ -30,7 +32,13 @@ export default function EditEventPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [activeTab, setActiveTab] = useState<
-    "basic" | "media" | "payment" | "contact" | "config" | "users"
+    | "basic"
+    | "media"
+    | "payment"
+    | "contact"
+    | "config"
+    | "users"
+    | "form-config"
   >("basic");
   const [eventImages, setEventImages] = useState<any[]>([]);
 
@@ -185,6 +193,7 @@ export default function EditEventPage() {
             { id: "contact", label: "Liên hệ", icon: Contact },
             { id: "config", label: "Cự ly & Áo", icon: Settings },
             { id: "users", label: "Quản lý người dùng", icon: User },
+            { id: "form-config", label: "Cấu hình Form", icon: FormInputIcon },
           ].map((tab) => (
             <button
               key={tab.id}
@@ -706,6 +715,7 @@ export default function EditEventPage() {
         )}
         {activeTab === "config" && <DistanceShirtManager eventId={id} />}
         {activeTab === "users" && <EventUserManager eventId={id} />}
+        {activeTab === "form-config" && <FormFieldConfigManager eventId={id} />}
         {/* Save Button - Always visible */}
         <div className="flex justify-end gap-3 sticky bottom-6 bg-white p-4 rounded-lg shadow-lg border border-gray-200">
           <Button

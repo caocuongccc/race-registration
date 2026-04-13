@@ -93,7 +93,11 @@ export default function AdminDashboard() {
       console.error("Failed to load events:", error);
     }
   };
-
+  const handleEventChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    e.preventDefault(); // ← Ngăn page reload
+    e.stopPropagation();
+    setSelectedEvent(e.target.value);
+  };
   const loadStats = async () => {
     if (!selectedEvent) return;
 
@@ -141,7 +145,7 @@ export default function AdminDashboard() {
         <div className="flex items-center gap-3 bg-white p-4 rounded-xl shadow-sm border border-gray-200">
           <select
             value={selectedEvent}
-            onChange={(e) => setSelectedEvent(e.target.value)}
+            onChange={handleEventChange}
             className="
               flex-1 px-4 py-3 rounded-lg bg-gray-50 border-2 border-gray-300 
               text-gray-800 text-base font-medium shadow-sm
@@ -248,7 +252,8 @@ export default function AdminDashboard() {
       <div className="flex items-center gap-3 bg-white p-4 rounded-xl shadow-sm border border-gray-200 w-full max-w-md">
         <select
           value={selectedEvent}
-          onChange={(e) => setSelectedEvent(e.target.value)}
+          // onChange={(e) => setSelectedEvent(e.target.value)}
+          onChange={handleEventChange}
           className="
             flex-1 px-3 py-2 rounded-lg bg-gray-50 border border-gray-300 
             text-gray-800 text-sm shadow-sm

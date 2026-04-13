@@ -168,7 +168,6 @@ export async function POST(req: NextRequest) {
         // Validate required fields
         const requiredFields = [
           { key: "Họ tên", label: "Họ tên" },
-
           { key: "Số điện thoại", label: "Số điện thoại" },
           { key: "Ngày sinh", label: "Ngày sinh" },
           { key: "Giới tính", label: "Giới tính" },
@@ -280,7 +279,10 @@ export async function POST(req: NextRequest) {
             shirtId,
             importBatchId: batch.id,
             registrationSource: "EXCEL",
-            bibName: row["Họ tên"].toString().trim(),
+            bibName:
+              row["Mục tiêu"]?.toString().trim() != null
+                ? row["Mục tiêu"].toString().trim()
+                : row["Họ tên"].toString().trim(), // Use "Mục tiêu" if provided, otherwise fallback to full name
             fullName: row["Họ tên"].toString().trim(),
             email: row["Email"].toString().trim(),
             phone: row["Số điện thoại"].toString().trim(),

@@ -1,4 +1,4 @@
-// app/api/admin/import/batches/route.ts
+// app/api/admin/import/batches/route.ts - WITH PAYMENT STATUS
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
@@ -19,28 +19,58 @@ export async function GET(req: NextRequest) {
       whereClause.eventId = eventId;
     }
 
+    // ✅ Get batches with registrations to calculate payment status
     const batches = await prisma.importBatch.findMany({
       where: whereClause,
       include: {
         event: {
-          select: { name: true },
+          select: { id: true, name: true },
         },
         uploadedByUser: {
           select: { name: true, email: true },
+        },
+        // ✅ Include registrations to calculate payment stats
+        registrations: {
+          select: {
+            id: true,
+            paymentStatus: true,
+          },
         },
       },
       orderBy: {
         createdAt: "desc",
       },
-      take: 50, // Limit to 50 most recent
+      take: 50,
     });
 
-    return NextResponse.json({ batches });
+    // ✅ Calculate payment stats for each batch
+    const batchesWithStats = batches.map((batch) => {
+      const paidCount = batch.registrations.filter(
+        (r) => r.paymentStatus === "PAID",
+      ).length;
+      const pendingCount = batch.registrations.filter(
+        (r) => r.paymentStatus === "PENDING",
+      ).length;
+      const paymentProgress =
+        batch.successCount > 0 ? (paidCount / batch.successCount) * 100 : 0;
+
+      // Remove registrations from response to keep it clean
+      const { registrations, ...batchData } = batch;
+
+      return {
+        ...batchData,
+        paidCount,
+        pendingCount,
+        paymentProgress,
+      };
+    });
+
+    return NextResponse.json({ batches: batchesWithStats });
   } catch (error) {
     console.error("Error fetching import batches:", error);
     return NextResponse.json(
       { error: "Failed to fetch import batches" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

@@ -1,4 +1,4 @@
-// app/admin/dashboard/import/page.tsx - COMPLETE WITH ERROR VIEWER
+// app/admin/dashboard/import/page.tsx - IMPROVED VERSION
 "use client";
 
 import { useEffect, useState, useRef } from "react";
@@ -14,6 +14,7 @@ import {
   XCircle,
   Clock,
   Eye,
+  Filter,
 } from "lucide-react";
 import { ImportErrorViewer } from "@/components/ImportErrorViewer";
 
@@ -26,16 +27,27 @@ interface ImportBatch {
   status: string;
   createdAt: Date;
   event: {
+    id: string;
     name: string;
   };
+  bibRangeStart: string | null;
+  bibRangeEnd: string | null;
+  totalShirts: number;
+  // ✅ NEW: Payment stats
+  paidCount?: number;
+  pendingCount?: number;
+  paymentProgress?: number;
 }
 
 export default function ImportExcelPage() {
   const [batches, setBatches] = useState<ImportBatch[]>([]);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
-  const [selectedEvent, setSelectedEvent] = useState("");
+
+  // ✅ NEW: Event filter
+  const [selectedEvent, setSelectedEvent] = useState("all");
   const [events, setEvents] = useState<any[]>([]);
+
   const [selectedBatchForErrors, setSelectedBatchForErrors] = useState<
     string | null
   >(null);
@@ -43,8 +55,11 @@ export default function ImportExcelPage() {
 
   useEffect(() => {
     loadEvents();
-    loadBatches();
   }, []);
+
+  useEffect(() => {
+    loadBatches();
+  }, [selectedEvent]);
 
   const loadEvents = async () => {
     try {
@@ -59,7 +74,12 @@ export default function ImportExcelPage() {
   const loadBatches = async () => {
     setLoading(true);
     try {
-      const res = await fetch("/api/admin/import/batches");
+      const params = new URLSearchParams();
+      if (selectedEvent !== "all") {
+        params.append("eventId", selectedEvent);
+      }
+
+      const res = await fetch(`/api/admin/import/batches?${params.toString()}`);
       const data = await res.json();
       setBatches(data.batches || []);
     } catch (error) {
@@ -73,8 +93,8 @@ export default function ImportExcelPage() {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    if (!selectedEvent) {
-      toast.error("Vui lòng chọn sự kiện trước");
+    if (!selectedEvent || selectedEvent === "all") {
+      toast.error("Vui lòng chọn sự kiện trước khi upload");
       return;
     }
 
@@ -104,13 +124,12 @@ export default function ImportExcelPage() {
 
       if (result.success) {
         toast.success(
-          `✅ Đã import ${result.batch.successCount}/${result.batch.totalRows} VĐV`
+          `✅ Đã import ${result.batch.successCount}/${result.batch.totalRows} VĐV`,
         );
 
-        // Show errors if any
         if (result.batch.failedCount > 0) {
           toast.warning(
-            `⚠️ ${result.batch.failedCount} dòng lỗi. Click để xem chi tiết.`
+            `⚠️ ${result.batch.failedCount} dòng lỗi. Click để xem chi tiết.`,
           );
           setSelectedBatchForErrors(result.batch.id);
         }
@@ -161,7 +180,15 @@ export default function ImportExcelPage() {
       const result = await res.json();
 
       if (result.success) {
-        toast.success(`✅ Đã xác nhận thanh toán cho ${result.count} VĐV`);
+        toast.success(
+          `✅ Đã xác nhận thanh toán cho ${result.summary.paidCount} VĐV`,
+        );
+        if (result.summary.emailsSent > 0) {
+          toast.success(`📧 Đã gửi ${result.summary.emailsSent} email`);
+        }
+        if (result.summary.emailsFailed > 0) {
+          toast.warning(`⚠️ ${result.summary.emailsFailed} email gửi thất bại`);
+        }
         loadBatches();
       } else {
         toast.error(result.error || "Có lỗi xảy ra");
@@ -202,6 +229,12 @@ export default function ImportExcelPage() {
     }
   };
 
+  // ✅ NEW: Calculate if batch payment is complete
+  const isBatchFullyPaid = (batch: ImportBatch) => {
+    if (!batch.paidCount) return false;
+    return batch.paidCount === batch.successCount;
+  };
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -212,20 +245,17 @@ export default function ImportExcelPage() {
         </p>
       </div>
 
-      {/* Upload Section */}
+      {/* ✅ NEW: Event Filter Row */}
       <Card className="border-2 border-blue-200">
-        <CardHeader className="bg-blue-50">
-          <CardTitle>📁 Upload File Excel</CardTitle>
-        </CardHeader>
-        <CardContent className="pt-6 space-y-4">
+        <CardContent className="pt-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <Select
               value={selectedEvent}
               onChange={(e) => setSelectedEvent(e.target.value)}
-              label="Chọn sự kiện"
+              label="📅 Chọn sự kiện để import"
               required
             >
-              <option value="">-- Chọn sự kiện --</option>
+              <option value="all">-- Chọn sự kiện --</option>
               {events.map((event) => (
                 <option key={event.id} value={event.id}>
                   {event.name}
@@ -233,62 +263,85 @@ export default function ImportExcelPage() {
               ))}
             </Select>
 
-            <div className="flex items-end gap-2">
+            <div className="flex items-end">
               <Button
                 variant="outline"
                 onClick={handleDownloadTemplate}
-                className="flex-1"
+                className="w-full"
               >
                 <Download className="w-4 h-4 mr-2" />
                 Tải mẫu Excel
               </Button>
             </div>
           </div>
-
-          <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center">
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept=".xlsx,.xls"
-              onChange={handleFileUpload}
-              disabled={!selectedEvent || uploading}
-              className="hidden"
-              id="file-upload"
-            />
-
-            <label
-              htmlFor="file-upload"
-              className={`cursor-pointer ${
-                !selectedEvent || uploading
-                  ? "opacity-50 cursor-not-allowed"
-                  : ""
-              }`}
-            >
-              <FileSpreadsheet className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-              <p className="text-lg font-medium text-gray-900 mb-2">
-                {uploading ? "Đang xử lý..." : "Click để chọn file Excel"}
-              </p>
-              <p className="text-sm text-gray-500">
-                Chỉ chấp nhận file .xlsx, .xls (tối đa 5MB)
-              </p>
-            </label>
-          </div>
-
-          <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-            <p className="text-sm text-yellow-900">
-              💡 <strong>Lưu ý:</strong>
-            </p>
-            <ul className="text-sm text-yellow-800 mt-2 space-y-1">
-              <li>• File phải có đúng format như mẫu</li>
-              <li>• Ngày sinh định dạng: DD/MM/YYYY</li>
-              <li>• Giới tính: "Nam" hoặc "Nữ"</li>
-              <li>• Cự ly phải khớp với tên cự ly trong sự kiện</li>
-              <li>• Số BIB có thể để trống (hệ thống sẽ tự sinh)</li>
-              <li>• Sau khi import, cần vào xác nhận thanh toán hàng loạt</li>
-            </ul>
-          </div>
         </CardContent>
       </Card>
+
+      {/* Upload Section */}
+      {selectedEvent && selectedEvent !== "all" ? (
+        <Card className="border-2 border-green-200">
+          <CardHeader className="bg-green-50">
+            <CardTitle>
+              📁 Upload File Excel cho:{" "}
+              {events.find((e) => e.id === selectedEvent)?.name}
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="pt-6 space-y-4">
+            <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center">
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept=".xlsx,.xls"
+                onChange={handleFileUpload}
+                disabled={uploading}
+                className="hidden"
+                id="file-upload"
+              />
+
+              <label
+                htmlFor="file-upload"
+                className={`cursor-pointer ${
+                  uploading ? "opacity-50 cursor-not-allowed" : ""
+                }`}
+              >
+                <FileSpreadsheet className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+                <p className="text-lg font-medium text-gray-900 mb-2">
+                  {uploading ? "Đang xử lý..." : "Click để chọn file Excel"}
+                </p>
+                <p className="text-sm text-gray-500">
+                  Chỉ chấp nhận file .xlsx, .xls (tối đa 5MB)
+                </p>
+              </label>
+            </div>
+
+            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+              <p className="text-sm text-yellow-900">
+                💡 <strong>Lưu ý:</strong>
+              </p>
+              <ul className="text-sm text-yellow-800 mt-2 space-y-1">
+                <li>• File phải có đúng format như mẫu</li>
+                <li>• Ngày sinh định dạng: DD/MM/YYYY</li>
+                <li>• Giới tính: "Nam" hoặc "Nữ"</li>
+                <li>• Cự ly phải khớp với tên cự ly trong sự kiện</li>
+                <li>• Số BIB có thể để trống (hệ thống sẽ tự sinh)</li>
+                <li>• Sau khi import, cần vào xác nhận thanh toán hàng loạt</li>
+              </ul>
+            </div>
+          </CardContent>
+        </Card>
+      ) : (
+        <Card className="border-2 border-gray-200 bg-gray-50">
+          <CardContent className="py-12 text-center">
+            <Filter className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+            <p className="text-gray-600 font-medium mb-2">
+              Vui lòng chọn sự kiện để bắt đầu import
+            </p>
+            <p className="text-sm text-gray-500">
+              Chọn sự kiện từ dropdown phía trên
+            </p>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Error Viewer */}
       {selectedBatchForErrors && (
@@ -301,7 +354,14 @@ export default function ImportExcelPage() {
       {/* Import History */}
       <Card>
         <CardHeader>
-          <CardTitle>📜 Lịch sử import</CardTitle>
+          <div className="flex items-center justify-between">
+            <CardTitle>
+              📜 Lịch sử import
+              {selectedEvent !== "all" &&
+                ` - ${events.find((e) => e.id === selectedEvent)?.name}`}
+            </CardTitle>
+            <div className="text-sm text-gray-600">{batches.length} batch</div>
+          </div>
         </CardHeader>
         <CardContent className="p-0">
           {loading ? (
@@ -310,7 +370,9 @@ export default function ImportExcelPage() {
             </div>
           ) : batches.length === 0 ? (
             <div className="text-center py-12 text-gray-500">
-              Chưa có lịch sử import
+              {selectedEvent !== "all"
+                ? "Chưa có lịch sử import cho sự kiện này"
+                : "Chưa có lịch sử import"}
             </div>
           ) : (
             <div className="overflow-x-auto">
@@ -322,71 +384,124 @@ export default function ImportExcelPage() {
                     <th className="px-6 py-3 text-left text-xs">Tổng</th>
                     <th className="px-6 py-3 text-left text-xs">Thành công</th>
                     <th className="px-6 py-3 text-left text-xs">Thất bại</th>
+                    <th className="px-6 py-3 text-left text-xs">Đã TT</th>
+                    <th className="px-6 py-3 text-left text-xs">BIB Range</th>
                     <th className="px-6 py-3 text-left text-xs">Trạng thái</th>
                     <th className="px-6 py-3 text-left text-xs">Thời gian</th>
                     <th className="px-6 py-3 text-left text-xs">Thao tác</th>
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y">
-                  {batches.map((batch) => (
-                    <tr key={batch.id} className="hover:bg-gray-50">
-                      <td className="px-6 py-4 text-sm font-medium">
-                        {batch.fileName}
-                      </td>
-                      <td className="px-6 py-4 text-sm">{batch.event.name}</td>
-                      <td className="px-6 py-4 text-sm font-bold">
-                        {batch.totalRows}
-                      </td>
-                      <td className="px-6 py-4 text-sm text-green-600 font-medium">
-                        {batch.successCount}
-                      </td>
-                      <td className="px-6 py-4 text-sm text-red-600 font-medium">
-                        {batch.failedCount}
-                      </td>
-                      <td className="px-6 py-4">
-                        {getStatusBadge(batch.status)}
-                      </td>
-                      <td className="px-6 py-4 text-sm text-gray-600">
-                        {new Date(batch.createdAt).toLocaleString("vi-VN")}
-                      </td>
-                      <td className="px-6 py-4">
-                        <div className="flex items-center gap-2">
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() =>
-                              (window.location.href = `/admin/dashboard/registrations?batchId=${batch.id}`)
-                            }
-                          >
-                            <Eye className="w-4 h-4" />
-                          </Button>
+                  {batches.map((batch) => {
+                    const isFullyPaid = isBatchFullyPaid(batch);
+                    const paymentProgress = batch.paymentProgress || 0;
 
-                          {batch.failedCount > 0 && (
+                    return (
+                      <tr key={batch.id} className="hover:bg-gray-50">
+                        <td className="px-6 py-4 text-sm font-medium">
+                          {batch.fileName}
+                        </td>
+
+                        {/* ✅ NEW: Event name column */}
+                        <td className="px-6 py-4 text-sm">
+                          <span className="px-2 py-1 bg-blue-100 text-blue-700 rounded text-xs font-medium">
+                            {batch.event.name}
+                          </span>
+                        </td>
+
+                        <td className="px-6 py-4 text-sm font-bold">
+                          {batch.totalRows}
+                        </td>
+                        <td className="px-6 py-4 text-sm text-green-600 font-medium">
+                          {batch.successCount}
+                        </td>
+                        <td className="px-6 py-4 text-sm text-red-600 font-medium">
+                          {batch.failedCount}
+                        </td>
+
+                        {/* ✅ NEW: Payment status column */}
+                        <td className="px-6 py-4 text-sm">
+                          <div>
+                            <div className="font-bold text-blue-600">
+                              {batch.paidCount || 0}/{batch.successCount}
+                            </div>
+                            {batch.successCount > 0 && (
+                              <div className="text-xs text-gray-500">
+                                {paymentProgress.toFixed(0)}%
+                              </div>
+                            )}
+                          </div>
+                        </td>
+
+                        {/* BIB Range */}
+                        <td className="px-6 py-4 text-sm">
+                          {batch.bibRangeStart && batch.bibRangeEnd ? (
+                            <div className="font-mono text-xs">
+                              <div>{batch.bibRangeStart}</div>
+                              <div className="text-gray-400">↓</div>
+                              <div>{batch.bibRangeEnd}</div>
+                            </div>
+                          ) : (
+                            <span className="text-gray-400">—</span>
+                          )}
+                        </td>
+
+                        <td className="px-6 py-4">
+                          {getStatusBadge(batch.status)}
+                        </td>
+                        <td className="px-6 py-4 text-sm text-gray-600">
+                          {new Date(batch.createdAt).toLocaleString("vi-VN")}
+                        </td>
+                        <td className="px-6 py-4">
+                          <div className="flex items-center gap-2">
                             <Button
                               size="sm"
                               variant="outline"
                               onClick={() =>
-                                setSelectedBatchForErrors(batch.id)
+                                (window.location.href = `/admin/dashboard/registrations?eventId=${batch.event.id}&source=EXCEL`)
                               }
-                              className="text-red-600 hover:bg-red-50"
                             >
-                              ⚠️ {batch.failedCount} lỗi
+                              <Eye className="w-4 h-4" />
                             </Button>
-                          )}
 
-                          {batch.status === "COMPLETED" && (
-                            <Button
-                              size="sm"
-                              onClick={() => handlePayBatch(batch.id)}
-                              className="bg-green-600 hover:bg-green-700"
-                            >
-                              💰 Thanh toán
-                            </Button>
-                          )}
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
+                            {batch.failedCount > 0 && (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() =>
+                                  setSelectedBatchForErrors(batch.id)
+                                }
+                                className="text-red-600 hover:bg-red-50"
+                              >
+                                ⚠️ {batch.failedCount} lỗi
+                              </Button>
+                            )}
+
+                            {/* ✅ IMPROVED: Show payment button based on status */}
+                            {batch.status === "COMPLETED" && !isFullyPaid && (
+                              <Button
+                                size="sm"
+                                onClick={() => handlePayBatch(batch.id)}
+                                className="bg-green-600 hover:bg-green-700"
+                              >
+                                💰 Thanh toán (
+                                {batch.pendingCount ||
+                                  batch.successCount - (batch.paidCount || 0)}
+                                )
+                              </Button>
+                            )}
+
+                            {/* ✅ NEW: Show fully paid badge */}
+                            {isFullyPaid && (
+                              <span className="px-2 py-1 bg-green-100 text-green-700 text-xs font-medium rounded-full">
+                                ✅ Đã TT đủ
+                              </span>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>

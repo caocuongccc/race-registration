@@ -25,17 +25,17 @@ model User {
 }
 
 model Event {
-  id                   String         @id @default(cuid())
+  id                   String      @id @default(cuid())
   name                 String
-  slug                 String         @unique
+  slug                 String      @unique
   description          String?
   date                 DateTime
   location             String
   address              String?
   city                 String?
-  status               EventStatus    @default(DRAFT)
-  isPublished          Boolean        @default(false)
-  allowRegistration    Boolean        @default(false)
+  status               EventStatus @default(DRAFT)
+  isPublished          Boolean     @default(false)
+  allowRegistration    Boolean     @default(false)
   racePackLocation     String?
   racePackTime         String?
   racePackSchedule     String?
@@ -49,26 +49,35 @@ model Event {
   logoUrl              String?
   bannerUrl            String?
   coverImageUrl        String?
-  hasShirt             Boolean        @default(false)
-  requireOnlinePayment Boolean        @default(true)
-  sendBibImmediately   Boolean        @default(true)
-  bankName             String?        @db.Text
-  bankAccount          String?        @db.Text
-  bankHolder           String?        @db.Text
-  bankCode             String?        @db.Text
-  createdById          String
-  createdAt            DateTime       @default(now())
-  updatedAt            DateTime       @updatedAt
-  distances            Distance[]
-  emailConfig          EmailConfig?
-  eventImages          EventImage[]
-  shirts               EventShirt[]
-  assignedUsers        EventUser[]
-  createdBy            User           @relation(fields: [createdById], references: [id])
-  importBatches        ImportBatch[]
-  registrations        Registration[]
-  shirtOrders          ShirtOrder[]
+  hasShirt             Boolean     @default(false)
+  requireOnlinePayment Boolean     @default(true)
+  sendBibImmediately   Boolean     @default(true)
+  bankName             String?     @db.Text
+  bankAccount          String?     @db.Text
+  bankHolder           String?     @db.Text
+  bankCode             String?     @db.Text
 
+  // ✅ NEW: Form field visibility configuration
+  showIdCard            Boolean @default(true) @map("show_id_card")
+  showAddress           Boolean @default(true) @map("show_address")
+  showCity              Boolean @default(true) @map("show_city")
+  showBloodType         Boolean @default(false) @map("show_blood_type")
+  showEmergencyContact  Boolean @default(true) @map("show_emergency_contact")
+  showHealthDeclaration Boolean @default(true) @map("show_health_declaration")
+  showBibName           Boolean @default(true) @map("show_bib_name")
+
+  createdById   String
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  distances     Distance[]
+  emailConfig   EmailConfig?
+  eventImages   EventImage[]
+  shirts        EventShirt[]
+  assignedUsers EventUser[]
+  createdBy     User           @relation(fields: [createdById], references: [id])
+  importBatches ImportBatch[]
+  registrations Registration[]
+  shirtOrders   ShirtOrder[]
   @@map("events")
 }
 
@@ -158,10 +167,10 @@ model EventShirt {
 
 model WebhookLog {
   id           String   @id @default(cuid())
-  provider     String // "sepay", "momo", "vnpay"...
-  event        String // "payment", "refund"...
-  payload      String   @db.Text // JSON string
-  status       String // "SUCCESS", "FAILED"
+  provider     String
+  event        String
+  payload      String   @db.Text
+  status       String
   errorMessage String?  @db.Text
   createdAt    DateTime @default(now())
 
@@ -176,7 +185,7 @@ model Registration {
   distanceId            String
   shirtId               String?
   fullName              String
-  bibName               String? // NEW: Name to show on BIB
+  bibName               String?
   email                 String
   phone                 String
   dob                   DateTime
@@ -209,7 +218,6 @@ model Registration {
   registrationSource    RegistrationSource? @default(ONLINE)
   importBatchId         String?
   distanceGoalId        String?
-  // ✅ THÊM mới
   racePackCollected     Boolean             @default(false)
   racePackCollectedAt   DateTime?
   racePackCollectedBy   String?
@@ -225,12 +233,12 @@ model Registration {
   user                  User?               @relation(fields: [userId], references: [id])
   shirtOrders           ShirtOrder[]
   collectedBy           User?               @relation("RacePackCollector", fields: [racePackCollectedBy], references: [id])
-
   @@index([importBatchId])
   @@index([eventId, paymentStatus])
   @@index([distanceId])
   @@index([distanceGoalId])
   @@index([email])
+  @@index([importBatchId, paymentStatus])
   @@map("registrations")
 }
 
@@ -304,29 +312,28 @@ model EmailLog {
 }
 
 model ImportBatch {
-  id           String       @id @default(dbgenerated("(gen_random_uuid())::text"))
-  eventId      String
-  fileName     String
-  uploadedBy   String
-  totalRows    Int
-  successCount Int          @default(0)
-  failedCount  Int          @default(0)
-  status       ImportStatus @default(PROCESSING)
-  errorLog     Json?
-  createdAt    DateTime     @default(now())
-  completedAt  DateTime?
-
-  // ✅ NEW FIELDS
-  contactEmail  String? // Email đầu tiên trong batch
-  bibRangeStart String? // BIB đầu tiên (17001)
-  bibRangeEnd   String? // BIB cuối (17100)
-  totalShirts   Int     @default(0) // Tổng số áo đã đặt
-  qrBatchUrl    String? // QR code cho batch
+  id            String       @id @default(dbgenerated("(gen_random_uuid())::text"))
+  eventId       String
+  fileName      String
+  uploadedBy    String
+  totalRows     Int
+  successCount  Int          @default(0)
+  failedCount   Int          @default(0)
+  status        ImportStatus @default(PROCESSING)
+  errorLog      Json?
+  createdAt     DateTime     @default(now())
+  completedAt   DateTime?
+  contactEmail  String?
+  bibRangeStart String?
+  bibRangeEnd   String?
+  totalShirts   Int          @default(0)
+  qrBatchUrl    String?
 
   event          Event          @relation(fields: [eventId], references: [id])
   uploadedByUser User           @relation(fields: [uploadedBy], references: [id])
   registrations  Registration[]
 
+  @@index([eventId, status])
   @@map("import_batches")
 }
 
@@ -344,7 +351,15 @@ model ShirtOrder {
   items          ShirtOrderItem[]
   event          Event            @relation(fields: [eventId], references: [id])
   registration   Registration?    @relation(fields: [registrationId], references: [id])
-
+// ✅ NEW FIELDS:
+  fullName       String?   // Tên người mua
+  phone          String?   // SĐT liên hệ  
+  address        String?   // Địa chỉ giao hàng
+  city           String?   // Tỉnh/TP
+  notes          String?   // Ghi chú
+  @@index([email])
+  @@index([phone])
+  @@index([fullName])
   @@index([eventId, paymentStatus])
   @@index([registrationId])
   @@map("shirt_orders")

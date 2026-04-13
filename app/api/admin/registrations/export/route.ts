@@ -62,7 +62,6 @@ export async function GET(req: NextRequest) {
         bibNumber: "asc",
       },
     });
-
     // Create workbook
     const wb = XLSX.utils.book_new();
 
@@ -104,6 +103,7 @@ export async function GET(req: NextRequest) {
         STT: index + 1,
         "Số BIB": r.bibNumber || "Chưa có",
         "Họ tên": r.fullName,
+        "Tên trên bib": r.bibName || "",
         "Ngày sinh": new Date(r.dob).toLocaleDateString("vi-VN"),
         "Nhóm tuổi": getAgeGroup(r.dob),
         "Giới tính": r.gender === "MALE" ? "Nam" : "Nữ",

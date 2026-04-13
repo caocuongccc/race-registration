@@ -36,9 +36,29 @@ import {
 import { ShirtSize } from "@prisma/client";
 
 interface EventData {
-  event: any;
+  event: {
+    id: string;
+    name: string;
+    slug: string;
+    allowRegistration: boolean;
+    bankName?: string;
+    bankAccount?: string;
+    bankHolder?: string;
+    bankCode?: string;
+
+    // ✅ NEW: Form field visibility config
+    showIdCard: boolean;
+    showAddress: boolean;
+    showCity: boolean;
+    showBloodType: boolean;
+    showEmergencyContact: boolean;
+    showHealthDeclaration: boolean;
+    showBibName: boolean;
+    _privateAccess?: boolean; // NEW: Flag for private access
+  };
   distances: any[];
   shirts: any[];
+  shirtImages?: any;
 }
 
 interface FormData {
@@ -248,39 +268,79 @@ export default function RegistrationPage() {
       toast.error("Vui lòng chọn cự ly");
       return;
     }
-    // Final validation
+    // // Final validation
+    // if (emailError || phoneError || emergencyPhoneError) {
+    //   toast.error("Vui lòng kiểm tra lại thông tin đã nhập");
+    //   return;
+    // }
+    // ✅ Conditional validation
+    if (eventData?.event.showIdCard && !data.idCard) {
+      toast.error("Vui lòng nhập số CCCD/CMND");
+      return;
+    }
+
+    if (eventData?.event.showHealthDeclaration && !data.healthDeclaration) {
+      toast.error("Vui lòng xác nhận cam kết sức khỏe");
+      return;
+    }
+
     if (emailError || phoneError || emergencyPhoneError) {
-      toast.error("Vui lòng kiểm tra lại thông tin đã nhập");
+      toast.error("Vui lòng sửa các lỗi trong form");
       return;
     }
     setSubmitting(true);
 
     try {
+      // ✅ Build submission data - only include enabled fields
+      const submissionData: any = {
+        // Always included
+        distanceId: data.distanceId,
+        fullName: data.fullName,
+        email: data.email,
+        phone: data.phone,
+        dob: data.dob,
+        gender: data.gender,
+      };
+
+      // Add conditional fields only if enabled
+      if (eventData?.event.showIdCard) {
+        submissionData.idCard = data.idCard;
+      }
+
+      if (eventData?.event.showAddress) {
+        submissionData.address = data.address;
+      }
+
+      if (eventData?.event.showCity) {
+        submissionData.city = data.city;
+      }
+
+      if (eventData?.event.showBloodType) {
+        submissionData.bloodType = data.bloodType;
+      }
+
+      if (eventData?.event.showBibName) {
+        submissionData.bibName = data.bibName;
+      }
+
+      if (eventData?.event.showEmergencyContact) {
+        submissionData.emergencyContactName = data.emergencyContactName;
+        submissionData.emergencyContactPhone = data.emergencyContactPhone;
+      }
+
+      if (eventData?.event.showHealthDeclaration) {
+        submissionData.healthDeclaration = data.healthDeclaration;
+      }
+
+      // Shirt data (if selected)
+      if (data.shirtId) {
+        submissionData.shirtId = data.shirtId;
+      }
+
       const res = await fetch("/api/registrations", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          eventId: eventData?.event.id,
-          distanceId: data.distanceId,
-          shirtId: data.shirtId || null,
-          fullName: data.fullName,
-          bibName: data.bibName || data.fullName, // Use bibName or fallback to fullName
-
-          email: data.email,
-          phone: data.phone,
-          dob: new Date(data.dob),
-          gender: data.gender,
-          idCard: data.idCard,
-          address: data.address,
-          city: data.city,
-          emergencyContactName: data.emergencyContactName,
-          emergencyContactPhone: data.emergencyContactPhone,
-          healthDeclaration: data.healthDeclaration,
-          bloodType: data.bloodType || null,
-          shirtCategory: watchShirtCategory || null,
-          shirtType: watchShirtType || null,
-          shirtSize: data.shirtSize || null, // NEW: Send selected size
-        }),
+        body: JSON.stringify(submissionData),
       });
 
       const result = await res.json();
@@ -361,6 +421,46 @@ export default function RegistrationPage() {
             </div>
           </CardContent>
         </Card>
+        {/* ✅ THÊM: Private Access Notice */}
+        {eventData.event._privateAccess && (
+          <section className="bg-yellow-50 border-b border-yellow-200">
+            <div className="max-w-7xl mx-auto px-4 py-4">
+              <div className="flex items-start gap-3">
+                <svg
+                  className="w-6 h-6 text-yellow-600 flex-shrink-0 mt-0.5"
+                  fill="currentColor"
+                  viewBox="0 0 20 20"
+                >
+                  <path
+                    fillRule="evenodd"
+                    d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z"
+                    clipRule="evenodd"
+                  />
+                </svg>
+                <div className="flex-1">
+                  <h3 className="text-sm font-semibold text-yellow-900">
+                    🔒 Đăng ký riêng tư
+                  </h3>
+                  <p className="text-sm text-yellow-800 mt-1">
+                    Sự kiện này không công khai trên danh sách. Bạn đang truy
+                    cập qua link trực tiếp.
+                    {event.allowRegistration ? (
+                      <span className="font-medium">
+                        {" "}
+                        Vẫn có thể đăng ký bình thường.
+                      </span>
+                    ) : (
+                      <span className="font-medium text-red-700">
+                        {" "}
+                        Hiện chưa mở đăng ký.
+                      </span>
+                    )}
+                  </p>
+                </div>
+              </div>
+            </div>
+          </section>
+        )}
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
           {/* Step 1: Chọn cự ly */}
           <Card>
@@ -436,14 +536,6 @@ export default function RegistrationPage() {
                     <div className="text-2xl font-bold text-blue-600 mt-2">
                       {formatCurrency(distance.price)}
                     </div>
-                    {/* {distance.maxParticipants && (
-                      <div className="text-xs text-gray-500 mt-2">
-                        Còn{" "}
-                        {distance.maxParticipants -
-                          distance.currentParticipants}{" "}
-                        chỗ
-                      </div>
-                    )} */}
                     {!distance.isAvailable && (
                       <div className="absolute top-2 right-2 bg-red-500 text-white text-xs px-2 py-1 rounded">
                         Hết chỗ
@@ -462,7 +554,6 @@ export default function RegistrationPage() {
           </Card>
 
           {/* Step 2: Thông tin cá nhân */}
-          {/* Step 2: Personal Info - REFORMATTED */}
           <Card>
             <CardHeader>
               <CardTitle>Bước 2: Thông Tin Cá Nhân</CardTitle>
@@ -480,12 +571,24 @@ export default function RegistrationPage() {
                 />
 
                 <div>
-                  <Input
+                  {/* <Input
                     label="Tên hiển thị trên BIB"
                     {...register("bibName")}
                     placeholder="💡 Để trống sẽ dùng họ tên đầy đủ"
                   />
-                  <p className="text-xs text-gray-500 mt-1"></p>
+                  <p className="text-xs text-gray-500 mt-1"></p> */}
+                  {eventData?.event.showBibName && (
+                    <div>
+                      <label>Tên hiển thị trên BIB</label>
+                      <Input
+                        {...register("bibName")}
+                        placeholder="Nickname hoặc để trống sử dụng tên đầy đủ"
+                      />
+                      <p className="text-xs text-gray-500 mt-1">
+                        Để trống nếu muốn sử dụng họ tên đầy đủ
+                      </p>
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -538,36 +641,86 @@ export default function RegistrationPage() {
                   <option value="FEMALE">Nữ</option>
                 </Select>
 
-                <Select label="Nhóm máu" {...register("bloodType")}>
+                {/* <Select label="Nhóm máu" {...register("bloodType")}>
                   <option value="">-- Chọn nhóm máu --</option>
                   <option value="A">A</option>
                   <option value="B">B</option>
                   <option value="O">O</option>
                   <option value="AB">AB</option>
-                </Select>
+                </Select> */}
+                {eventData?.event.showBloodType && (
+                  <div>
+                    <label>Nhóm máu</label>
+                    <Select {...register("bloodType")}>
+                      <option value="">-- Chọn nhóm máu --</option>
+                      <option value="A">A</option>
+                      <option value="B">B</option>
+                      <option value="AB">AB</option>
+                      <option value="O">O</option>
+                    </Select>
+                  </div>
+                )}
               </div>
 
               {/* Row 4: ID Card & Address */}
               <div className="grid md:grid-cols-2 gap-4">
-                <Input
+                {/* <Input
                   label="CCCD/CMND"
                   {...register("idCard")}
                   placeholder="001234567890"
                   error={errors.idCard?.message}
                   required
-                />
-                <Input label="Tỉnh/Thành phố" {...register("city")} />
+                /> */}
+                {eventData?.event.showIdCard && (
+                  <div>
+                    <label>
+                      Số CCCD/CMND <span className="text-red-500">*</span>
+                    </label>
+                    <Input
+                      {...register("idCard", {
+                        required: eventData.event.showIdCard,
+                      })}
+                      onChange={handleIdCardChange}
+                    />
+                  </div>
+                )}
+                {/* <Input label="Tỉnh/Thành phố" {...register("city")} /> */}
               </div>
 
               {/* Row 5: Full Address */}
-              <Input
+              {/* <Input
                 label="Địa chỉ chi tiết"
                 {...register("address")}
                 placeholder="Số nhà, đường, phường/xã"
-              />
+              /> */}
+              {(eventData?.event.showAddress || eventData?.event.showCity) && (
+                <div className="space-y-4 pt-4 border-t">
+                  <h3 className="font-semibold">Địa chỉ</h3>
+
+                  {eventData?.event.showAddress && (
+                    <div>
+                      <label>Địa chỉ</label>
+                      <Input
+                        {...register("address")}
+                        onChange={(e) => handleTextChange(e, "address")}
+                      />
+                    </div>
+                  )}
+
+                  {eventData?.event.showCity && (
+                    <div>
+                      <label>Tỉnh/Thành phố</label>
+                      <Input
+                        {...register("city")}
+                        onChange={(e) => handleTextChange(e, "city")}
+                      />
+                    </div>
+                  )}
+                </div>
+              )}
 
               {/* Emergency Contact */}
-              <div className="border-t pt-4 mt-4">
+              {/* <div className="border-t pt-4 mt-4">
                 <h4 className="font-medium text-gray-900 mb-3">
                   Liên hệ khẩn cấp
                 </h4>
@@ -592,11 +745,39 @@ export default function RegistrationPage() {
                     required
                   />
                 </div>
-              </div>
+              </div> */}
+              {eventData?.event.showEmergencyContact && (
+                <div className="space-y-4 pt-4 border-t">
+                  <h3 className="font-semibold">Liên hệ khẩn cấp</h3>
+
+                  <div>
+                    <label>Tên người liên hệ</label>
+                    <Input
+                      {...register("emergencyContactName")}
+                      onChange={(e) =>
+                        handleNameChange(e, "emergencyContactName")
+                      }
+                    />
+                  </div>
+
+                  <div>
+                    <label>Số điện thoại</label>
+                    <Input
+                      {...register("emergencyContactPhone")}
+                      onChange={handleEmergencyPhoneChange}
+                    />
+                    {emergencyPhoneError && (
+                      <p className="text-xs text-red-600 mt-1">
+                        {emergencyPhoneError}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              )}
 
               {/* Health Declaration */}
               <div className="border-t pt-4 mt-4">
-                <label className="flex items-start gap-3">
+                {/* <label className="flex items-start gap-3">
                   <input
                     type="checkbox"
                     {...register("healthDeclaration", {
@@ -614,6 +795,39 @@ export default function RegistrationPage() {
                   <p className="mt-1 text-sm text-red-600">
                     {errors.healthDeclaration.message}
                   </p>
+                )} */}
+                {eventData?.event.showHealthDeclaration && (
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>Cam kết sức khỏe</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                        <label className="flex items-start gap-3 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            {...register("healthDeclaration", {
+                              required: eventData.event.showHealthDeclaration,
+                            })}
+                            className="mt-1"
+                          />
+                          <div className="flex-1">
+                            <p className="text-sm font-medium text-gray-900">
+                              Tôi cam kết rằng{" "}
+                              <span className="text-red-500">*</span>
+                            </p>
+                            <p className="text-xs text-gray-600 mt-1">
+                              • Tôi đủ sức khỏe để tham gia sự kiện chạy bộ này
+                              <br />
+                              • Tôi không mắc các bệnh lý tim mạch, hô hấp
+                              <br />• Tôi tự chịu trách nhiệm về sức khỏe của
+                              bản thân
+                            </p>
+                          </div>
+                        </label>
+                      </div>
+                    </CardContent>
+                  </Card>
                 )}
               </div>
             </CardContent>

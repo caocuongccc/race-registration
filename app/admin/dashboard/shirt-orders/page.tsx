@@ -136,7 +136,7 @@ export default function ShirtOrdersPage() {
         `/api/admin/shirt-orders/${orderId}/confirm-payment`,
         {
           method: "POST",
-        }
+        },
       );
 
       const result = await res.json();
@@ -160,7 +160,7 @@ export default function ShirtOrdersPage() {
 
     try {
       const res = await fetch(
-        `/api/admin/shirt-orders/export?eventId=${selectedEvent}`
+        `/api/admin/shirt-orders/export?eventId=${selectedEvent}`,
       );
       const blob = await res.blob();
       const url = window.URL.createObjectURL(blob);
@@ -215,20 +215,20 @@ export default function ShirtOrdersPage() {
   };
 
   const paidCount = filteredOrders.filter(
-    (o) => o.paymentStatus === "PAID"
+    (o) => o.paymentStatus === "PAID",
   ).length;
   const pendingCount = filteredOrders.filter(
-    (o) => o.paymentStatus === "PENDING"
+    (o) => o.paymentStatus === "PENDING",
   ).length;
   const totalRevenue = filteredOrders
     .filter((o) => o.paymentStatus === "PAID")
     .reduce((sum, o) => sum + o.totalAmount, 0);
 
   const standaloneCount = filteredOrders.filter(
-    (o) => o.orderType === "STANDALONE"
+    (o) => o.orderType === "STANDALONE",
   ).length;
   const withBibCount = filteredOrders.filter(
-    (o) => o.orderType === "WITH_BIB"
+    (o) => o.orderType === "WITH_BIB",
   ).length;
 
   if (loading) {
@@ -401,6 +401,7 @@ export default function ShirtOrdersPage() {
                   <th className="px-6 py-3 text-left text-xs">STT</th>
                   <th className="px-6 py-3 text-left text-xs">Loại</th>
                   <th className="px-6 py-3 text-left text-xs">Khách hàng</th>
+                  <th className="px-6 py-3 text-left text-xs">Email</th>
                   <th className="px-6 py-3 text-left text-xs">Sự kiện</th>
                   <th className="px-6 py-3 text-left text-xs">Sản phẩm</th>
                   <th className="px-6 py-3 text-left text-xs">Số tiền</th>
@@ -441,7 +442,9 @@ export default function ShirtOrdersPage() {
                         <span className="text-gray-400 text-sm">Mua riêng</span>
                       )}
                     </td>
-
+                    <td className="px-6 py-4 text-sm">
+                      {order.email || "N/A"}
+                    </td>
                     <td className="px-6 py-4 text-sm">{order.event.name}</td>
 
                     <td className="px-6 py-4">

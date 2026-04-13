@@ -478,6 +478,7 @@ export default function RegistrationsPage() {
                       </th>
                       <th className="px-6 py-3 text-left text-xs">Ngày ĐK</th>
                       <th className="px-6 py-3 text-left text-xs">Nguồn</th>
+                      <th className="px-6 py-3 text-left text-xs">Ghi chú</th>
                       <th className="px-6 py-3 text-left text-xs">Thao tác</th>
                     </tr>
                   </thead>
@@ -548,7 +549,7 @@ export default function RegistrationsPage() {
                                   : "✏️ Thủ công"}
                             </span>
                           </td>
-
+                          <td className="px-6 py-4">{r.notes || "N/A"}</td>
                           <td className="px-6 py-4">
                             <div className="flex items-center gap-2">
                               <Button
