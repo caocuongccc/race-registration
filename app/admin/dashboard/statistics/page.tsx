@@ -95,7 +95,14 @@ export default function StatisticsPage() {
     try {
       const res = await fetch(`/api/admin/statistics?eventId=${selectedEvent}`);
       const data = await res.json();
-      console.log("Loaded stats:", data);
+
+      // ✅ Check for API error before setting stats
+      if (!res.ok || data.error) {
+        console.error("Statistics API error:", data.error);
+        toast.error("Không thể tải thống kê: " + (data.error || "Lỗi không xác định"));
+        return;
+      }
+
       setStats(data);
     } catch (error) {
       console.error("Failed to load stats:", error);
@@ -104,6 +111,7 @@ export default function StatisticsPage() {
       setLoading(false);
     }
   };
+
 
   const handleExport = async () => {
     if (selectedEvent === "all") {

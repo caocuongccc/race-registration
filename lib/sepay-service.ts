@@ -173,7 +173,9 @@ export function parseSepayWebhook(webhookData: any): {
   let orderCode = webhookData.code || null;
 
   if (!orderCode && webhookData.content) {
-    const match = webhookData.content.match(/DH\s*(\w+)|ORDER\s*(\w+)/i);
+    // ✅ Fixed: Use [\w-]+ to capture full UUID (hyphens are part of UUID format)
+    // Previous: /DH\s*(\w+)/ stopped at "-" and only captured first UUID segment
+    const match = webhookData.content.match(/DH\s*([\w-]+)|ORDER\s*([\w-]+)/i);
     if (match) {
       orderCode = match[1] || match[2];
     }

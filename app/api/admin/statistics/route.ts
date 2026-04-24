@@ -1,6 +1,4 @@
-// app/api/admin/statistics/route.ts - ADD DISTANCE DETAILS
-// ✅ Add: Chi tiết theo cự ly với phân loại đã thanh toán / chờ thanh toán
-
+// app/api/admin/statistics/route.ts - OPTIMIZED + SAFE
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
@@ -18,177 +16,153 @@ export async function GET(req: NextRequest) {
 
     const whereFilter = eventId && eventId !== "all" ? { eventId } : {};
 
-    // --- SUMMARY COUNTS ---
-    const [totalRegistrations, paidRegistrations, pendingRegistrations] =
-      await Promise.all([
-        prisma.registration.count({ where: whereFilter }),
-        prisma.registration.count({
-          where: { ...whereFilter, paymentStatus: "PAID" },
-        }),
-        prisma.registration.count({
-          where: { ...whereFilter, paymentStatus: "PENDING" },
-        }),
-      ]);
+    const now = new Date();
+    const sevenDaysAgo = new Date(now);
+    sevenDaysAgo.setDate(now.getDate() - 7);
 
-    // --- TOTAL REVENUE ---
-    const revenueResult = await prisma.registration.aggregate({
-      where: { ...whereFilter, paymentStatus: "PAID" },
-      _sum: {
-        totalAmount: true,
-      },
-    });
+    // ✅ Run independent queries in parallel
+    const [
+      totalRegistrations,
+      paidRegistrations,
+      pendingRegistrations,
+      revenueResult,
+      revenueByDistanceRaw,
+      allDistanceRegistrations,
+      regsLast7Days,
+      shirtsWithBibGrouped,
+      ordersByStatus,
+      registrantsDob,
+    ] = await Promise.all([
+      // Summary counts
+      prisma.registration.count({ where: whereFilter }),
+      prisma.registration.count({ where: { ...whereFilter, paymentStatus: "PAID" } }),
+      prisma.registration.count({ where: { ...whereFilter, paymentStatus: "PENDING" } }),
+
+      // Total revenue
+      prisma.registration.aggregate({
+        where: { ...whereFilter, paymentStatus: "PAID" },
+        _sum: { totalAmount: true },
+      }),
+
+      // Revenue by distance (PAID only)
+      prisma.registration.groupBy({
+        by: ["distanceId"],
+        where: { ...whereFilter, paymentStatus: "PAID" },
+        _sum: { totalAmount: true },
+        _count: true,
+      }),
+
+      // Distance details (all payment statuses)
+      prisma.registration.groupBy({
+        by: ["distanceId", "paymentStatus"],
+        where: whereFilter,
+        _count: true,
+      }),
+
+      // Registration by date (last 7 days) - include paymentStatus to build paid count in one pass
+      prisma.registration.findMany({
+        where: { ...whereFilter, registrationDate: { gte: sevenDaysAgo } },
+        select: { registrationDate: true, paymentStatus: true },
+      }),
+
+      // ✅ Shirt stats with BIB - GROUP BY in DB
+      prisma.registration.groupBy({
+        by: ["shirtCategory", "shirtType", "shirtSize"],
+        where: {
+          ...whereFilter,
+          paymentStatus: "PAID",
+          shirtId: { not: null },
+          shirtCategory: { not: null },
+          shirtType: { not: null },
+          shirtSize: { not: null },
+        },
+        _count: true,
+        _sum: { shirtFee: true },
+      }),
+
+      // Shirt orders by payment status
+      prisma.shirtOrder.groupBy({
+        by: ["paymentStatus"],
+        where: whereFilter,
+        _count: true,
+      }),
+
+      // Age groups - only fetch dob field
+      prisma.registration.findMany({
+        where: { ...whereFilter, paymentStatus: "PAID" },
+        select: { dob: true },
+      }),
+    ]);
 
     const totalRevenue = revenueResult._sum.totalAmount || 0;
 
-    // --- REVENUE BY DISTANCE (only PAID) ---
-    const revenueByDistanceRaw = await prisma.registration.groupBy({
-      by: ["distanceId"],
-      where: {
-        ...whereFilter,
-        paymentStatus: "PAID", // ✅ Only paid
-      },
-      _sum: { totalAmount: true },
-      _count: true,
-    });
-
+    // --- BUILD DISTANCE METADATA (single query) ---
     const distanceIds = revenueByDistanceRaw.map((i: any) => i.distanceId);
+    const allDistanceIds = [
+      ...new Set(allDistanceRegistrations.map((r) => r.distanceId)),
+    ];
+    const allDistanceIdsToFetch = [...new Set([...distanceIds, ...allDistanceIds])];
 
-    const distances = await prisma.distance.findMany({
-      where: { id: { in: distanceIds } },
-    });
+    const distances = allDistanceIdsToFetch.length > 0
+      ? await prisma.distance.findMany({
+          where: { id: { in: allDistanceIdsToFetch } },
+          orderBy: { sortOrder: "asc" },
+        })
+      : [];
 
-    const distanceMap = new Map(distances.map((d: any) => [d.id, d.name]));
+    const distanceMap = new Map(distances.map((d) => [d.id, d]));
 
+    // --- REVENUE BY DISTANCE ---
     const revenueByDistance = revenueByDistanceRaw.map((i: any) => ({
-      name: distanceMap.get(i.distanceId) || "Unknown",
+      name: distanceMap.get(i.distanceId)?.name || "Unknown",
       value: i._sum.totalAmount || 0,
       count: i._count,
     }));
 
-    // ✅ NEW: Chi tiết theo cự ly - Tách biệt paid/pending/total
-    const allDistanceRegistrations = await prisma.registration.groupBy({
-      by: ["distanceId", "paymentStatus"],
-      where: whereFilter,
-      _count: true,
-    });
+    // --- DISTANCE DETAILS ---
+    const distanceDetails = distances
+      .filter((d) => allDistanceIds.includes(d.id))
+      .map((distance) => {
+        const regs = allDistanceRegistrations.filter((r) => r.distanceId === distance.id);
+        const paid = regs.find((r) => r.paymentStatus === "PAID")?._count || 0;
+        const pending = regs.find((r) => r.paymentStatus === "PENDING")?._count || 0;
+        const failed = regs.find((r) => r.paymentStatus === "FAILED")?._count || 0;
+        const total = paid + pending + failed;
+        return {
+          distanceId: distance.id,
+          distanceName: distance.name,
+          bibPrefix: distance.bibPrefix,
+          price: distance.price,
+          total,
+          paid,
+          pending,
+          failed,
+          paidPercentage: total > 0 ? Math.round((paid / total) * 100) : 0,
+        };
+      });
 
-    // Get all distance IDs (including those with no paid registrations)
-    const allDistanceIds = [
-      ...new Set(allDistanceRegistrations.map((r) => r.distanceId)),
-    ];
-
-    const allDistances = await prisma.distance.findMany({
-      where: { id: { in: allDistanceIds } },
-      orderBy: { sortOrder: "asc" },
-    });
-
-    // Build detailed distance stats
-    const distanceDetails = allDistances.map((distance) => {
-      const distanceRegs = allDistanceRegistrations.filter(
-        (r) => r.distanceId === distance.id,
-      );
-
-      const paid =
-        distanceRegs.find((r) => r.paymentStatus === "PAID")?._count || 0;
-      const pending =
-        distanceRegs.find((r) => r.paymentStatus === "PENDING")?._count || 0;
-      const failed =
-        distanceRegs.find((r) => r.paymentStatus === "FAILED")?._count || 0;
-
-      return {
-        distanceId: distance.id,
-        distanceName: distance.name,
-        bibPrefix: distance.bibPrefix,
-        price: distance.price,
-        total: paid + pending + failed,
-        paid,
-        pending,
-        failed,
-        paidPercentage:
-          paid + pending + failed > 0
-            ? Math.round((paid / (paid + pending + failed)) * 100)
-            : 0,
-      };
-    });
-
-    console.log(`📊 [Distance Details]`);
-    distanceDetails.forEach((d) => {
-      console.log(
-        `   ${d.distanceName}: ${d.paid} paid / ${d.total} total (${d.paidPercentage}%)`,
-      );
-    });
-
-    // --- REGISTRATION BY DATE (7 days) ---
-    const now = new Date();
-    const sevenDaysAgo = new Date();
-    sevenDaysAgo.setDate(now.getDate() - 7);
-
-    const regsLast7Days = await prisma.registration.findMany({
-      where: {
-        ...whereFilter,
-        registrationDate: { gte: sevenDaysAgo },
-      },
-      select: {
-        id: true,
-        registrationDate: true,
-      },
-    });
-
-    const registrationsByDateMap = new Map<string, number>();
-
+    // --- REGISTRATIONS BY DATE (last 7 days) ---
+    const regsByDateMap = new Map<string, { count: number; paid: number }>();
     regsLast7Days.forEach((reg: any) => {
       const k = reg.registrationDate.toISOString().slice(0, 10);
-      registrationsByDateMap.set(k, (registrationsByDateMap.get(k) || 0) + 1);
+      const existing = regsByDateMap.get(k) || { count: 0, paid: 0 };
+      existing.count++;
+      if (reg.paymentStatus === "PAID") existing.paid++;
+      regsByDateMap.set(k, existing);
     });
 
-    const registrationsByDate = Array.from(
-      registrationsByDateMap.entries(),
-    ).map(([date, count]) => ({
-      date: new Date(date).toLocaleDateString("vi-VN", {
-        day: "2-digit",
-        month: "2-digit",
-      }),
-      count,
-    }));
+    const registrationsByDate = Array.from(regsByDateMap.entries())
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([date, { count, paid }]) => ({
+        date: new Date(date).toLocaleDateString("vi-VN", {
+          day: "2-digit",
+          month: "2-digit",
+        }),
+        count,
+        paid,
+      }));
 
-    // --- ENHANCED SHIRT STATS ---
-    const shirtsWithBib = await prisma.registration.findMany({
-      where: {
-        ...whereFilter,
-        paymentStatus: "PAID",
-        shirtId: { not: null },
-      },
-      select: {
-        shirtCategory: true,
-        shirtType: true,
-        shirtSize: true,
-        shirtFee: true,
-      },
-    });
-
-    console.log(
-      `📊 [Statistics] Found ${shirtsWithBib.length} shirts with BIB`,
-    );
-
-    const standaloneOrders = await prisma.shirtOrder.findMany({
-      where: {
-        ...whereFilter,
-        orderType: "STANDALONE",
-        paymentStatus: "PAID",
-      },
-      include: {
-        items: {
-          include: {
-            shirt: true,
-          },
-        },
-      },
-    });
-
-    console.log(
-      `📊 [Statistics] Found ${standaloneOrders.length} standalone orders`,
-    );
-
+    // --- SHIRT STATS ---
     const shirtDataMap = new Map<
       string,
       {
@@ -202,102 +176,84 @@ export async function GET(req: NextRequest) {
       }
     >();
 
-    shirtsWithBib.forEach((reg) => {
-      if (!reg.shirtCategory || !reg.shirtType || !reg.shirtSize) {
-        console.warn(
-          `⚠️ [Statistics] Registration has shirtId but missing shirt details`,
-        );
-        return;
-      }
-
-      const key = `${reg.shirtCategory}-${reg.shirtType}-${reg.shirtSize}`;
-      const existing = shirtDataMap.get(key) || {
-        category: reg.shirtCategory,
-        type: reg.shirtType,
-        size: reg.shirtSize,
-        withBib: 0,
+    // Shirts purchased alongside BIB (already grouped by DB)
+    shirtsWithBibGrouped.forEach((row: any) => {
+      if (!row.shirtCategory || !row.shirtType || !row.shirtSize) return;
+      const key = `${row.shirtCategory}-${row.shirtType}-${row.shirtSize}`;
+      const count = row._count;
+      shirtDataMap.set(key, {
+        category: row.shirtCategory,
+        type: row.shirtType,
+        size: row.shirtSize,
+        withBib: count,
         standalone: 0,
-        total: 0,
-        revenue: 0,
-      };
-      existing.withBib++;
-      existing.total++;
-      existing.revenue += reg.shirtFee || 0;
-      shirtDataMap.set(key, existing);
-    });
-
-    standaloneOrders.forEach((order) => {
-      order.items.forEach((item) => {
-        const key = `${item.shirt.category}-${item.shirt.type}-${item.shirt.size}`;
-        const existing = shirtDataMap.get(key) || {
-          category: item.shirt.category,
-          type: item.shirt.type,
-          size: item.shirt.size,
-          withBib: 0,
-          standalone: 0,
-          total: 0,
-          revenue: 0,
-        };
-        existing.standalone += item.quantity;
-        existing.total += item.quantity;
-        existing.revenue += item.totalPrice;
-        shirtDataMap.set(key, existing);
+        total: count,
+        revenue: row._sum?.shirtFee || 0,
       });
     });
 
+    // ✅ Safe standalone orders: use findMany with include (avoid shirtOrderItem.groupBy)
+    try {
+      const standaloneOrders = await prisma.shirtOrder.findMany({
+        where: {
+          ...(eventId && eventId !== "all" ? { eventId } : {}),
+          orderType: "STANDALONE",
+          paymentStatus: "PAID",
+        },
+        include: {
+          items: {
+            include: { shirt: true },
+          },
+        },
+      });
+
+      standaloneOrders.forEach((order) => {
+        order.items.forEach((item: any) => {
+          if (!item.shirt) return;
+          const key = `${item.shirt.category}-${item.shirt.type}-${item.shirt.size}`;
+          const qty = item.quantity || 0;
+          const rev = item.totalPrice || 0;
+          const existing = shirtDataMap.get(key);
+          if (existing) {
+            existing.standalone += qty;
+            existing.total += qty;
+            existing.revenue += rev;
+          } else {
+            shirtDataMap.set(key, {
+              category: item.shirt.category,
+              type: item.shirt.type,
+              size: item.shirt.size,
+              withBib: 0,
+              standalone: qty,
+              total: qty,
+              revenue: rev,
+            });
+          }
+        });
+      });
+    } catch {
+      // Standalone shirt orders query failed - skip, shirt stats will only have BIB data
+    }
+
     const shirtDetails = Array.from(shirtDataMap.values());
-
     const shirtsByCategory: Record<string, number> = {};
-    shirtDetails.forEach((item) => {
-      shirtsByCategory[item.category] =
-        (shirtsByCategory[item.category] || 0) + item.total;
-    });
-
     const shirtsBySize: Record<string, number> = {};
     shirtDetails.forEach((item) => {
+      shirtsByCategory[item.category] = (shirtsByCategory[item.category] || 0) + item.total;
       shirtsBySize[item.size] = (shirtsBySize[item.size] || 0) + item.total;
-    });
-
-    const ordersByStatus = await prisma.shirtOrder.groupBy({
-      by: ["paymentStatus"],
-      where: whereFilter,
-      _count: true,
-      _sum: { totalAmount: true },
     });
 
     const shirtsByStatus = {
       paid: ordersByStatus.find((s) => s.paymentStatus === "PAID")?._count || 0,
-      pending:
-        ordersByStatus.find((s) => s.paymentStatus === "PENDING")?._count || 0,
-      failed:
-        ordersByStatus.find((s) => s.paymentStatus === "FAILED")?._count || 0,
+      pending: ordersByStatus.find((s) => s.paymentStatus === "PENDING")?._count || 0,
+      failed: ordersByStatus.find((s) => s.paymentStatus === "FAILED")?._count || 0,
     };
 
-    const totalShirts = shirtDetails.reduce((sum, item) => sum + item.total, 0);
-    const totalWithBib = shirtDetails.reduce(
-      (sum, item) => sum + item.withBib,
-      0,
-    );
-    const totalStandalone = shirtDetails.reduce(
-      (sum, item) => sum + item.standalone,
-      0,
-    );
-    const totalShirtRevenue = shirtDetails.reduce(
-      (sum, item) => sum + item.revenue,
-      0,
-    );
-
-    console.log(`📊 [Statistics Summary]`);
-    console.log(`   Total shirts: ${totalShirts}`);
-    console.log(`   With BIB: ${totalWithBib}`);
-    console.log(`   Standalone: ${totalStandalone}`);
-    console.log(`   Revenue: ${totalShirtRevenue}`);
-
     const shirtStats = {
-      total: totalShirts,
-      withBib: totalWithBib,
-      standalone: totalStandalone,
-      revenue: totalShirtRevenue,
+      total: shirtDetails.reduce((sum, item) => sum + item.total, 0),
+      withBib: shirtDetails.reduce((sum, item) => sum + item.withBib, 0),
+      standalone: shirtDetails.reduce((sum, item) => sum + item.standalone, 0),
+      revenue: shirtDetails.reduce((sum, item) => sum + item.revenue, 0),
       byCategory: shirtsByCategory,
       bySize: shirtsBySize,
       byStatus: shirtsByStatus,
@@ -305,21 +261,11 @@ export async function GET(req: NextRequest) {
     };
 
     // --- AGE GROUPS ---
-    const registrantsDob = await prisma.registration.findMany({
-      where: { ...whereFilter, paymentStatus: "PAID" },
-      select: { dob: true },
-    });
-
-    const ageGroups = {
-      "18-29": 0,
-      "30-39": 0,
-      "40-49": 0,
-      "50+": 0,
-    };
-
+    const ageGroups: Record<string, number> = { "18-29": 0, "30-39": 0, "40-49": 0, "50+": 0 };
+    const currentYear = now.getFullYear();
     registrantsDob.forEach((reg: any) => {
       if (!reg.dob) return;
-      const age = now.getFullYear() - reg.dob.getFullYear();
+      const age = currentYear - reg.dob.getFullYear();
       if (age >= 18 && age <= 29) ageGroups["18-29"]++;
       else if (age >= 30 && age <= 39) ageGroups["30-39"]++;
       else if (age >= 40 && age <= 49) ageGroups["40-49"]++;
@@ -327,77 +273,43 @@ export async function GET(req: NextRequest) {
     });
 
     // --- EMAIL STATS ---
-    const getEmailTypeLabel = (type: string) => {
-      const labels: Record<string, string> = {
-        REGISTRATION_PENDING: "Email đăng ký",
-        PAYMENT_CONFIRMED: "Xác nhận thanh toán",
-        BIB_ANNOUNCEMENT: "Thông báo BIB",
-        RACE_PACK_INFO: "Thông tin Race Pack",
-        REGISTRATION_CONFIRMATION: "Xác nhận đăng ký",
-        PAYMENT_REMINDER: "Nhắc thanh toán",
-        PAYMENT_CONFIRMATION: "Xác nhận thanh toán",
-        BIB_NUMBER_ASSIGNED: "Thông báo BIB",
-        EVENT_REMINDER: "Nhắc nhở sự kiện",
-      };
-      return labels[type] || type;
+    const emailTypeLabel: Record<string, string> = {
+      REGISTRATION_PENDING: "Email đăng ký",
+      PAYMENT_CONFIRMED: "Xác nhận thanh toán",
+      BIB_ANNOUNCEMENT: "Thông báo BIB",
+      RACE_PACK_INFO: "Thông tin Race Pack",
+      REGISTRATION_CONFIRMATION: "Xác nhận đăng ký",
+      PAYMENT_REMINDER: "Nhắc thanh toán",
+      PAYMENT_CONFIRMATION: "Xác nhận thanh toán",
+      BIB_NUMBER_ASSIGNED: "Thông báo BIB",
+      EVENT_REMINDER: "Nhắc nhở sự kiện",
     };
 
     let emailStats: any[] = [];
-
     try {
-      let emailWhereClause: any = {};
-
-      if (eventId && eventId !== "all") {
-        emailWhereClause = {
-          registration: {
-            eventId: eventId,
-          },
-        };
-      }
-
+      const emailWhereClause =
+        eventId && eventId !== "all"
+          ? { registration: { eventId } }
+          : {};
       const emailLogs = await prisma.emailLog.groupBy({
         by: ["emailType", "status"],
         where: emailWhereClause,
-        _count: {
-          id: true,
-        },
+        _count: { id: true },
       });
-
-      const emailStatsByType = emailLogs.reduce((acc, log) => {
+      const emailStatsByType = emailLogs.reduce((acc: any, log) => {
         const type = log.emailType;
         if (!acc[type]) {
-          acc[type] = {
-            type: getEmailTypeLabel(type),
-            sent: 0,
-            failed: 0,
-            pending: 0,
-            total: 0,
-          };
+          acc[type] = { type: emailTypeLabel[type] || type, sent: 0, failed: 0, pending: 0, total: 0 };
         }
-
         const count = log._count.id;
         acc[type].total += count;
-
-        switch (log.status) {
-          case "SENT":
-            acc[type].sent += count;
-            break;
-          case "FAILED":
-            acc[type].failed += count;
-            break;
-          case "PENDING":
-            acc[type].pending += count;
-            break;
-        }
-
+        if (log.status === "SENT") acc[type].sent += count;
+        else if (log.status === "FAILED") acc[type].failed += count;
+        else if (log.status === "PENDING") acc[type].pending += count;
         return acc;
-      }, {} as any);
-
+      }, {});
       emailStats = Object.values(emailStatsByType);
-
-      console.log(`📧 [Email Stats] Found ${emailStats.length} email types`);
-    } catch (error) {
-      console.log("⚠️ EmailLog table not found or error:", error);
+    } catch {
       emailStats = [];
     }
 
@@ -408,7 +320,7 @@ export async function GET(req: NextRequest) {
       totalRevenue,
       revenueByDistance,
       registrationsByDate,
-      distanceDetails, // ✅ NEW: Chi tiết theo cự ly
+      distanceDetails,
       shirtStats,
       ageGroups,
       emailStats,
@@ -417,7 +329,7 @@ export async function GET(req: NextRequest) {
     console.error("❌ Statistics API error:", error);
     return NextResponse.json(
       { error: "Failed to load statistics" },
-      { status: 500 },
+      { status: 500 }
     );
   }
 }

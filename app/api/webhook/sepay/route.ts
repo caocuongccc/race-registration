@@ -5,6 +5,7 @@ import { Prisma } from "@prisma/client";
 import { generateCheckinQR } from "@/lib/imgbb";
 import { parseSepayWebhook, verifySepayWebhook } from "@/lib/sepay-service";
 import { sendPaymentConfirmationEmailGmailFirst } from "@/lib/email-service-gmail-first";
+import { getEventBankAccount } from "@/lib/bank-account-service"; // ✅ Decrypted bank account
 
 /**
  * Generate BIB number
@@ -61,7 +62,7 @@ async function processPaymentConfirmation(
       throw new Error(`Registration not found: ${registrationId}`);
     }
 
-    // Check if already paid
+    // Check if already paid (idempotency - same registration)
     if (registration.paymentStatus === "PAID") {
       console.log(`✅ Already paid: ${registrationId}`);
       return {
@@ -72,22 +73,38 @@ async function processPaymentConfirmation(
     }
 
     // ============================================
-    // VERIFY ACCOUNT NUMBER MATCHES
+    // ✅ DUPLICATE TRANSACTION CHECK (idempotency)
+    // SePay retries webhooks - use SePay's unique `id` field to prevent
+    // processing the same transaction twice
+    // ============================================
+    const existingPayment = await prisma.payment.findFirst({
+      where: { transactionId },
+    });
+    if (existingPayment) {
+      console.log(`✅ Transaction ${transactionId} already processed (idempotency)`);
+      return {
+        success: true,
+        message: "Transaction already processed",
+        bibNumber: registration.bibNumber,
+      };
+    }
+
+    // ============================================
+    // ✅ VERIFY ACCOUNT NUMBER (using decrypted bank account)
     // ============================================
     const receivedAccountNumber = webhookData.accountNumber;
+    if (receivedAccountNumber) {
+      const eventBank = await getEventBankAccount(registration.eventId);
+      const expectedAccount = eventBank?.accountNumber || process.env.SEPAY_ACCOUNT_NUMBER;
 
-    // CÁCH 1: Event có fields bank account
-    const eventAccountNumber =
-      registration.event.bankAccount || process.env.SEPAY_ACCOUNT_NUMBER;
-    console.log(`💰 Amount: ${amount}, Expected: ${registration.totalAmount}`);
-
-    if (receivedAccountNumber && receivedAccountNumber !== eventAccountNumber) {
-      console.warn(
-        `⚠️ Account mismatch: received ${receivedAccountNumber}, expected ${eventAccountNumber}`,
-      );
-      // Có thể chấp nhận hoặc reject tùy business logic
-      // Nếu chạy nhiều events với nhiều accounts khác nhau,
-      // cần verify đúng account
+      if (expectedAccount && receivedAccountNumber !== expectedAccount) {
+        console.warn(
+          `⚠️ Account mismatch: received ${receivedAccountNumber}, expected ${expectedAccount?.substring(0, 4)}****`
+        );
+        // Log but don't block - could be legitimate if multiple accounts configured
+      } else {
+        console.log(`✅ Account verified: ${receivedAccountNumber?.substring(0, 4)}****`);
+      }
     }
     // Verify amount (allow small difference)
     const amountDiff = Math.abs(amount - registration.totalAmount);

@@ -222,6 +222,7 @@ export default function DistanceShirtManager({ eventId }: { eventId: string }) {
       {/* Tabs */}
       <div className="flex gap-2 border-b">
         <button
+          type="button"
           onClick={() => setActiveTab("distances")}
           className={`px-6 py-3 font-medium transition-colors ${
             activeTab === "distances"
@@ -233,6 +234,7 @@ export default function DistanceShirtManager({ eventId }: { eventId: string }) {
           Cự ly
         </button>
         <button
+          type="button"
           onClick={() => setActiveTab("shirts")}
           className={`px-6 py-3 font-medium transition-colors ${
             activeTab === "shirts"
