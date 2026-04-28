@@ -194,12 +194,36 @@ export function parseSepayWebhook(webhookData: any): {
 
 /**
  * Verify webhook authenticity
+ * SePay gửi Secret Key qua header Authorization: Bearer {secret_key}
  */
-export function verifySepayWebhook(webhookData: any): boolean {
+export function verifySepayWebhook(
+  webhookData: any,
+  authHeader?: string | null,
+): boolean {
+  // 1. Verify Secret Key nếu được cấu hình
+  const webhookSecret = process.env.SEPAY_WEBHOOK_SECRET;
+  if (webhookSecret) {
+    if (!authHeader) {
+      console.error("❌ Missing Authorization header");
+      return false;
+    }
+    // SePay gửi: "Bearer {secret_key}" hoặc trực tiếp secret key
+    const receivedSecret = authHeader.startsWith("Bearer ")
+      ? authHeader.slice(7)
+      : authHeader;
+    if (receivedSecret !== webhookSecret) {
+      console.error("❌ Invalid Secret Key");
+      return false;
+    }
+    console.log("✅ Secret Key verified");
+  }
+
+  // 2. Verify required fields
   if (!webhookData.id || !webhookData.transferAmount) {
     return false;
   }
 
+  // 3. Only process incoming transfers
   if (webhookData.transferType !== "in") {
     return false;
   }

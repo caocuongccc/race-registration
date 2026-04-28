@@ -238,9 +238,10 @@ export async function POST(req: NextRequest) {
     console.log("📥 Webhook data:", JSON.stringify(webhookData, null, 2));
 
     // Verify webhook
-    if (!verifySepayWebhook(webhookData)) {
-      console.error("❌ Invalid webhook data");
-      return NextResponse.json({ error: "Invalid webhook" }, { status: 400 });
+    const authHeader = req.headers.get("authorization");
+    if (!verifySepayWebhook(webhookData, authHeader)) {
+      console.error("❌ Invalid webhook data or unauthorized");
+      return NextResponse.json({ error: "Invalid webhook" }, { status: 401 });
     }
 
     // Parse webhook data
