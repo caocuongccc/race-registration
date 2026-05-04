@@ -34,7 +34,7 @@ export async function GET(
     const user = await getUserSession();
     const eventId = (await context.params).id;
     // ✅ Require at least VIEW permission
-    await requireEventPermission(eventId, user.id, "view");
+    await requireEventPermission(eventId, user.id, "view", user.role);
 
     const event = await prisma.event.findUnique({
       where: { id: eventId },
@@ -114,7 +114,7 @@ export async function PUT(
     const user = await getUserSession();
 
     // ✅ Require EDIT permission
-    await requireEventPermission(eventId, user.id, "edit");
+    await requireEventPermission(eventId, user.id, "edit", user.role);
 
     // ✅ Encrypt bank info before saving if the fields are non-empty
     let bankAccountToSave = body.bankAccount || null;
@@ -192,6 +192,55 @@ export async function PUT(
     console.error("Error updating event:", error);
     return NextResponse.json(
       { error: "Failed to update event" },
+      { status: 500 }
+    );
+  }
+}
+
+export async function DELETE(
+  req: NextRequest,
+  context: { params: Promise<{ id: string }> }
+) {
+  try {
+    const session = await getServerSession(authOptions);
+    if (!session) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const user = await getUserSession();
+    if (user.role !== "ADMIN") {
+      return NextResponse.json(
+        { error: "Chỉ ADMIN mới có quyền xóa sự kiện" },
+        { status: 403 }
+      );
+    }
+
+    const eventId = (await context.params).id;
+
+    const event = await prisma.event.findUnique({ where: { id: eventId } });
+    if (!event) {
+      return NextResponse.json({ error: "Event not found" }, { status: 404 });
+    }
+
+    // Cascade delete in correct dependency order (sequential to avoid type inference issues)
+    await prisma.emailLog.deleteMany({ where: { registration: { eventId } } });
+    await prisma.shirtOrderItem.deleteMany({ where: { order: { eventId } } });
+    await prisma.shirtOrder.deleteMany({ where: { eventId } });
+    await prisma.registration.deleteMany({ where: { eventId } });
+    await prisma.eventShirt.deleteMany({ where: { eventId } });
+    await prisma.distance.deleteMany({ where: { eventId } });
+    await prisma.emailConfig.deleteMany({ where: { eventId } });
+    await prisma.eventImage.deleteMany({ where: { eventId } });
+    await prisma.eventUser.deleteMany({ where: { eventId } });
+    await prisma.event.delete({ where: { id: eventId } });
+
+
+    console.log(`🗑️ Event ${event.name} (${eventId}) deleted by ${user.id}`);
+    return NextResponse.json({ success: true, message: `Đã xóa sự kiện "${event.name}"` });
+  } catch (error) {
+    console.error("Error deleting event:", error);
+    return NextResponse.json(
+      { error: "Không thể xóa sự kiện" },
       { status: 500 }
     );
   }

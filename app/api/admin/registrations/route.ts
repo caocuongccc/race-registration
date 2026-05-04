@@ -21,6 +21,7 @@ export async function GET(req: NextRequest) {
       source: searchParams.get("source") || undefined,
       page: parseInt(searchParams.get("page") || "1"),
       limit: parseInt(searchParams.get("limit") || "50"),
+      userRole: user.role, // ✅ Pass role so ADMIN sees all events
     });
 
     return NextResponse.json(result);

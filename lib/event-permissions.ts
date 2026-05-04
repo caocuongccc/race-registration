@@ -17,7 +17,8 @@ export async function getUserSession() {
   if (!session?.user) {
     throw new Error("Unauthorized");
   }
-  return session.user;
+  // Returns: { id, email, name, role }
+  return session.user as { id: string; email?: string | null; name?: string | null; role: string };
 }
 
 /**
@@ -26,7 +27,13 @@ export async function getUserSession() {
 export async function checkEventAccess(
   eventId: string,
   userId: string,
+  userRole?: string,
 ): Promise<EventPermission> {
+  // ✅ ADMIN has full access to ALL events
+  if (userRole === "ADMIN") {
+    return "admin";
+  }
+
   // Check if user is creator
   const event = await prisma.event.findFirst({
     where: {
@@ -73,8 +80,9 @@ export async function requireEventPermission(
   eventId: string,
   userId: string,
   requiredPermission: "view" | "edit" | "admin",
+  userRole?: string,
 ): Promise<void> {
-  const permission = await checkEventAccess(eventId, userId);
+  const permission = await checkEventAccess(eventId, userId, userRole);
 
   const permissionLevels = {
     none: 0,
@@ -96,41 +104,48 @@ export async function requireEventPermission(
 /**
  * Get all events user has access to
  */
-export async function getUserAccessibleEvents(userId: string) {
-  // Get events user created
-  const createdEvents = await prisma.event.findMany({
-    where: { createdById: userId },
-    select: {
-      id: true,
-      name: true,
-      date: true,
-      status: true,
-      _count: {
-        select: {
-          registrations: true,
-          distances: true,
-        },
+export async function getUserAccessibleEvents(
+  userId: string,
+  userRole?: string,
+) {
+  const eventSelect = {
+    id: true,
+    name: true,
+    date: true,
+    status: true,
+    _count: {
+      select: {
+        registrations: true,
+        distances: true,
       },
     },
+  };
+
+  // ✅ ADMIN sees ALL events regardless of creator
+  if (userRole === "ADMIN") {
+    const allEvents = await prisma.event.findMany({
+      select: eventSelect,
+      orderBy: { date: "desc" },
+    });
+    return allEvents.map((e) => ({
+      ...e,
+      role: "ADMIN" as const,
+      isCreator: true,
+    }));
+  }
+
+  // Non-admin: Get events user created
+  const createdEvents = await prisma.event.findMany({
+    where: { createdById: userId },
+    select: eventSelect,
   });
 
-  // Get events user is assigned to
+  // Non-admin: Get events user is assigned to
   const assignedEvents = await prisma.eventUser.findMany({
     where: { userId },
     include: {
       event: {
-        select: {
-          id: true,
-          name: true,
-          date: true,
-          status: true,
-          _count: {
-            select: {
-              registrations: true,
-              distances: true,
-            },
-          },
-        },
+        select: eventSelect,
       },
     },
   });
@@ -170,6 +185,7 @@ export async function getUserAccessibleRegistrations(
     source?: string;
     page?: number;
     limit?: number;
+    userRole?: string; // ✅ Pass through for ADMIN access
   },
 ) {
   const {
@@ -183,7 +199,7 @@ export async function getUserAccessibleRegistrations(
   } = filters;
 
   // Get accessible event IDs
-  const accessibleEvents = await getUserAccessibleEvents(userId);
+  const accessibleEvents = await getUserAccessibleEvents(userId, filters.userRole);
   const eventIds = accessibleEvents.map((e) => e.id);
 
   if (eventIds.length === 0) {

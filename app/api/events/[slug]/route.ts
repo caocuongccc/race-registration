@@ -3,6 +3,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { decryptBankAccount } from "@/lib/encryption";
 
 export async function GET(
   req: NextRequest,
@@ -112,11 +113,36 @@ export async function GET(
         showHealthDeclaration: event.showHealthDeclaration,
         showBibName: event.showBibName,
 
-        // ✅ NEW: Bank configuration (includes bankCode)
-        bankName: event.bankName,
-        bankAccount: event.bankAccount,
-        bankHolder: event.bankHolder,
-        bankCode: event.bankCode, // ← NEW: For VietQR
+        // ✅ Bank configuration: decrypt if encrypted, otherwise use plaintext fallback
+        ...(() => {
+          try {
+            // Check if data looks encrypted (iv:authTag:data format)
+            const isEncrypted = event.bankAccount?.includes(":") && event.bankCode?.includes(":");
+            if (isEncrypted && event.bankAccount && event.bankCode && event.bankName && event.bankHolder) {
+              const dec = decryptBankAccount({
+                accountNumberEncrypted: event.bankAccount,
+                bankCodeEncrypted: event.bankCode,
+                accountNameEncrypted: event.bankHolder,
+                bankNameEncrypted: event.bankName,
+              });
+              return {
+                bankName: dec.bankName,
+                bankAccount: dec.accountNumber,
+                bankHolder: dec.accountName,
+                bankCode: dec.bankCode,
+              };
+            }
+            // Plaintext fallback (seed data)
+            return {
+              bankName: event.bankName,
+              bankAccount: event.bankAccount,
+              bankHolder: event.bankHolder,
+              bankCode: event.bankCode,
+            };
+          } catch {
+            return { bankName: null, bankAccount: null, bankHolder: null, bankCode: null };
+          }
+        })(),
 
         // ✅ NEW: Private access flag
         _privateAccess: isPrivateAccess,

@@ -8,6 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { formatDate, formatCurrency } from "@/lib/utils";
 import { toast } from "sonner";
+import { useSession } from "next-auth/react";
 import {
   Calendar,
   MapPin,
@@ -18,7 +19,8 @@ import {
   Settings,
   CheckCircle,
   XCircle,
-  Image as ImageIcon, // ← NEW
+  Image as ImageIcon,
+  Trash2,
 } from "lucide-react";
 
 interface Event {
@@ -39,8 +41,12 @@ interface Event {
 
 export default function EventsPage() {
   const router = useRouter();
+  const { data: session } = useSession();
+  const isAdmin = (session?.user as any)?.role === "ADMIN";
   const [events, setEvents] = useState<Event[]>([]);
   const [loading, setLoading] = useState(true);
+  const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null); // eventId being confirmed
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     loadEvents();
@@ -55,6 +61,26 @@ export default function EventsPage() {
       toast.error("Không thể tải danh sách sự kiện");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleDelete = async (eventId: string, eventName: string) => {
+    if (deleteConfirm !== eventId) {
+      setDeleteConfirm(eventId);
+      return;
+    }
+    setDeleting(true);
+    try {
+      const res = await fetch(`/api/admin/events/${eventId}`, { method: "DELETE" });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      toast.success(data.message || `Đã xóa sự kiện "${eventName}"`);
+      setEvents((prev) => prev.filter((e) => e.id !== eventId));
+    } catch (err: any) {
+      toast.error(err.message || "Không thể xóa sự kiện");
+    } finally {
+      setDeleting(false);
+      setDeleteConfirm(null);
     }
   };
 
@@ -228,7 +254,7 @@ export default function EventsPage() {
                     ĐK ({event._count.registrations})
                   </Button>
 
-                  {/* NEW: Hình ảnh Button */}
+                  {/* Hình ảnh Button */}
                   <Button
                     variant="outline"
                     size="sm"
@@ -240,6 +266,26 @@ export default function EventsPage() {
                     <ImageIcon className="w-4 h-4 mr-2" />
                     Hình ảnh
                   </Button>
+
+                  {/* Xóa – chỉ ADMIN */}
+                  {isAdmin && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={deleting && deleteConfirm === event.id}
+                      className={`col-span-2 ${
+                        deleteConfirm === event.id
+                          ? "bg-red-600 text-white hover:bg-red-700 border-red-600"
+                          : "border-red-200 text-red-600 hover:bg-red-50"
+                      }`}
+                      onClick={() => handleDelete(event.id, event.name)}
+                    >
+                      <Trash2 className="w-4 h-4 mr-2" />
+                      {deleteConfirm === event.id
+                        ? deleting ? "Đang xóa..." : "Nhấn lần nữa để xác nhận xóa"
+                        : "Xóa sự kiện"}
+                    </Button>
+                  )}
                 </div>
               </CardContent>
             </Card>

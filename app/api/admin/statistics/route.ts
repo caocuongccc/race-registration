@@ -20,52 +20,38 @@ export async function GET(req: NextRequest) {
     const sevenDaysAgo = new Date(now);
     sevenDaysAgo.setDate(now.getDate() - 7);
 
-    // ✅ Run independent queries in parallel
-    const [
-      totalRegistrations,
-      paidRegistrations,
-      pendingRegistrations,
-      revenueResult,
-      revenueByDistanceRaw,
-      allDistanceRegistrations,
-      regsLast7Days,
-      shirtsWithBibGrouped,
-      ordersByStatus,
-      registrantsDob,
-    ] = await Promise.all([
-      // Summary counts
-      prisma.registration.count({ where: whereFilter }),
-      prisma.registration.count({ where: { ...whereFilter, paymentStatus: "PAID" } }),
-      prisma.registration.count({ where: { ...whereFilter, paymentStatus: "PENDING" } }),
+    // ✅ Run queries in small batches to respect connection_limit=1 (Supabase PgBouncer)
+    const [totalRegistrations, paidRegistrations, pendingRegistrations] =
+      await Promise.all([
+        prisma.registration.count({ where: whereFilter }),
+        prisma.registration.count({ where: { ...whereFilter, paymentStatus: "PAID" } }),
+        prisma.registration.count({ where: { ...whereFilter, paymentStatus: "PENDING" } }),
+      ]);
 
-      // Total revenue
-      prisma.registration.aggregate({
-        where: { ...whereFilter, paymentStatus: "PAID" },
-        _sum: { totalAmount: true },
-      }),
+    const [revenueResult, revenueByDistanceRaw, allDistanceRegistrations] =
+      await Promise.all([
+        prisma.registration.aggregate({
+          where: { ...whereFilter, paymentStatus: "PAID" },
+          _sum: { totalAmount: true },
+        }),
+        prisma.registration.groupBy({
+          by: ["distanceId"],
+          where: { ...whereFilter, paymentStatus: "PAID" },
+          _sum: { totalAmount: true },
+          _count: true,
+        }),
+        prisma.registration.groupBy({
+          by: ["distanceId", "paymentStatus"],
+          where: whereFilter,
+          _count: true,
+        }),
+      ]);
 
-      // Revenue by distance (PAID only)
-      prisma.registration.groupBy({
-        by: ["distanceId"],
-        where: { ...whereFilter, paymentStatus: "PAID" },
-        _sum: { totalAmount: true },
-        _count: true,
-      }),
-
-      // Distance details (all payment statuses)
-      prisma.registration.groupBy({
-        by: ["distanceId", "paymentStatus"],
-        where: whereFilter,
-        _count: true,
-      }),
-
-      // Registration by date (last 7 days) - include paymentStatus to build paid count in one pass
+    const [regsLast7Days, shirtsWithBibGrouped] = await Promise.all([
       prisma.registration.findMany({
         where: { ...whereFilter, registrationDate: { gte: sevenDaysAgo } },
         select: { registrationDate: true, paymentStatus: true },
       }),
-
-      // ✅ Shirt stats with BIB - GROUP BY in DB
       prisma.registration.groupBy({
         by: ["shirtCategory", "shirtType", "shirtSize"],
         where: {
@@ -79,15 +65,14 @@ export async function GET(req: NextRequest) {
         _count: true,
         _sum: { shirtFee: true },
       }),
+    ]);
 
-      // Shirt orders by payment status
+    const [ordersByStatus, registrantsDob] = await Promise.all([
       prisma.shirtOrder.groupBy({
         by: ["paymentStatus"],
         where: whereFilter,
         _count: true,
       }),
-
-      // Age groups - only fetch dob field
       prisma.registration.findMany({
         where: { ...whereFilter, paymentStatus: "PAID" },
         select: { dob: true },

@@ -568,6 +568,7 @@ export default function RegistrationPage() {
                   })}
                   error={errors.fullName?.message}
                   required
+                  placeholder="Nhập họ tên"
                 />
 
                 <div>
@@ -584,11 +585,12 @@ export default function RegistrationPage() {
                         {...register("bibName")}
                         placeholder="Nickname hoặc để trống sử dụng tên đầy đủ"
                       />
-                      <p className="text-xs text-gray-500 mt-1">
-                        Để trống nếu muốn sử dụng họ tên đầy đủ
-                      </p>
+
                     </div>
                   )}
+                  <p className="text-xs text-gray-500 mt-1">
+                    {eventData?.event.bibNameNote}
+                  </p>
                 </div>
               </div>
 
@@ -603,11 +605,11 @@ export default function RegistrationPage() {
                   onChange={handleEmailChange}
                   error={emailError || errors.email?.message}
                   required
+                  placeholder="Nhập email"
                 />
 
                 <Input
                   label="Số điện thoại "
-                  type="tel"
                   {...register("phone", {
                     required: "Vui lòng nhập số điện thoại",
                   })}
@@ -626,6 +628,7 @@ export default function RegistrationPage() {
                   {...register("dob", { required: "Vui lòng chọn ngày sinh" })}
                   error={errors.dob?.message}
                   required
+                  placeholder="Chọn ngày sinh"
                 />
 
                 <Select
@@ -635,6 +638,7 @@ export default function RegistrationPage() {
                   })}
                   error={errors.gender?.message}
                   required
+
                 >
                   <option value="">-- Chọn giới tính --</option>
                   <option value="MALE">Nam</option>
@@ -681,6 +685,8 @@ export default function RegistrationPage() {
                         required: eventData.event.showIdCard,
                       })}
                       onChange={handleIdCardChange}
+                      placeholder="Nhập số CCCD/CMND"
+                      required
                     />
                   </div>
                 )}
@@ -703,6 +709,7 @@ export default function RegistrationPage() {
                       <Input
                         {...register("address")}
                         onChange={(e) => handleTextChange(e, "address")}
+                        placeholder="Nhập địa chỉ"
                       />
                     </div>
                   )}
@@ -713,6 +720,7 @@ export default function RegistrationPage() {
                       <Input
                         {...register("city")}
                         onChange={(e) => handleTextChange(e, "city")}
+                        placeholder="Nhập tỉnh/thành phố"
                       />
                     </div>
                   )}
@@ -757,6 +765,8 @@ export default function RegistrationPage() {
                       onChange={(e) =>
                         handleNameChange(e, "emergencyContactName")
                       }
+                      placeholder="Nhập tên người liên hệ"
+                      required
                     />
                   </div>
 
@@ -765,6 +775,8 @@ export default function RegistrationPage() {
                     <Input
                       {...register("emergencyContactPhone")}
                       onChange={handleEmergencyPhoneChange}
+                      placeholder="Nhập số điện thoại"
+                      required
                     />
                     {emergencyPhoneError && (
                       <p className="text-xs text-red-600 mt-1">

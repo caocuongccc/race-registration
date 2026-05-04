@@ -5,7 +5,7 @@ import * as bcrypt from "bcryptjs";
 const prisma = new PrismaClient();
 
 async function main() {
-  console.log("🌊 Starting seed for Jogging - Lăng Cô huyền thoại biển 2026...\n");
+  console.log("🌊 Starting seed for Giải chạy Jogging chào mừng Lăng Cô - Vịnh đẹp thế giới 2026...\n");
 
   // ============================================
   // 1. CREATE ADMIN USER (if not exists)
@@ -72,8 +72,8 @@ async function main() {
   const event = await prisma.event.create({
     data: {
       // Basic Info
-      name: "Jogging - Lăng Cô huyền thoại biển 2026",
-      slug: "jogging-lang-co-huyen-thoai-bien-2026",
+      name: "Giải chạy Jogging chào mừng \"Lăng Cô - Vịnh đẹp thế giới\" năm 2026",
+      slug: "jogging-lang-co-vinh-dep-the-gioi-2026",
       description: `Lăng Cô – vùng đất hội tụ đủ 4 yếu tố sơn – thủy – hải – hồ hiếm có trên thế giới, nơi những cung đường chạy bộ quanh đầm Lập An sẽ mang lại cho bạn trải nghiệm không thể quên: một bên là vịnh biển xanh thẳm, một bên là đầm nước lợ thơ mộng phản chiếu bóng dãy Bạch Mã hùng vĩ.
 
 Đầm Lập An (hay còn gọi là đầm Lăng Cô) là một trong những đầm nước lợ lớn nhất xứ Huế với diện tích mặt nước hơn 800 ha, được bao bọc bởi núi rừng Bạch Mã và giáp với vịnh biển Lăng Cô – một trong những vịnh biển đẹp nhất hành tinh được công nhận bởi Club of Most Beautiful Bays in the World.
@@ -85,18 +85,19 @@ MỤC ĐÍCH:
 - Hỗ trợ phát triển kinh tế – xã hội xã Chân Mây – Lăng Cô, huyện Phú Lộc
 
 LỘ TRÌNH:
-- 5km: Xuất phát từ trung tâm thị trấn Lăng Cô → Ven đầm Lập An → Về đích
-- 10km: Xuất phát → Vòng quanh đầm Lập An → Ngắm bình minh trên mặt đầm → Về đích
+- Cung đường chạy: Từ sân khấu (phố đi bộ đường Nguyễn Văn, thôn An Cư Tân) đến Hòn Đá Bàn (thuộc thôn Hói Dừa)
+- 5km: Xuất phát 05:30, đóng đường 06:30
+- 10km: Xuất phát 05:15, đóng đường 07:00
 
 ĐIỂM ĐẶC BIỆT:
 Đường chạy quanh đầm Lập An – nơi từng được ví như "Tuyệt tình cốc" của xứ Huế – với con đường cát ẩn hiện giữa mặt đầm khi thủy triều rút, khung cảnh hàu nuôi trên cọc tre phản chiếu mặt nước lặng yên, và bóng núi Bạch Mã in bóng vào buổi sớm mai.`,
 
-      date: new Date("2026-05-23T05:30:00+07:00"), // 5:30 AM, mùa hè lý tưởng nhất
+      date: new Date("2026-06-07T05:00:00+07:00"), // 5:00 AM Chủ nhật 07/06/2026 - Khai mạc
 
       // Location
-      location: "Đầm Lập An, Lăng Cô",
+      location: "Sân khấu phố đi bộ đường Nguyễn Văn, thôn An Cư Tân",
       address: "Thị trấn Lăng Cô, huyện Phú Lộc",
-      city: "Thành phố Huế, Thừa Thiên Huế",
+      city: "Thừa Thiên Huế",
 
       // Status
       status: "DRAFT",
@@ -104,19 +105,19 @@ LỘ TRÌNH:
       allowRegistration: false,
 
       // Race Pack Info
-      racePackLocation: "UBND xã Chân Mây – Lăng Cô, huyện Phú Lộc",
-      racePackTime: "20/06/2026, 08:00 - 17:00",
+      racePackLocation: "Sân khấu phố đi bộ đường Nguyễn Văn, thôn An Cư Tân, Lăng Cô",
+      racePackTime: "Trước 02/06/2026 (hạn đăng ký)",
 
       // Payment Settings
       requireOnlinePayment: true,
       sendBibImmediately: true,
       hasShirt: true,
 
-      // Bank Info – Phòng Văn Hoá Xã Hội xã Chân Mây – Lăng Cô
-      bankName: "Ngân hàng Nông nghiệp và PTNT Việt Nam - CN Phú Lộc",
-      bankAccount: "4005201009169",
-      bankHolder: "PHONG VAN HOA XA HOI XA CHAN MAY LANG CO",
-      bankCode: "AGRIBANK",
+      // Bank Info – Trịnh Thị Mai, Vietinbank
+      bankName: "Ngân hàng Vietinbank",
+      bankAccount: "0898239874",
+      bankHolder: "TRINH THI MAI",
+      bankCode: "VIETINBANK",
 
       // Contact Info
       hotline: "0234000000",
@@ -125,15 +126,14 @@ LỘ TRÌNH:
       facebookUrl: "",
 
       // Race Day Schedule
-      raceDaySchedule: `04:30 - 05:00: Đón tiếp VĐV, check-in nhận BIB
-05:00 - 05:20: Khởi động cùng toàn thể VĐV
-05:20 - 05:30: Khai mạc giải chạy
-05:30: Xuất phát cự ly 10km
-05:45: Xuất phát cự ly 5km
-07:30: Hoàn thành cự ly 5km (dự kiến)
-08:30: Hoàn thành cự ly 10km (dự kiến)
-09:00 - 10:00: Tổng kết & Trao giải
-10:00: Bế mạc`,
+      raceDaySchedule: `04:00 - 05:00: Đón tiếp VĐV, check-in nhận BIB
+05:00: Khai mạc giải chạy
+05:15: Xuất phát cự ly 10km (đóng đường 07:00)
+05:30: Xuất phát cự ly 5km (đóng đường 06:30)
+07:00: Hoàn thành cự ly 10km (dự kiến)
+06:30: Hoàn thành cự ly 5km (dự kiến)
+07:30 - 08:30: Tổng kết & Trao giải
+09:00: Bế mạc`,
 
       // Created by admin
       createdById: adminUser.id,
@@ -168,8 +168,8 @@ LỘ TRÌNH:
   const distance5km = await prisma.distance.create({
     data: {
       eventId: event.id,
-      name: "5km - Lăng Cô huyền thoại biển",
-      price: 50000, // 50,000 VND
+      name: "5km - Lăng Cô - Vịnh đẹp thế giới",
+      price: 80000, // 80,000 VND
       bibPrefix: "50",
       maxParticipants: 500,
       currentParticipants: 0,
@@ -186,8 +186,8 @@ LỘ TRÌNH:
   const distance10km = await prisma.distance.create({
     data: {
       eventId: event.id,
-      name: "10km - Vòng quanh đầm Lập An",
-      price: 100000, // 100,000 VND
+      name: "10km - Lăng Cô - Vịnh đẹp thế giới",
+      price: 100000, // 100,000 VND (giữ nguyên)
       bibPrefix: "10",
       maxParticipants: 500,
       currentParticipants: 0,
@@ -279,18 +279,18 @@ LỘ TRÌNH:
 Vui lòng hoàn tất thanh toán để xác nhận đăng ký của bạn.
 
 Thông tin chuyển khoản:
-- Ngân hàng: Agribank - CN Phú Lộc
-- Số tài khoản: 4005201009169
-- Chủ tài khoản: PHONG VAN HOA XA HOI XA CHAN MAY LANG CO
+- Ngân hàng: Vietinbank
+- Số tài khoản: 0898239874
+- Chủ tài khoản: TRỊNH THỊ MAI
 - Nội dung: [Họ tên] - [Số điện thoại] - [Cự ly]
 
-Hẹn gặp bạn tại đầm Lập An, Lăng Cô! 🌊`,
+Hẹn đăng ký trước ngày 02/06/2026. Hẹn gặp bạn tại Lăng Cô - Vịnh đẹp thế giới! 🌊`,
 
       bodyPaymentConfirmed: `Thanh toán thành công! 🎉
 
 Số BIB của bạn: {{bibNumber}}
 
-Hẹn gặp bạn lúc 5:30 sáng ngày thi đấu tại đầm Lập An, thị trấn Lăng Cô.
+Hẹn gặp bạn lúc 5:00 sáng ngày 07/06/2026 tại sân khấu phố đi bộ đường Nguyễn Văn, thôn An Cư Tân, Lăng Cô.
 Hãy chuẩn bị sẵn sàng cho những cung đường đẹp nhất ven biển miền Trung!`,
 
       bodyPaymentReceivedNoBib: `Chúng tôi đã nhận được thanh toán của bạn. ✅
@@ -301,26 +301,25 @@ Vui lòng theo dõi email và fanpage để cập nhật thông tin.`,
       bodyBibAnnouncement: `Số BIB của bạn là {{bibNumber}}. 🏃
 
 Vui lòng lưu lại để check-in đúng ngày thi đấu.
-Ngày nhận Race Pack: 20/06/2026 từ 08:00 - 17:00
-Địa điểm: UBND xã Chân Mây – Lăng Cô, huyện Phú Lộc`,
+Hạn đăng ký: 02/06/2026
+Địa điểm thi đấu: Sân khấu phố đi bộ đường Nguyễn Văn, thôn An Cư Tân, Lăng Cô`,
 
-      bodyRacePackInfo: `Thông tin nhận Race Pack:
-- Địa điểm: UBND xã Chân Mây – Lăng Cô, huyện Phú Lộc
-- Thời gian: 20/06/2026, 08:00 - 17:00
-- Mang theo CCCD và mã QR trong email này
+      bodyRacePackInfo: `Thông tin Race Pack:
+- Địa điểm khai mạc: Sân khấu phố đi bộ đường Nguyễn Văn, thôn An Cư Tân, Lăng Cô
+- Mang theo CCCD và mã QR trong email này để check-in
 
-Lịch xuất phát ngày 21/06/2026:
-- 05:30: Cự ly 10km
-- 05:45: Cự ly 5km`,
+Lịch xuất phát ngày 07/06/2026 (Chủ nhật):
+- 05:15: Cự ly 10km (đóng đường 07:00)
+- 05:30: Cự ly 5km (đóng đường 06:30)`,
 
-      bodyReminder: `Nhắc nhở: Giải chạy "Jogging - Lăng Cô Huyền Thoại Biển 2026" diễn ra vào sáng ngày 21/06/2026.
+      bodyReminder: `Nhắc nhở: Giải chạy Jogging chào mừng "Lăng Cô - Vịnh đẹp thế giới" năm 2026 diễn ra vào sáng ngày 07/06/2026 (Chủ nhật).
 
 Lịch xuất phát:
-- 05:30: Cự ly 10km
-- 05:45: Cự ly 5km
+- 05:15: Cự ly 10km (đóng đường 07:00)
+- 05:30: Cự ly 5km (đóng đường 06:30)
 
-Địa điểm: Đầm Lập An, thị trấn Lăng Cô, huyện Phú Lộc, Thừa Thiên Huế.
-Vui lòng đến trước 30 phút để check-in. Chúc bạn thi đấu tốt! 🌊🏃`,
+Địa điểm: Sân khấu phố đi bộ đường Nguyễn Văn, thôn An Cư Tân, Lăng Cô, huyện Phú Lộc.
+Vui lòng đến trước 04:00 để check-in. Chúc bạn thi đấu tốt! 🌊🏃`,
 
       // Attachments
       attachQrPayment: true,
@@ -337,7 +336,7 @@ Vui lòng đến trước 30 phút để check-in. Chúc bạn thi đấu tốt!
   console.log("🎉 SEED COMPLETED SUCCESSFULLY!\n");
   console.log("📊 SUMMARY:");
   console.log("=".repeat(60));
-  console.log(`✅ Event: ${event.name}`);
+  console.log(`✅ Event: ${event.name} | Ngày: 07/06/2026 | Hạn ĐK: 02/06/2026`);
   console.log(`   Slug: ${event.slug}`);
   console.log(`   Date: ${event.date.toLocaleString("vi-VN")}`);
   console.log(`   Location: ${event.location}, ${event.city}`);
@@ -362,9 +361,9 @@ Vui lòng đến trước 30 phút để check-in. Chúc bạn thi đấu tốt!
   );
   console.log("");
   console.log("🏦 Thông tin thanh toán:");
-  console.log(`   Ngân hàng: Agribank - CN Phú Lộc`);
-  console.log(`   STK: 4005201009169`);
-  console.log(`   Chủ TK: Phòng Văn Hoá Xã Hội Xã Chân Mây - Lăng Cô`);
+  console.log(`   Ngân hàng: Vietinbank`);
+  console.log(`   STK: 0898239874`);
+  console.log(`   Chủ TK: Trịnh Thị Mai`);
   console.log("");
   console.log("📧 Email config: ✅ Created");
   console.log("=".repeat(60));
@@ -374,7 +373,7 @@ Vui lòng đến trước 30 phút để check-in. Chúc bạn thi đấu tốt!
   console.log("3. Upload ảnh preview áo đấu");
   console.log("4. Cập nhật hotline và email liên hệ thực tế");
   console.log("5. Set event status → REGISTRATION_OPEN khi sẵn sàng mở đăng ký");
-  console.log("6. Kiểm tra webhook SePay với STK Agribank 4005201009169");
+  console.log("6. Kiểm tra webhook SePay với STK Vietinbank 0898239874 (Trịnh Thị Mai)");
   console.log("");
   console.log("✨ Done! Hẹn gặp nhau tại đầm Lập An, Lăng Cô! 🌊🏃‍♂️🏃‍♀️\n");
 }

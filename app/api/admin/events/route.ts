@@ -10,7 +10,7 @@ export async function GET() {
     const user = await getUserSession();
 
     // ✅ Get all events user has access to (created + assigned)
-    const events = await getUserAccessibleEvents(user.id);
+    const events = await getUserAccessibleEvents(user.id, user.role);
 
     return NextResponse.json({ events });
   } catch (error) {
