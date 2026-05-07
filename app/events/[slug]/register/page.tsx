@@ -620,7 +620,7 @@ export default function RegistrationPage() {
                 />
               </div>
 
-              {/* Row 3: DOB, Gender, Blood Type */}
+              {/* Row 3: DOB + Gender + CCCD trên 1 hàng */}
               <div className="grid md:grid-cols-3 gap-4">
                 <Input
                   label="Ngày sinh "
@@ -638,44 +638,13 @@ export default function RegistrationPage() {
                   })}
                   error={errors.gender?.message}
                   required
-
                 >
                   <option value="">-- Chọn giới tính --</option>
                   <option value="MALE">Nam</option>
                   <option value="FEMALE">Nữ</option>
                 </Select>
 
-                {/* <Select label="Nhóm máu" {...register("bloodType")}>
-                  <option value="">-- Chọn nhóm máu --</option>
-                  <option value="A">A</option>
-                  <option value="B">B</option>
-                  <option value="O">O</option>
-                  <option value="AB">AB</option>
-                </Select> */}
-                {eventData?.event.showBloodType && (
-                  <div>
-                    <label>Nhóm máu</label>
-                    <Select {...register("bloodType")}>
-                      <option value="">-- Chọn nhóm máu --</option>
-                      <option value="A">A</option>
-                      <option value="B">B</option>
-                      <option value="AB">AB</option>
-                      <option value="O">O</option>
-                    </Select>
-                  </div>
-                )}
-              </div>
-
-              {/* Row 4: ID Card & Address */}
-              <div className="grid md:grid-cols-2 gap-4">
-                {/* <Input
-                  label="CCCD/CMND"
-                  {...register("idCard")}
-                  placeholder="001234567890"
-                  error={errors.idCard?.message}
-                  required
-                /> */}
-                {eventData?.event.showIdCard && (
+                {eventData?.event.showIdCard ? (
                   <div>
                     <label>
                       Số CCCD/CMND <span className="text-red-500">*</span>
@@ -689,8 +658,20 @@ export default function RegistrationPage() {
                       required
                     />
                   </div>
+                ) : (
+                  eventData?.event.showBloodType && (
+                    <div>
+                      <label>Nhóm máu</label>
+                      <Select {...register("bloodType")}>
+                        <option value="">-- Chọn nhóm máu --</option>
+                        <option value="A">A</option>
+                        <option value="B">B</option>
+                        <option value="AB">AB</option>
+                        <option value="O">O</option>
+                      </Select>
+                    </div>
+                  )
                 )}
-                {/* <Input label="Tỉnh/Thành phố" {...register("city")} /> */}
               </div>
 
               {/* Row 5: Full Address */}
@@ -699,31 +680,32 @@ export default function RegistrationPage() {
                 {...register("address")}
                 placeholder="Số nhà, đường, phường/xã"
               /> */}
+              {/* Row: Địa chỉ + Tỉnh/Thành phố trên 1 hàng */}
               {(eventData?.event.showAddress || eventData?.event.showCity) && (
-                <div className="space-y-4 pt-4 border-t">
+                <div className="space-y-2 pt-4 border-t">
                   <h3 className="font-semibold">Địa chỉ</h3>
-
-                  {eventData?.event.showAddress && (
-                    <div>
-                      <label>Địa chỉ</label>
-                      <Input
-                        {...register("address")}
-                        onChange={(e) => handleTextChange(e, "address")}
-                        placeholder="Nhập địa chỉ"
-                      />
-                    </div>
-                  )}
-
-                  {eventData?.event.showCity && (
-                    <div>
-                      <label>Tỉnh/Thành phố</label>
-                      <Input
-                        {...register("city")}
-                        onChange={(e) => handleTextChange(e, "city")}
-                        placeholder="Nhập tỉnh/thành phố"
-                      />
-                    </div>
-                  )}
+                  <div className="grid md:grid-cols-2 gap-4">
+                    {eventData?.event.showAddress && (
+                      <div>
+                        <label>Địa chỉ</label>
+                        <Input
+                          {...register("address")}
+                          onChange={(e) => handleTextChange(e, "address")}
+                          placeholder="Nhập địa chỉ"
+                        />
+                      </div>
+                    )}
+                    {eventData?.event.showCity && (
+                      <div>
+                        <label>Tỉnh/Thành phố</label>
+                        <Input
+                          {...register("city")}
+                          onChange={(e) => handleTextChange(e, "city")}
+                          placeholder="Nhập tỉnh/thành phố"
+                        />
+                      </div>
+                    )}
+                  </div>
                 </div>
               )}
 
@@ -755,34 +737,34 @@ export default function RegistrationPage() {
                 </div>
               </div> */}
               {eventData?.event.showEmergencyContact && (
-                <div className="space-y-4 pt-4 border-t">
+                <div className="space-y-2 pt-4 border-t">
                   <h3 className="font-semibold">Liên hệ khẩn cấp</h3>
-
-                  <div>
-                    <label>Tên người liên hệ</label>
-                    <Input
-                      {...register("emergencyContactName")}
-                      onChange={(e) =>
-                        handleNameChange(e, "emergencyContactName")
-                      }
-                      placeholder="Nhập tên người liên hệ"
-                      required
-                    />
-                  </div>
-
-                  <div>
-                    <label>Số điện thoại</label>
-                    <Input
-                      {...register("emergencyContactPhone")}
-                      onChange={handleEmergencyPhoneChange}
-                      placeholder="Nhập số điện thoại"
-                      required
-                    />
-                    {emergencyPhoneError && (
-                      <p className="text-xs text-red-600 mt-1">
-                        {emergencyPhoneError}
-                      </p>
-                    )}
+                  <div className="grid md:grid-cols-2 gap-4">
+                    <div>
+                      <label>Tên người liên hệ</label>
+                      <Input
+                        {...register("emergencyContactName")}
+                        onChange={(e) =>
+                          handleNameChange(e, "emergencyContactName")
+                        }
+                        placeholder="Nhập tên người liên hệ"
+                        required
+                      />
+                    </div>
+                    <div>
+                      <label>Số điện thoại</label>
+                      <Input
+                        {...register("emergencyContactPhone")}
+                        onChange={handleEmergencyPhoneChange}
+                        placeholder="Nhập số điện thoại"
+                        required
+                      />
+                      {emergencyPhoneError && (
+                        <p className="text-xs text-red-600 mt-1">
+                          {emergencyPhoneError}
+                        </p>
+                      )}
+                    </div>
                   </div>
                 </div>
               )}
