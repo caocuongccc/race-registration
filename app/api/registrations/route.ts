@@ -189,6 +189,11 @@ export async function POST(req: NextRequest) {
       newRegistration.id,
       eventBankAccount?.bankCode || process.env.SEPAY_BANK_CODE,
     );
+    console.log("💬 Transfer content built:", {
+      registrationId: newRegistration.id,
+      bankCode: eventBankAccount?.bankCode || process.env.SEPAY_BANK_CODE,
+      shortCode,
+    });
 
     await prisma.$executeRaw`
       UPDATE "registrations"

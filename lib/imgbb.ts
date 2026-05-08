@@ -1,5 +1,6 @@
 // lib/imgbb.ts
 import QRCode from "qrcode";
+import { isVietinBank } from "./payment-content";
 
 /**
  * Upload image to ImgBB
@@ -198,7 +199,8 @@ export async function generatePaymentQR(
     bankAccount?.accountNumber || process.env.SEPAY_ACCOUNT_NUMBER || "0123456789";
   const accountName =
     bankAccount?.accountName || process.env.SEPAY_BANK_HOLDER || "NGUYEN VAN A";
-  const bankId = bankAccount?.bankCode || process.env.SEPAY_BANK_CODE || "MB"; // Mã ngân hàng (MB, VCB, TCB...)
+  const bankCode = bankAccount?.bankCode || process.env.SEPAY_BANK_CODE || "MB";
+  const bankId = isVietinBank(bankCode) ? "ICB" : bankCode; // Mã ngân hàng (MB, VCB, TCB...)
   const template = "compact"; // compact, compact2, qr_only, print
   const description = `${registrationId}`;
 

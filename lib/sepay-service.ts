@@ -1,5 +1,8 @@
 // lib/sepay-service.ts - CORRECT SEPAY IMPLEMENTATION
-import { extractRegistrationIdFromTransferContent } from "./payment-content";
+import {
+  extractRegistrationIdFromTransferContent,
+  isVietinBank,
+} from "./payment-content";
 /**
  * SePay Payment Integration - QR Code + Webhook Based
  * Docs: https://developer.sepay.vn
@@ -23,9 +26,17 @@ export function generateSepayQR(
   transferContent: string,
   accountName?: string,
 ): string {
+  const qrBankCode = normalizeSepayQrBankCode(bankCode);
+  console.log("🔎 SePay QR params:", {
+    inputBankCode: bankCode,
+    qrBankCode,
+    account: `${accountNumber.substring(0, 4)}****`,
+    amount,
+    transferContent,
+  });
   const params = new URLSearchParams({
     acc: accountNumber,
-    bank: bankCode,
+    bank: qrBankCode,
     amount: amount.toString(),
     des: transferContent,
   });
@@ -37,6 +48,14 @@ export function generateSepayQR(
   params.append("template", "compact");
 
   return `https://qr.sepay.vn/img?${params.toString()}`;
+}
+
+function normalizeSepayQrBankCode(bankCode: string): string {
+  if (isVietinBank(bankCode)) {
+    return "ICB";
+  }
+
+  return bankCode;
 }
 
 /**
