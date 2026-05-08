@@ -202,18 +202,24 @@ async function processPaymentConfirmation(
     // ============================================
     // ✅ VERIFY ACCOUNT NUMBER (using decrypted bank account)
     // ============================================
-    const receivedAccountNumber = webhookData.accountNumber;
-    if (receivedAccountNumber) {
+    const receivedAccountNumbers = [
+      webhookData.subAccount,
+      webhookData.accountNumber,
+    ].filter(Boolean);
+    if (receivedAccountNumbers.length > 0) {
       const eventBank = await getEventBankAccount(registration.eventId);
       const expectedAccount = eventBank?.accountNumber || process.env.SEPAY_ACCOUNT_NUMBER;
+      const isExpectedAccount = expectedAccount
+        ? receivedAccountNumbers.includes(expectedAccount)
+        : true;
 
-      if (expectedAccount && receivedAccountNumber !== expectedAccount) {
+      if (!isExpectedAccount) {
         console.warn(
-          `⚠️ Account mismatch: received ${receivedAccountNumber}, expected ${expectedAccount?.substring(0, 4)}****`
+          `⚠️ Account mismatch: received ${receivedAccountNumbers.join(", ")}, expected ${expectedAccount?.substring(0, 4)}****`
         );
         // Log but don't block - could be legitimate if multiple accounts configured
       } else {
-        console.log(`✅ Account verified: ${receivedAccountNumber?.substring(0, 4)}****`);
+        console.log(`✅ Account verified: ${expectedAccount?.substring(0, 4)}****`);
       }
     }
     // Verify amount (allow small difference)

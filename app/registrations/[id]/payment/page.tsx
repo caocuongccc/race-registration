@@ -54,9 +54,11 @@ export default function PaymentPage() {
       if (!res.ok) throw new Error("Không tìm thấy đăng ký");
       const data = await res.json();
       setRegistration(data.registration);
+      return data.registration as RegistrationData;
     } catch (error) {
       console.error(error);
       router.push("/");
+      return null;
     } finally {
       setLoading(false);
     }
@@ -66,9 +68,25 @@ export default function PaymentPage() {
     loadRegistration();
   }, [params.id]);
 
+  useEffect(() => {
+    if (registration?.paymentStatus !== "PENDING") return;
+
+    const interval = window.setInterval(async () => {
+      const latestRegistration = await loadRegistration();
+      if (latestRegistration?.paymentStatus === "PAID") {
+        router.replace(`/registrations/${params.id}/payment-success`);
+      }
+    }, 3000);
+
+    return () => window.clearInterval(interval);
+  }, [registration?.paymentStatus, params.id, router]);
+
   const checkPaymentStatus = async () => {
     setChecking(true);
-    await loadRegistration();
+    const latestRegistration = await loadRegistration();
+    if (latestRegistration?.paymentStatus === "PAID") {
+      router.replace(`/registrations/${params.id}/payment-success`);
+    }
     setChecking(false);
   };
 
