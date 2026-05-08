@@ -195,19 +195,23 @@ export function parseSepayWebhook(webhookData: any): {
 export function verifySepayWebhook(
   webhookData: any,
   authHeader?: string | null,
+  secretKeyHeader?: string | null,
 ): boolean {
   // 1. Verify Secret Key nếu được cấu hình
   const webhookSecret = process.env.SEPAY_WEBHOOK_SECRET;
   if (webhookSecret) {
-    if (!authHeader) {
+    if (!authHeader && !secretKeyHeader) {
       console.error("❌ Missing Authorization header");
       return false;
     }
     // SePay gửi: "Bearer {secret_key}" hoặc trực tiếp secret key
-    const receivedSecret = authHeader.startsWith("Bearer ")
-      ? authHeader.slice(7)
-      : authHeader;
-    if (receivedSecret !== webhookSecret) {
+    const receivedSecret =
+      secretKeyHeader ||
+      authHeader
+        ?.replace(/^Bearer\s+/i, "")
+        .replace(/^Apikey\s+/i, "")
+        .trim();
+    if (!receivedSecret || receivedSecret !== webhookSecret) {
       console.error("❌ Invalid Secret Key");
       return false;
     }

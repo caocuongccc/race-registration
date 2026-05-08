@@ -250,7 +250,8 @@ export async function POST(req: NextRequest) {
 
     // Verify webhook
     const authHeader = req.headers.get("authorization");
-    if (!verifySepayWebhook(webhookData, authHeader)) {
+    const secretKeyHeader = req.headers.get("x-secret-key");
+    if (!verifySepayWebhook(webhookData, authHeader, secretKeyHeader)) {
       console.error("❌ Invalid webhook data or unauthorized");
       return NextResponse.json({ error: "Invalid webhook" }, { status: 401 });
     }
