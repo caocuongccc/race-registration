@@ -18,6 +18,8 @@ interface RegistrationPendingEmailProps {
     accountNumber: string;
     accountHolder: string;
   };
+  isNewUser?: boolean;
+  temporaryPassword?: string;
 }
 
 export function RegistrationPendingEmail({
@@ -42,6 +44,7 @@ export function RegistrationPendingEmail({
   };
 
   const trackingUrl = `${process.env.NEXTAUTH_URL || "https://dangkygiaichay.vercel.app"}/registrations/${registration.id}/payment`;
+  const transferContent = registration.shortCode || registration.phone;
 
   return (
     <Html>
@@ -192,22 +195,12 @@ export function RegistrationPendingEmail({
                   <strong>{formatCurrency(registration.totalAmount)}</strong>
                   <br />
                   Nội dung:{" "}
-                  <strong>
-                    {registration.phone}
-                    {registration.shirtCategory &&
-                      ` ${registration.shirtCategory}`}
-                    {registration.shirtSize && ` ${registration.shirtSize}`}
-                  </strong>
+                  <strong>{transferContent}</strong>
                 </Text>
 
                 <Text style={warningText}>
                   ⚠️ Vui lòng ghi CHÍNH XÁC nội dung chuyển khoản:{" "}
-                  <strong>
-                    {registration.phone}
-                    {registration.shirtCategory &&
-                      ` ${registration.shirtCategory}`}
-                    {registration.shirtSize && ` ${registration.shirtSize}`}
-                  </strong>
+                  <strong>{transferContent}</strong>
                 </Text>
               </Section>
             )}

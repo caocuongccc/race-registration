@@ -173,7 +173,7 @@ export function PaymentConfirmedEmail({
 
             <div style={{ textAlign: "center", margin: "16px 0" }}>
               <Img
-                src="cid:qrcheckin"
+                src={registration.qrCheckinUrl || "cid:qrcheckin"}
                 alt={`QR Code - BIB ${registration.bibNumber}`}
                 width="260"
                 height="260"

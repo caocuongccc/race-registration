@@ -221,6 +221,17 @@ export async function POST(req: NextRequest) {
           accountName: bankAccountInfo.accountName,
         }
       : null;
+    const emailBankInfo = bankAccountInfo
+      ? {
+          bankName: bankAccountInfo.bankName || bankAccountInfo.bankCode,
+          accountNumber: bankAccountInfo.accountNumber,
+          accountHolder: bankAccountInfo.accountName,
+        }
+      : {
+          bankName: process.env.SEPAY_BANK_NAME || "",
+          accountNumber: process.env.SEPAY_ACCOUNT_NUMBER || "",
+          accountHolder: process.env.SEPAY_BANK_HOLDER || "",
+        };
 
     if (requireOnlinePayment) {
       // ============================================
@@ -304,6 +315,7 @@ export async function POST(req: NextRequest) {
           qrPaymentUrl: qrPaymentUrl,
         },
         event,
+        bankInfo: emailBankInfo,
       });
 
       await prisma.emailLog.create({

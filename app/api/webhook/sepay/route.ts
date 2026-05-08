@@ -1,7 +1,6 @@
 // app/api/webhook/sepay/route.ts - CORRECT SEPAY WEBHOOK
-import { NextRequest, NextResponse } from "next/server";
+import { after, NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { Prisma } from "@prisma/client";
 import { generateCheckinQR } from "@/lib/imgbb";
 import { parseSepayWebhook, verifySepayWebhook } from "@/lib/sepay-service";
 import { sendPaymentConfirmationEmailGmailFirst } from "@/lib/email-service-gmail-first";
@@ -34,6 +33,85 @@ async function generateBibNumber(
 
   const bibNumber = `${distance.bibPrefix}${String(paidCount + 1).padStart(3, "0")}`;
   return bibNumber;
+}
+
+async function sendPaymentConfirmationInBackground(
+  registrationId: string,
+  bibNumber: string,
+) {
+  let recipientEmail = "unknown";
+  try {
+    const registration = await prisma.registration.findUnique({
+      where: { id: registrationId },
+      include: {
+        distance: true,
+        event: true,
+        shirt: true,
+      },
+    });
+
+    if (!registration) {
+      throw new Error(`Registration not found for email: ${registrationId}`);
+    }
+    recipientEmail = registration.email;
+
+    let registrationForEmail = registration;
+    if (!registrationForEmail.qrCheckinUrl && registrationForEmail.bibNumber) {
+      const qrCheckinUrl = await generateCheckinQR(
+        registrationForEmail.id,
+        registrationForEmail.bibNumber,
+        registrationForEmail.fullName,
+        registrationForEmail.gender,
+        registrationForEmail.dob,
+        registrationForEmail.phone,
+        registrationForEmail.shirtCategory,
+        registrationForEmail.shirtType,
+        registrationForEmail.shirtSize,
+      );
+
+      registrationForEmail = await prisma.registration.update({
+        where: { id: registrationForEmail.id },
+        data: { qrCheckinUrl },
+        include: {
+          distance: true,
+          event: true,
+          shirt: true,
+        },
+      });
+    }
+
+    await sendPaymentConfirmationEmailGmailFirst({
+      registration: registrationForEmail,
+      event: registrationForEmail.event,
+    });
+
+    console.log(`âœ… Confirmation email sent`);
+
+    await prisma.emailLog.create({
+      data: {
+        registrationId,
+        emailType: "PAYMENT_CONFIRMED",
+        subject: `Thanh toÃ¡n thÃ nh cÃ´ng - Sá»‘ BIB ${bibNumber}`,
+        status: "SENT",
+        recipientEmail,
+        emailProvider: "GMAIL_FIRST",
+      },
+    });
+  } catch (emailError) {
+    console.error("âŒ Email error:", emailError);
+
+    await prisma.emailLog.create({
+      data: {
+        registrationId,
+        emailType: "PAYMENT_CONFIRMED",
+        subject: `Thanh toÃ¡n thÃ nh cÃ´ng - Sá»‘ BIB ${bibNumber}`,
+        status: "FAILED",
+        recipientEmail,
+        emailProvider: "GMAIL_FIRST",
+        errorMessage: (emailError as Error).message,
+      },
+    });
+  }
 }
 
 /**
@@ -139,95 +217,40 @@ async function processPaymentConfirmation(
     );
     console.log(`🎫 BIB number: ${bibNumber}`);
 
-    // Generate check-in QR
-    const qrCheckinUrl = await generateCheckinQR(
-      registrationId,
-      bibNumber,
-      registration.fullName,
-      registration.gender,
-      registration.dob,
-      registration.phone,
-      registration.shirtCategory,
-      registration.shirtType,
-      registration.shirtSize,
-    );
-
-    // Update registration
-    const updatedRegistration = await prisma.$transaction(
-      async (tx: Prisma.TransactionClient) => {
-        const updated = await tx.registration.update({
-          where: { id: registrationId },
-          data: {
-            paymentStatus: "PAID",
-            bibNumber: bibNumber,
-            qrCheckinUrl: qrCheckinUrl,
-            paymentDate: new Date(),
-          },
-          include: {
-            distance: true,
-            event: true,
-            shirt: true,
-          },
-        });
-
-        // Create payment record
-        await tx.payment.create({
-          data: {
-            registrationId: registrationId,
-            transactionId: transactionId,
-            amount: amount,
-            status: "PAID",
-            paymentMethod: "sepay_transfer",
-            webhookData: webhookData,
-          },
-        });
-
-        return updated;
-      },
-    );
+    // Keep the webhook transaction short so SePay gets a fast response.
+    await prisma.$transaction([
+      prisma.registration.update({
+        where: { id: registrationId },
+        data: {
+          paymentStatus: "PAID",
+          bibNumber: bibNumber,
+          paymentDate: new Date(),
+        },
+      }),
+      prisma.payment.create({
+        data: {
+          registrationId: registrationId,
+          transactionId: transactionId,
+          amount: amount,
+          status: "PAID",
+          paymentMethod: "sepay_transfer",
+          webhookData: webhookData,
+        },
+      }),
+    ]);
 
     console.log(`✅ Registration updated successfully`);
 
-    // Send confirmation email
-    try {
-      await sendPaymentConfirmationEmailGmailFirst({
-        registration: updatedRegistration,
-        event: registration.event,
-      });
-
-      console.log(`✅ Confirmation email sent`);
-
-      await prisma.emailLog.create({
-        data: {
-          registrationId: registrationId,
-          emailType: "PAYMENT_CONFIRMED",
-          subject: `Thanh toán thành công - Số BIB ${bibNumber}`,
-          status: "SENT",
-          recipientEmail: registration.email,
-          emailProvider: "GMAIL_FIRST",
-        },
-      });
-    } catch (emailError) {
-      console.error("❌ Email error:", emailError);
-
-      await prisma.emailLog.create({
-        data: {
-          registrationId: registrationId,
-          emailType: "PAYMENT_CONFIRMED",
-          subject: `Thanh toán thành công - Số BIB ${bibNumber}`,
-          status: "FAILED",
-          recipientEmail: registration.email,
-          emailProvider: "GMAIL_FIRST",
-          errorMessage: (emailError as Error).message,
-        },
-      });
-    }
+    after(async () => {
+      await sendPaymentConfirmationInBackground(registrationId, bibNumber);
+    });
 
     return {
       success: true,
       bibNumber: bibNumber,
       registrationId: registrationId,
     };
+
   } catch (error) {
     console.error("❌ Payment processing error:", error);
     throw error;

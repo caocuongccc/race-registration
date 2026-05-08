@@ -201,10 +201,15 @@ export async function sendPaymentConfirmationEmailGmailFirst(data: {
 export async function sendRegistrationPendingEmailGmailFirst(data: {
   registration: any;
   event: any;
+  bankInfo?: {
+    bankName: string;
+    accountNumber: string;
+    accountHolder: string;
+  };
   isNewUser?: boolean;
   temporaryPassword?: string;
 }): Promise<void> {
-  const { registration, event, isNewUser, temporaryPassword } = data;
+  const { registration, event, bankInfo, isNewUser, temporaryPassword } = data;
 
   const emailConfig = await prisma.emailConfig.findUnique({
     where: { eventId: event.id },
@@ -223,7 +228,7 @@ export async function sendRegistrationPendingEmailGmailFirst(data: {
       react: RegistrationPendingEmail({
         registration,
         event,
-        bankInfo: {
+        bankInfo: bankInfo || {
           bankName: event.bankName || process.env.SEPAY_BANK_NAME,
           accountNumber: event.bankAccount || process.env.SEPAY_ACCOUNT_NUMBER,
           accountHolder: event.bankHolder || process.env.SEPAY_BANK_HOLDER,
