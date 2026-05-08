@@ -114,6 +114,27 @@ async function sendPaymentConfirmationInBackground(
   }
 }
 
+async function logSepayWebhook(
+  event: string,
+  status: string,
+  payload: unknown,
+  errorMessage?: string,
+) {
+  try {
+    await prisma.webhookLog.create({
+      data: {
+        provider: "sepay",
+        event,
+        payload: JSON.stringify(payload),
+        status,
+        errorMessage,
+      },
+    });
+  } catch (logError) {
+    console.error("Failed to write SePay webhook log:", logError);
+  }
+}
+
 /**
  * Process payment confirmation
  */
@@ -262,20 +283,28 @@ async function processPaymentConfirmation(
  * Receives bank transaction notifications from SePay
  */
 export async function POST(req: NextRequest) {
+  let webhookData: any = null;
   try {
     console.log("\n" + "=".repeat(60));
     console.log("🔔 SePay Webhook at:", new Date().toISOString());
     console.log("=".repeat(60));
 
     // Get webhook body
-    const webhookData = await req.json();
+    webhookData = await req.json();
     console.log("📥 Webhook data:", JSON.stringify(webhookData, null, 2));
+    await logSepayWebhook("payment.received", "RECEIVED", webhookData);
 
     // Verify webhook
     const authHeader = req.headers.get("authorization");
     const secretKeyHeader = req.headers.get("x-secret-key");
     if (!verifySepayWebhook(webhookData, authHeader, secretKeyHeader)) {
       console.error("❌ Invalid webhook data or unauthorized");
+      await logSepayWebhook(
+        "payment.auth",
+        "UNAUTHORIZED",
+        webhookData,
+        "Invalid webhook data or unauthorized",
+      );
       return NextResponse.json({ error: "Invalid webhook" }, { status: 401 });
     }
 
@@ -290,6 +319,12 @@ export async function POST(req: NextRequest) {
     if (!orderCode) {
       console.error("❌ No order code found in webhook");
       console.log("Content:", webhookData.content);
+      await logSepayWebhook(
+        "payment.parse",
+        "NO_ORDER_CODE",
+        webhookData,
+        "No order code found in transaction content",
+      );
 
       // Return 200 to avoid SePay retry
       return NextResponse.json({
@@ -310,6 +345,10 @@ export async function POST(req: NextRequest) {
 
     console.log(`✅ Payment processed:`, result);
     console.log("=".repeat(60) + "\n");
+    await logSepayWebhook("payment.processed", "SUCCESS", {
+      webhookData,
+      result,
+    });
 
     // Return success
     return NextResponse.json({
@@ -322,19 +361,12 @@ export async function POST(req: NextRequest) {
     console.log("=".repeat(60) + "\n");
 
     // Log to database
-    try {
-      await prisma.webhookLog.create({
-        data: {
-          provider: "sepay",
-          event: "payment",
-          payload: JSON.stringify(error),
-          status: "FAILED",
-          errorMessage: (error as Error).message,
-        },
-      });
-    } catch (logError) {
-      console.error("Failed to log error:", logError);
-    }
+    await logSepayWebhook(
+      "payment.error",
+      "FAILED",
+      webhookData || { error: String(error) },
+      (error as Error).message,
+    );
 
     // Return 200 to avoid retry
     return NextResponse.json(
