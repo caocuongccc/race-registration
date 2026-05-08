@@ -112,99 +112,93 @@ export async function POST(req: NextRequest) {
 
     const totalAmount = raceFee + shirtFee;
 
-    // Create registration in transaction
-    const registration = await prisma.$transaction(async (tx) => {
-      const newRegistration = await tx.registration.create({
-        data: {
-          eventId: body.eventId,
-          distanceId: body.distanceId,
-          shirtId: body.shirtId || null,
+    const newRegistration = await prisma.registration.create({
+      data: {
+        eventId: body.eventId,
+        distanceId: body.distanceId,
+        shirtId: body.shirtId || null,
 
-          fullName: body.fullName,
-          bibName: body.bibName || body.fullName,
-          email: body.email,
-          phone: body.phone,
-          dob: new Date(body.dob),
-          gender: body.gender,
-          idCard: body.idCard,
-          address: body.address || null,
-          city: body.city || null,
+        fullName: body.fullName,
+        bibName: body.bibName || body.fullName,
+        email: body.email,
+        phone: body.phone,
+        dob: new Date(body.dob),
+        gender: body.gender,
+        idCard: body.idCard,
+        address: body.address || null,
+        city: body.city || null,
 
-          emergencyContactName: body.emergencyContactName || null,
-          emergencyContactPhone: body.emergencyContactPhone || null,
+        emergencyContactName: body.emergencyContactName || null,
+        emergencyContactPhone: body.emergencyContactPhone || null,
 
-          healthDeclaration: body.healthDeclaration || false,
-          bloodType: body.bloodType || null,
+        healthDeclaration: body.healthDeclaration || false,
+        bloodType: body.bloodType || null,
 
-          shirtCategory: body.shirtCategory || null,
-          shirtType: body.shirtType || null,
-          shirtSize: body.shirtSize || null,
+        shirtCategory: body.shirtCategory || null,
+        shirtType: body.shirtType || null,
+        shirtSize: body.shirtSize || null,
 
-          raceFee: raceFee,
-          shirtFee: shirtFee,
-          totalAmount: totalAmount,
-          paymentStatus: "PENDING",
-          registrationSource: "ONLINE",
+        raceFee: raceFee,
+        shirtFee: shirtFee,
+        totalAmount: totalAmount,
+        paymentStatus: "PENDING",
+        registrationSource: "ONLINE",
 
-          utmSource: body.utmSource || null,
-          confirmationToken: Math.random().toString(36).substring(7),
+        utmSource: body.utmSource || null,
+        confirmationToken: Math.random().toString(36).substring(7),
+      },
+      include: {
+        distance: true,
+        shirt: true,
+        event: true,
+      },
+    });
+
+    const registrationNumberRows = await prisma.$queryRaw<
+      { registration_number: number }[]
+    >`
+      SELECT "registration_number"
+      FROM "registrations"
+      WHERE "id" = ${newRegistration.id}
+      LIMIT 1
+    `;
+    const registrationNumber = registrationNumberRows[0]?.registration_number;
+    const shortCode = buildRegistrationTransferContent(
+      newRegistration.phone,
+      registrationNumber ?? newRegistration.id,
+    );
+
+    await prisma.$executeRaw`
+      UPDATE "registrations"
+      SET "short_code" = ${shortCode}
+      WHERE "id" = ${newRegistration.id}
+    `;
+
+    await prisma.distance.update({
+      where: { id: body.distanceId },
+      data: {
+        currentParticipants: {
+          increment: 1,
         },
-        include: {
-          distance: true,
-          shirt: true,
-          event: true,
-        },
-      });
+      },
+    });
 
-      const registrationNumberRows = await tx.$queryRaw<
-        { registration_number: number }[]
-      >`
-        SELECT "registration_number"
-        FROM "registrations"
-        WHERE "id" = ${newRegistration.id}
-        LIMIT 1
-      `;
-      const registrationNumber =
-        registrationNumberRows[0]?.registration_number;
-      const shortCode = buildRegistrationTransferContent(
-        newRegistration.phone,
-        registrationNumber ?? newRegistration.id,
-      );
-
-      await tx.$executeRaw`
-        UPDATE "registrations"
-        SET "short_code" = ${shortCode}
-        WHERE "id" = ${newRegistration.id}
-      `;
-
-      // Update distance participant count
-      await tx.distance.update({
-        where: { id: body.distanceId },
+    if (body.shirtId) {
+      await prisma.eventShirt.update({
+        where: { id: body.shirtId },
         data: {
-          currentParticipants: {
+          soldQuantity: {
             increment: 1,
           },
         },
       });
+    }
 
-      // Update shirt sold quantity
-      if (body.shirtId) {
-        await tx.eventShirt.update({
-          where: { id: body.shirtId },
-          data: {
-            soldQuantity: {
-              increment: 1,
-            },
-          },
-        });
-      }
-
-      return {
-        ...newRegistration,
-        registrationNumber,
-        shortCode,
-      };
-    });
+    const registration = {
+      ...newRegistration,
+      registrationNumber,
+      shortCode,
+    };
 
     console.log(`✅ Registration created: ${registration.id}`);
 
