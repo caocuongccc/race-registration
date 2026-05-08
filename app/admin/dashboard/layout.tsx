@@ -17,6 +17,7 @@ import {
   Award,
   Upload,
   ShoppingBag, // NEW: For BIB icon
+  Activity,
 } from "lucide-react";
 import { useEffect, useState } from "react";
 
@@ -35,6 +36,7 @@ const navigationConfig = {
     { name: "Thống kê", href: "/admin/dashboard/statistics", icon: BarChart3 },
     { name: "Email", href: "/admin/dashboard/emails", icon: Mail },
     { name: "Email Logs", href: "/admin/dashboard/email-logs", icon: Mail },
+    { name: "Webhook Logs", href: "/admin/dashboard/webhooks", icon: Activity },
     { name: "Upload Excel", href: "/admin/dashboard/import", icon: Upload },
   ],
   ORGANIZER: [

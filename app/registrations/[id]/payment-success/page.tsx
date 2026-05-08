@@ -17,17 +17,17 @@ export default function PaymentSuccessPage() {
     // Poll for payment confirmation (since webhook might be delayed)
     const checkPayment = async () => {
       try {
-        const res = await fetch(`/api/registrations/${params.id}`);
-        const data = await res.json();
+        const statusRes = await fetch(`/api/registrations/${params.id}/status`);
+        const statusData = await statusRes.json();
 
-        setRegistration(data.registration);
-
-        // If payment is confirmed, stop polling
-        if (data.registration.paymentStatus === "PAID") {
+        if (statusData.registration?.paymentStatus === "PAID") {
+          const res = await fetch(`/api/registrations/${params.id}`);
+          const data = await res.json();
+          setRegistration(data.registration);
           setLoading(false);
         } else {
-          // Keep polling every 2 seconds for up to 30 seconds
-          setTimeout(checkPayment, 2000);
+          // Keep polling slowly to avoid exhausting the DB connection pool.
+          setTimeout(checkPayment, 5000);
         }
       } catch (error) {
         console.error("Error checking payment:", error);

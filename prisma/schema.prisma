@@ -172,10 +172,12 @@ model WebhookLog {
   payload      String   @db.Text
   status       String
   errorMessage String?  @db.Text
+  eventId      String?  @map("event_id")
   createdAt    DateTime @default(now())
 
   @@index([provider, createdAt])
   @@index([status])
+  @@index([eventId])
   @@map("webhook_logs")
 }
 

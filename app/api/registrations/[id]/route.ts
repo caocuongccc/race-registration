@@ -56,16 +56,7 @@ export async function GET(
     const bankAccount = await getEventBankAccount(registration.eventId);
     const isEncryptedValue = (value?: string | null) =>
       Boolean(value && value.split(":").length === 3);
-    const registrationNumberRows = await prisma.$queryRaw<
-      { registration_number: number }[]
-    >`
-      SELECT "registration_number"
-      FROM "registrations"
-      WHERE "id" = ${registration.id}
-      LIMIT 1
-    `;
-    const registrationNumber =
-      registrationNumberRows[0]?.registration_number ?? null;
+    const registrationNumber = registration.registrationNumber ?? null;
     const transferContent =
       registration.shortCode ||
       buildRegistrationTransferContent(registration.phone, registration.id);

@@ -119,6 +119,7 @@ async function logSepayWebhook(
   status: string,
   payload: unknown,
   errorMessage?: string,
+  eventId?: string | null,
 ) {
   try {
     await prisma.webhookLog.create({
@@ -128,6 +129,7 @@ async function logSepayWebhook(
         payload: JSON.stringify(payload),
         status,
         errorMessage,
+        eventId,
       },
     });
   } catch (logError) {
@@ -179,6 +181,8 @@ async function processPaymentConfirmation(
         success: true,
         message: "Already paid",
         bibNumber: registration.bibNumber,
+        registrationId,
+        eventId: registration.eventId,
       };
     }
 
@@ -196,6 +200,8 @@ async function processPaymentConfirmation(
         success: true,
         message: "Transaction already processed",
         bibNumber: registration.bibNumber,
+        registrationId,
+        eventId: registration.eventId,
       };
     }
 
@@ -276,6 +282,7 @@ async function processPaymentConfirmation(
       success: true,
       bibNumber: bibNumber,
       registrationId: registrationId,
+      eventId: registration.eventId,
     };
 
   } catch (error) {
@@ -354,7 +361,7 @@ export async function POST(req: NextRequest) {
     await logSepayWebhook("payment.processed", "SUCCESS", {
       webhookData,
       result,
-    });
+    }, undefined, result.eventId);
 
     // Return success
     return NextResponse.json({

@@ -1,7 +1,7 @@
 // app/registrations/[id]/payment/page.tsx
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -47,20 +47,62 @@ export default function PaymentPage() {
   );
   const [loading, setLoading] = useState(true);
   const [checking, setChecking] = useState(false);
+  const loadingRegistrationRef = useRef(false);
+  const checkingStatusRef = useRef(false);
 
   const loadRegistration = async () => {
+    if (loadingRegistrationRef.current) {
+      return registration;
+    }
+
+    loadingRegistrationRef.current = true;
     try {
       const res = await fetch(`/api/registrations/${params.id}`);
-      if (!res.ok) throw new Error("Không tìm thấy đăng ký");
+      if (!res.ok) {
+        if (res.status === 404) {
+          router.push("/");
+        }
+        return null;
+      }
       const data = await res.json();
       setRegistration(data.registration);
       return data.registration as RegistrationData;
     } catch (error) {
       console.error(error);
-      router.push("/");
       return null;
     } finally {
+      loadingRegistrationRef.current = false;
       setLoading(false);
+    }
+  };
+
+  const checkRegistrationStatus = async () => {
+    if (checkingStatusRef.current) {
+      return registration;
+    }
+
+    checkingStatusRef.current = true;
+    try {
+      const res = await fetch(`/api/registrations/${params.id}/status`);
+      if (!res.ok) {
+        if (res.status === 404) {
+          router.push("/");
+        }
+        return null;
+      }
+      const data = await res.json();
+      setRegistration((current) =>
+        current ? { ...current, ...data.registration } : current,
+      );
+      return data.registration as Pick<
+        RegistrationData,
+        "id" | "paymentStatus" | "bibNumber" | "qrCheckinUrl"
+      >;
+    } catch (error) {
+      console.error(error);
+      return null;
+    } finally {
+      checkingStatusRef.current = false;
     }
   };
 
@@ -72,18 +114,18 @@ export default function PaymentPage() {
     if (registration?.paymentStatus !== "PENDING") return;
 
     const interval = window.setInterval(async () => {
-      const latestRegistration = await loadRegistration();
+      const latestRegistration = await checkRegistrationStatus();
       if (latestRegistration?.paymentStatus === "PAID") {
         router.replace(`/registrations/${params.id}/payment-success`);
       }
-    }, 3000);
+    }, 5000);
 
     return () => window.clearInterval(interval);
   }, [registration?.paymentStatus, params.id, router]);
 
   const checkPaymentStatus = async () => {
     setChecking(true);
-    const latestRegistration = await loadRegistration();
+    const latestRegistration = await checkRegistrationStatus();
     if (latestRegistration?.paymentStatus === "PAID") {
       router.replace(`/registrations/${params.id}/payment-success`);
     }
