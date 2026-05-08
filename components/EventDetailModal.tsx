@@ -98,7 +98,6 @@ export function EventDetailModal({
             )}
 
             <div className="absolute bottom-0 left-16 sm:left-0 p-3 sm:p-6 text-white">
-              <h2 className="hidden sm:block text-3xl font-bold">{event.name}</h2>
               <div className="hidden sm:flex flex-wrap gap-x-3 gap-y-1 opacity-90 text-sm mt-2">
                 <div className="flex items-center gap-1">
                   <Calendar className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
