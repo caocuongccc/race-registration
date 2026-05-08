@@ -44,7 +44,7 @@ export function RegistrationPendingEmail({
   };
 
   const trackingUrl = `${process.env.NEXTAUTH_URL || "https://dangkygiaichay.vercel.app"}/registrations/${registration.id}/payment`;
-  const transferContent = registration.shortCode || registration.phone;
+  const transferContent = registration.shortCode || `DH${registration.id}`;
 
   return (
     <Html>

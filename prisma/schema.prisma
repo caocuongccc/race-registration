@@ -206,7 +206,7 @@ model Registration {
   totalAmount           Int
   paymentStatus         PaymentStatus       @default(PENDING)
   bibNumber             String?             @unique
-  shortCode             String?             @unique @map("short_code") // SĐT registration_number - nội dung CK thủ công
+  shortCode             String?             @unique @map("short_code") // DH + registration id - nội dung CK
   qrPaymentUrl          String?
   qrCheckinUrl          String?
   confirmationToken     String?             @unique

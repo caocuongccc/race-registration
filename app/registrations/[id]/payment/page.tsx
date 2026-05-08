@@ -88,9 +88,7 @@ export default function PaymentPage() {
   const isPaid = registration.paymentStatus === "PAID";
   const isPending = registration.paymentStatus === "PENDING";
   const isFailed = registration.paymentStatus === "FAILED";
-  const transferContent =
-    registration.shortCode ||
-    `${registration.phone.replace(/\D/g, "")} ${registration.id}`;
+  const transferContent = registration.shortCode || `DH${registration.id}`;
 
   return (
     <div className="min-h-screen bg-gray-50 py-8">

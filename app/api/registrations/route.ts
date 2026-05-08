@@ -165,7 +165,7 @@ export async function POST(req: NextRequest) {
     const registrationNumber = registrationNumberRows[0]?.registration_number;
     const shortCode = buildRegistrationTransferContent(
       newRegistration.phone,
-      registrationNumber ?? newRegistration.id,
+      newRegistration.id,
     );
 
     await prisma.$executeRaw`

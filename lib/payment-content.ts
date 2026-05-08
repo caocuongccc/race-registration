@@ -1,8 +1,8 @@
 export function buildRegistrationTransferContent(
-  phone: string,
-  registrationNumber: number | string,
+  _phone: string,
+  registrationId: string,
 ): string {
-  return `${phone.replace(/\D/g, "")} ${registrationNumber}`;
+  return `DH${registrationId}`;
 }
 
 export function extractRegistrationIdFromTransferContent(

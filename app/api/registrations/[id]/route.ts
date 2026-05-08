@@ -66,10 +66,9 @@ export async function GET(
     `;
     const registrationNumber =
       registrationNumberRows[0]?.registration_number ?? null;
-    const transferContent = buildRegistrationTransferContent(
-      registration.phone,
-      registrationNumber ?? registration.id,
-    );
+    const transferContent =
+      registration.shortCode ||
+      buildRegistrationTransferContent(registration.phone, registration.id);
     const event = {
       ...registration.event,
       bankName:
