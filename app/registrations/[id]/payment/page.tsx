@@ -22,6 +22,7 @@ interface RegistrationData {
   totalAmount: number;
   paymentStatus: string;
   bibNumber?: string;
+  shortCode?: string;
   qrPaymentUrl?: string;
   qrCheckinUrl?: string;
   distance: {
@@ -87,6 +88,9 @@ export default function PaymentPage() {
   const isPaid = registration.paymentStatus === "PAID";
   const isPending = registration.paymentStatus === "PENDING";
   const isFailed = registration.paymentStatus === "FAILED";
+  const transferContent =
+    registration.shortCode ||
+    `${registration.phone.replace(/\D/g, "")} ${registration.id}`;
 
   return (
     <div className="min-h-screen bg-gray-50 py-8">
@@ -260,37 +264,34 @@ export default function PaymentPage() {
                   Hoặc chuyển khoản thủ công:
                 </p>
                 <div className="space-y-2 text-sm">
-                  <div className="flex justify-between">
+                  <div className="grid grid-cols-[120px_minmax(0,1fr)] gap-3">
                     <span className="text-gray-600">Ngân hàng:</span>
-                    <span className="font-medium">
+                    <span className="font-medium text-right break-words">
                       {registration.event.bankName}
                     </span>
                   </div>
-                  <div className="flex justify-between">
+                  <div className="grid grid-cols-[120px_minmax(0,1fr)] gap-3">
                     <span className="text-gray-600">Số tài khoản:</span>
-                    <span className="font-medium font-mono">
+                    <span className="font-medium font-mono text-right break-all">
                       {registration.event.bankAccount}
                     </span>
                   </div>
-                  <div className="flex justify-between">
+                  <div className="grid grid-cols-[120px_minmax(0,1fr)] gap-3">
                     <span className="text-gray-600">Chủ tài khoản:</span>
-                    <span className="font-medium">
+                    <span className="font-medium text-right break-words">
                       {registration.event.bankHolder}
                     </span>
                   </div>
-                  <div className="flex justify-between">
+                  <div className="grid grid-cols-[120px_minmax(0,1fr)] gap-3">
                     <span className="text-gray-600">Số tiền:</span>
                     <span className="font-bold text-blue-600">
                       {formatCurrency(registration.totalAmount)}
                     </span>
                   </div>
-                  <div className="flex justify-between">
+                  <div className="grid grid-cols-[120px_minmax(0,1fr)] gap-3">
                     <span className="text-gray-600">Nội dung CK:</span>
-                    <span className="font-mono font-bold bg-yellow-100 px-2 py-1 rounded">
-                      {registration.phone}
-                      {registration.shirtCategory &&
-                        ` ${registration.shirtCategory}`}
-                      {registration.shirtSize && ` ${registration.shirtSize}`}
+                    <span className="justify-self-end font-mono font-bold bg-yellow-100 px-2 py-1 rounded break-all text-right">
+                      {transferContent}
                     </span>
                   </div>
                 </div>
@@ -300,12 +301,7 @@ export default function PaymentPage() {
                 <p className="text-sm text-red-800">
                   ⚠️ <strong>Lưu ý:</strong> Vui lòng ghi CHÍNH XÁC nội dung
                   chuyển khoản{" "}
-                  <strong>
-                    {registration.phone}
-                    {registration.shirtCategory &&
-                      ` ${registration.shirtCategory}`}
-                    {registration.shirtSize && ` ${registration.shirtSize}`}
-                  </strong>{" "}
+                  <strong>{transferContent}</strong>{" "}
                   để hệ thống tự động xác nhận thanh toán.
                 </p>
               </div>

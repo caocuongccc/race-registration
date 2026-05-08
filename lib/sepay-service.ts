@@ -1,4 +1,5 @@
 // lib/sepay-service.ts - CORRECT SEPAY IMPLEMENTATION
+import { extractRegistrationIdFromTransferContent } from "./payment-content";
 /**
  * SePay Payment Integration - QR Code + Webhook Based
  * Docs: https://developer.sepay.vn
@@ -19,16 +20,14 @@ export function generateSepayQR(
   accountNumber: string,
   bankCode: string,
   amount: number,
-  orderCode: string,
+  transferContent: string,
   accountName?: string,
 ): string {
-  const description = `DH ${orderCode}`;
-
   const params = new URLSearchParams({
     acc: accountNumber,
     bank: bankCode,
     amount: amount.toString(),
-    des: description,
+    des: transferContent,
   });
 
   if (accountName) {
@@ -96,6 +95,7 @@ export async function createSepayPayment(
     bankCode: string;
     accountName: string;
   } | null,
+  transferContent = orderCode,
 ): Promise<{
   success: boolean;
   qrUrl?: string;
@@ -119,11 +119,9 @@ export async function createSepayPayment(
       accountNumber,
       bankCode,
       amount,
-      orderCode,
+      transferContent,
       accountName,
     );
-
-    const transferContent = `DH ${orderCode}`;
 
     return {
       success: true,
@@ -170,15 +168,13 @@ export function parseSepayWebhook(webhookData: any): {
   content: string;
   accountNumber: string; // Account nhận tiền
 } {
-  let orderCode = webhookData.code || null;
+  const content = webhookData.content || webhookData.description || "";
+  let orderCode =
+    extractRegistrationIdFromTransferContent(webhookData.code) ||
+    extractRegistrationIdFromTransferContent(content);
 
-  if (!orderCode && webhookData.content) {
-    // ✅ Fixed: Use [\w-]+ to capture full UUID (hyphens are part of UUID format)
-    // Previous: /DH\s*(\w+)/ stopped at "-" and only captured first UUID segment
-    const match = webhookData.content.match(/DH\s*([\w-]+)|ORDER\s*([\w-]+)/i);
-    if (match) {
-      orderCode = match[1] || match[2];
-    }
+  if (!orderCode && typeof webhookData.code === "string") {
+    orderCode = webhookData.code;
   }
 
   return {
@@ -187,7 +183,7 @@ export function parseSepayWebhook(webhookData: any): {
     transactionId: webhookData.id?.toString() || `sepay_${Date.now()}`,
     transactionDate: webhookData.transactionDate || new Date().toISOString(),
     bankName: webhookData.gateway || webhookData.bankAbbreviation || "Unknown",
-    content: webhookData.content || "",
+    content,
     accountNumber: webhookData.accountNumber || "", // ✅ Account nhận tiền
   };
 }

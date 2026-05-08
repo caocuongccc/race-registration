@@ -294,6 +294,7 @@ export default function RegistrationPage() {
       // ✅ Build submission data - only include enabled fields
       const submissionData: any = {
         // Always included
+        eventId: eventData.event.id,
         distanceId: data.distanceId,
         fullName: data.fullName,
         email: data.email,

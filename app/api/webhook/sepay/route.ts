@@ -40,12 +40,23 @@ async function generateBibNumber(
  * Process payment confirmation
  */
 async function processPaymentConfirmation(
-  registrationId: string,
+  registrationCode: string,
   transactionId: string,
   amount: number,
   webhookData: any,
 ) {
   try {
+    let registrationId = registrationCode;
+    if (/^\d+$/.test(registrationCode)) {
+      const rows = await prisma.$queryRaw<{ id: string }[]>`
+        SELECT "id"
+        FROM "registrations"
+        WHERE "registration_number" = ${Number(registrationCode)}
+        LIMIT 1
+      `;
+      registrationId = rows[0]?.id || registrationCode;
+    }
+
     console.log(`🔄 Processing payment for: ${registrationId}`);
 
     // Get registration

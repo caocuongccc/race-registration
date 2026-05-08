@@ -47,3 +47,7 @@ prisma/seed.ts
 prisma/seed.ts
 /*.sql
 prisma/*
+!prisma/
+!prisma/schema.prisma
+!prisma/migrations/
+!prisma/migrations/**

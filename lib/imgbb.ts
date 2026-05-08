@@ -188,10 +188,17 @@ export async function generateCheckinQR(
 export async function generatePaymentQR(
   registrationId: string,
   amount: number,
+  bankAccount?: {
+    accountNumber: string;
+    bankCode: string;
+    accountName: string;
+  } | null,
 ): Promise<string> {
-  const accountNo = process.env.SEPAY_ACCOUNT_NUMBER || "0123456789";
-  const accountName = process.env.SEPAY_BANK_HOLDER || "NGUYEN VAN A";
-  const bankId = process.env.SEPAY_BANK_CODE || "MB"; // Mã ngân hàng (MB, VCB, TCB...)
+  const accountNo =
+    bankAccount?.accountNumber || process.env.SEPAY_ACCOUNT_NUMBER || "0123456789";
+  const accountName =
+    bankAccount?.accountName || process.env.SEPAY_BANK_HOLDER || "NGUYEN VAN A";
+  const bankId = bankAccount?.bankCode || process.env.SEPAY_BANK_CODE || "MB"; // Mã ngân hàng (MB, VCB, TCB...)
   const template = "compact"; // compact, compact2, qr_only, print
   const description = `${registrationId}`;
 

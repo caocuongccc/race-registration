@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { sendRegistrationPendingEmailGmailFirst } from "@/lib/email-service-gmail-first";
 import { createSepayPayment } from "@/lib/sepay-service";
+import { buildRegistrationTransferContent } from "@/lib/payment-content";
 import { generatePaymentQR } from "@/lib/imgbb"; // Fallback QR generator
 import { getEventBankAccount } from "@/lib/bank-account-service"; // ✅ Per-event bank account with decryption
 
@@ -111,20 +112,6 @@ export async function POST(req: NextRequest) {
 
     const totalAmount = raceFee + shirtFee;
 
-    // Generate shortCode: SĐT_MMDDHHmmss (để người gạch nợ thủ công nhận biết dễ dàng)
-    const now = new Date();
-    const pad = (n: number) => String(n).padStart(2, "0");
-    // Lấy giờ Việt Nam (UTC+7)
-    const vnTime = new Date(now.getTime() + 7 * 60 * 60 * 1000);
-    const shortCode =
-      phone.replace(/\D/g, "") +
-      "_" +
-      pad(vnTime.getUTCMonth() + 1) +
-      pad(vnTime.getUTCDate()) +
-      pad(vnTime.getUTCHours()) +
-      pad(vnTime.getUTCMinutes()) +
-      pad(vnTime.getUTCSeconds());
-
     // Create registration in transaction
     const registration = await prisma.$transaction(async (tx) => {
       const newRegistration = await tx.registration.create({
@@ -161,7 +148,6 @@ export async function POST(req: NextRequest) {
 
           utmSource: body.utmSource || null,
           confirmationToken: Math.random().toString(36).substring(7),
-          shortCode: shortCode,
         },
         include: {
           distance: true,
@@ -169,6 +155,27 @@ export async function POST(req: NextRequest) {
           event: true,
         },
       });
+
+      const registrationNumberRows = await tx.$queryRaw<
+        { registration_number: number }[]
+      >`
+        SELECT "registration_number"
+        FROM "registrations"
+        WHERE "id" = ${newRegistration.id}
+        LIMIT 1
+      `;
+      const registrationNumber =
+        registrationNumberRows[0]?.registration_number;
+      const shortCode = buildRegistrationTransferContent(
+        newRegistration.phone,
+        registrationNumber ?? newRegistration.id,
+      );
+
+      await tx.$executeRaw`
+        UPDATE "registrations"
+        SET "short_code" = ${shortCode}
+        WHERE "id" = ${newRegistration.id}
+      `;
 
       // Update distance participant count
       await tx.distance.update({
@@ -192,7 +199,11 @@ export async function POST(req: NextRequest) {
         });
       }
 
-      return newRegistration;
+      return {
+        ...newRegistration,
+        registrationNumber,
+        shortCode,
+      };
     });
 
     console.log(`✅ Registration created: ${registration.id}`);
@@ -207,27 +218,27 @@ export async function POST(req: NextRequest) {
     let qrPaymentUrl: string | null = null;
     let paymentInfo: any = null;
 
+    // Get decrypted bank account once so QR and manual transfer info match.
+    const bankAccountInfo = await getEventBankAccount(eventId);
+    const eventBankAccount = bankAccountInfo
+      ? {
+          accountNumber: bankAccountInfo.accountNumber,
+          bankCode: bankAccountInfo.bankCode,
+          accountName: bankAccountInfo.accountName,
+        }
+      : null;
+
     if (requireOnlinePayment) {
       // ============================================
       // SEPAY QR PAYMENT FLOW
       // ============================================
       console.log("📱 Creating SePay QR payment...");
 
-      // ✅ Get bank account for this event (decrypts from DB, falls back to env)
-      const bankAccountInfo = await getEventBankAccount(eventId);
-
-      const eventBankAccount = bankAccountInfo
-        ? {
-            accountNumber: bankAccountInfo.accountNumber,
-            bankCode: bankAccountInfo.bankCode,
-            accountName: bankAccountInfo.accountName,
-          }
-        : null;
-
       const sepayResult = await createSepayPayment(
         registration.id,
         totalAmount,
         eventBankAccount,
+        registration.shortCode,
       );
 
       if (sepayResult.success && sepayResult.qrUrl) {
@@ -238,7 +249,7 @@ export async function POST(req: NextRequest) {
           bankCode: sepayResult.bankCode,
           accountName: sepayResult.accountName,
           // Nội dung CK dễ đọc: SĐT_timestamp (cho người gạch nợ thủ công)
-          transferContent: shortCode,
+          transferContent: registration.shortCode,
           amount: totalAmount,
         };
 
@@ -249,8 +260,9 @@ export async function POST(req: NextRequest) {
         // Fallback to imgbb QR if SePay fails
         try {
           qrPaymentUrl = await generatePaymentQR(
-            registration.id,
+            registration.shortCode,
             totalAmount,
+            eventBankAccount,
             // fullName,
             // phone,
           );
@@ -266,14 +278,10 @@ export async function POST(req: NextRequest) {
       console.log("📱 Generating offline payment QR...");
 
       try {
-        const description =
-          registration.phone +
-          " " +
-          (registration.shirtCategory ? ` ${registration.shirtCategory}` : "") +
-          (registration.shirtSize ? ` ${registration.shirtSize}` : "");
         qrPaymentUrl = await generatePaymentQR(
-          description,
+          registration.shortCode,
           totalAmount,
+          eventBankAccount,
           // fullName,
           // phone,
         );
@@ -340,10 +348,12 @@ export async function POST(req: NextRequest) {
       requireOnlinePayment,
       registration: {
         id: registration.id,
+        registrationNumber: registration.registrationNumber,
         fullName: registration.fullName,
         email: registration.email,
         totalAmount: registration.totalAmount,
         qrPaymentUrl: qrPaymentUrl,
+        shortCode: registration.shortCode,
         paymentInfo: requireOnlinePayment ? paymentInfo : null,
       },
       message: requireOnlinePayment

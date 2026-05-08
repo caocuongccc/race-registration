@@ -27,6 +27,7 @@ interface Registration {
   fullName: string;
   email: string;
   phone: string;
+  registrationNumber: number | null;
   bibNumber: string | null;
   bibName: string;
   totalAmount: number;
@@ -404,7 +405,7 @@ export default function RegistrationsPage() {
                 placeholder={
                   quickConfirmMode
                     ? "🔍 Tìm SĐT hoặc tên..."
-                    : "Tìm tên, email, SĐT, BIB..."
+                    : "Tìm tên, email, SĐT, BIB, Mã ĐK..."
                 }
                 value={searchInput}
                 onChange={(e) => setSearchInput(e.target.value)}
@@ -471,6 +472,7 @@ export default function RegistrationsPage() {
                         Tên trên bib
                       </th>
                       <th className="px-6 py-3 text-left text-xs">Liên hệ</th>
+                      <th className="px-6 py-3 text-left text-xs">Mã ĐK</th>
                       <th className="px-6 py-3 text-left text-xs">Cự ly</th>
                       <th className="px-6 py-3 text-left text-xs">Số tiền</th>
                       <th className="px-6 py-3 text-left text-xs">
@@ -516,6 +518,12 @@ export default function RegistrationsPage() {
                             {r.email}
                             <br />
                             {r.phone}
+                          </td>
+
+                          <td className="px-6 py-4 font-mono font-semibold">
+                            {r.registrationNumber ?? (
+                              <span className="text-gray-400">—</span>
+                            )}
                           </td>
 
                           <td className="px-6 py-4">{r.distance.name}</td>

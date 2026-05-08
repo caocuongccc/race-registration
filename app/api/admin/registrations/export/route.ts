@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { Prisma } from "@prisma/client";
 import * as XLSX from "xlsx";
 
 // Helper: Calculate age group
@@ -62,6 +63,19 @@ export async function GET(req: NextRequest) {
         bibNumber: "asc",
       },
     });
+    const registrationNumbers =
+      registrations.length > 0
+        ? await prisma.$queryRaw<
+            { id: string; registration_number: number }[]
+          >`
+            SELECT "id", "registration_number"
+            FROM "registrations"
+            WHERE "id" IN (${Prisma.join(registrations.map((r) => r.id))})
+          `
+        : [];
+    const registrationNumberById = new Map(
+      registrationNumbers.map((r) => [r.id, r.registration_number]),
+    );
     // Create workbook
     const wb = XLSX.utils.book_new();
 
@@ -109,6 +123,7 @@ export async function GET(req: NextRequest) {
         "Giới tính": r.gender === "MALE" ? "Nam" : "Nữ",
         Email: r.email,
         "Số điện thoại": r.phone,
+        "Mã ĐK": registrationNumberById.get(r.id) || "",
         "CCCD/CMND": r.idCard,
         "Địa chỉ": r.address || "",
         Áo: r.shirtSize

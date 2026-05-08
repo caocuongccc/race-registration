@@ -1,6 +1,8 @@
 // app/api/registrations/[id]/route.ts
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { getEventBankAccount } from "@/lib/bank-account-service";
+import { buildRegistrationTransferContent } from "@/lib/payment-content";
 
 export async function GET(
   req: NextRequest,
@@ -51,6 +53,42 @@ export async function GET(
       );
     }
 
+    const bankAccount = await getEventBankAccount(registration.eventId);
+    const isEncryptedValue = (value?: string | null) =>
+      Boolean(value && value.split(":").length === 3);
+    const registrationNumberRows = await prisma.$queryRaw<
+      { registration_number: number }[]
+    >`
+      SELECT "registration_number"
+      FROM "registrations"
+      WHERE "id" = ${registration.id}
+      LIMIT 1
+    `;
+    const registrationNumber =
+      registrationNumberRows[0]?.registration_number ?? null;
+    const transferContent = buildRegistrationTransferContent(
+      registration.phone,
+      registrationNumber ?? registration.id,
+    );
+    const event = {
+      ...registration.event,
+      bankName:
+        bankAccount?.bankName ||
+        (isEncryptedValue(registration.event.bankName)
+          ? ""
+          : registration.event.bankName || ""),
+      bankAccount:
+        bankAccount?.accountNumber ||
+        (isEncryptedValue(registration.event.bankAccount)
+          ? ""
+          : registration.event.bankAccount || ""),
+      bankHolder:
+        bankAccount?.accountName ||
+        (isEncryptedValue(registration.event.bankHolder)
+          ? ""
+          : registration.event.bankHolder || ""),
+    };
+
     return NextResponse.json({
       registration: {
         id: registration.id,
@@ -66,11 +104,13 @@ export async function GET(
         paymentStatus: registration.paymentStatus,
 
         bibNumber: registration.bibNumber,
+        registrationNumber,
+        shortCode: transferContent,
         qrPaymentUrl: registration.qrPaymentUrl,
         qrCheckinUrl: registration.qrCheckinUrl,
 
         distance: registration.distance,
-        event: registration.event,
+        event,
 
         shirtCategory: registration.shirtCategory,
         shirtType: registration.shirtType,

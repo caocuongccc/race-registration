@@ -100,9 +100,9 @@ LỘ TRÌNH:
       city: "Thừa Thiên Huế",
 
       // Status
-      status: "DRAFT",
-      isPublished: false,
-      allowRegistration: false,
+      status: "REGISTRATION_OPEN",
+      isPublished: true,
+      allowRegistration: true,
 
       // Race Pack Info
       racePackLocation: "Sân khấu phố đi bộ đường Nguyễn Văn, thôn An Cư Tân, Lăng Cô",

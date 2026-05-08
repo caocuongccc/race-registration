@@ -5,6 +5,7 @@
 
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
+import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 
 export type EventPermission = "view" | "edit" | "admin" | "none";
@@ -233,11 +234,25 @@ export async function getUserAccessibleRegistrations(
 
   // Other filters
   if (search) {
+    const searchEventIds =
+      eventId && eventId !== "all" ? [eventId] : eventIds;
+    const registrationNumberMatches = /^\d+$/.test(search)
+      ? await prisma.$queryRaw<{ id: string }[]>`
+          SELECT "id"
+          FROM "registrations"
+          WHERE "eventId" IN (${Prisma.join(searchEventIds)})
+            AND (
+              "registration_number"::text = ${search}
+              OR "short_code" ILIKE ${`%${search}%`}
+            )
+        `
+      : [];
     whereClause.OR = [
       { fullName: { contains: search, mode: "insensitive" } },
       { email: { contains: search, mode: "insensitive" } },
       { phone: { contains: search } },
       { bibNumber: { contains: search, mode: "insensitive" } },
+      ...registrationNumberMatches.map((match) => ({ id: match.id })),
     ];
   }
 
@@ -268,11 +283,29 @@ export async function getUserAccessibleRegistrations(
     skip,
     take: limit,
   });
-  console.log("Fetched registrations:", registrations);
+  const registrationNumbers =
+    registrations.length > 0
+      ? await prisma.$queryRaw<
+          { id: string; registration_number: number }[]
+        >`
+          SELECT "id", "registration_number"
+          FROM "registrations"
+          WHERE "id" IN (${Prisma.join(registrations.map((r) => r.id))})
+        `
+      : [];
+  const registrationNumberById = new Map(
+    registrationNumbers.map((r) => [r.id, r.registration_number]),
+  );
+  const registrationsWithNumber = registrations.map((registration) => ({
+    ...registration,
+    registrationNumber:
+      registrationNumberById.get(registration.id) ?? null,
+  }));
+  console.log("Fetched registrations:", registrationsWithNumber);
   const totalPages = Math.ceil(totalCount / limit);
 
   return {
-    registrations,
+    registrations: registrationsWithNumber,
     pagination: {
       currentPage: page,
       totalPages,
