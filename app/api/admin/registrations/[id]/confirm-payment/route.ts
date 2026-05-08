@@ -119,9 +119,10 @@ export async function POST(
     console.log("📝 registration.distanceId:", registration.distanceId);
 
     // Generate BIB number
-    const bibNumber = await generateBibNumber(
+    const bibNumber = await generateBibNumberHybrid(
       registrationId,
       registration.distanceId,
+      registration.distanceGoalId,
     );
 
     console.log(`✅ BIB generated: ${bibNumber}`);

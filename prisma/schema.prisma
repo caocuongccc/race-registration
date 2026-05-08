@@ -207,7 +207,7 @@ model Registration {
   shirtFee              Int                 @default(0)
   totalAmount           Int
   paymentStatus         PaymentStatus       @default(PENDING)
-  bibNumber             String?             @unique
+  bibNumber             String?
   shortCode             String?             @unique @map("short_code") // DH + registration id - nội dung CK
   qrPaymentUrl          String?
   qrCheckinUrl          String?
@@ -243,6 +243,7 @@ model Registration {
   @@index([distanceGoalId])
   @@index([email])
   @@index([importBatchId, paymentStatus])
+  @@unique([eventId, bibNumber])
   @@map("registrations")
 }
 

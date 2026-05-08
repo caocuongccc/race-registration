@@ -4,37 +4,12 @@ import { prisma } from "@/lib/prisma";
 import { generateCheckinQR } from "@/lib/imgbb";
 import { parseSepayWebhook, verifySepayWebhook } from "@/lib/sepay-service";
 import { sendPaymentConfirmationEmailGmailFirst } from "@/lib/email-service-gmail-first";
+import { generateBibNumberHybrid } from "@/lib/bib-generator";
 import { getEventBankAccount } from "@/lib/bank-account-service"; // ✅ Decrypted bank account
 
 /**
  * Generate BIB number
  */
-async function generateBibNumber(
-  registrationId: string,
-  distanceId: string,
-): Promise<string> {
-  const distance = await prisma.distance.findUnique({
-    where: { id: distanceId },
-  });
-
-  if (!distance) {
-    throw new Error("Distance not found");
-  }
-
-  const paidCount = await prisma.registration.count({
-    where: {
-      distanceId: distanceId,
-      paymentStatus: "PAID",
-      bibNumber: {
-        not: null,
-      },
-    },
-  });
-
-  const bibNumber = `${distance.bibPrefix}${String(paidCount + 1).padStart(3, "0")}`;
-  return bibNumber;
-}
-
 async function sendPaymentConfirmationInBackground(
   registrationId: string,
   bibNumber: string,
@@ -244,9 +219,10 @@ async function processPaymentConfirmation(
     }
 
     // Generate BIB number
-    const bibNumber = await generateBibNumber(
+    const bibNumber = await generateBibNumberHybrid(
       registrationId,
       registration.distanceId,
+      registration.distanceGoalId,
     );
     console.log(`🎫 BIB number: ${bibNumber}`);
 

@@ -1,72 +1,113 @@
-// lib/bib-generator.ts - UPDATED WITH GOALS SUPPORT
+// lib/bib-generator.ts
 import { prisma } from "@/lib/prisma";
 
+const MAX_PER_PREFIX = 999;
+
+function escapeRegExp(value: string) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function getBibSuffixNumber(bibNumber: string, prefix: string): number | null {
+  const match = bibNumber.match(new RegExp(`^${escapeRegExp(prefix)}(\\d+)$`));
+  if (!match) {
+    return null;
+  }
+
+  return Number.parseInt(match[1], 10);
+}
+
+async function findNextBibForPrefix(
+  bibPrefix: string,
+  filters: {
+    eventId: string;
+    excludeRegistrationId?: string;
+  },
+): Promise<string> {
+  let currentPrefix = bibPrefix;
+  let minimumNextNumber = 1;
+
+  while (true) {
+    const existingBibs = await prisma.registration.findMany({
+      where: {
+        eventId: filters.eventId,
+        ...(filters.excludeRegistrationId
+          ? { id: { not: filters.excludeRegistrationId } }
+          : {}),
+        bibNumber: {
+          not: null,
+          startsWith: currentPrefix,
+        },
+      },
+      select: { bibNumber: true },
+    });
+
+    const usedNumbers = existingBibs
+      .map((item) =>
+        item.bibNumber ? getBibSuffixNumber(item.bibNumber, currentPrefix) : null,
+      )
+      .filter((value): value is number => value !== null);
+    const nextNumber =
+      usedNumbers.length > 0
+        ? Math.max(Math.max(...usedNumbers) + 1, minimumNextNumber)
+        : minimumNextNumber;
+
+    if (nextNumber > MAX_PER_PREFIX) {
+      if (!/^\d+$/.test(currentPrefix)) {
+        throw new Error(
+          `Da het BIB cho prefix ${currentPrefix}. Toi da ${MAX_PER_PREFIX} VDV.`,
+        );
+      }
+
+      currentPrefix = String(Number.parseInt(currentPrefix, 10) + 1);
+      minimumNextNumber = 1;
+      continue;
+    }
+
+    const bibNumber = `${currentPrefix}${String(nextNumber).padStart(3, "0")}`;
+    const existing = await prisma.registration.findFirst({
+      where: {
+        eventId: filters.eventId,
+        bibNumber,
+      },
+    });
+
+    if (!existing || existing.id === filters.excludeRegistrationId) {
+      return bibNumber;
+    }
+
+    // Collision inside the same event. Keep moving inside this prefix until
+    // we find a genuinely unused BIB.
+    minimumNextNumber = nextNumber + 1;
+    if (minimumNextNumber > MAX_PER_PREFIX) {
+      if (!/^\d+$/.test(currentPrefix)) {
+        throw new Error(
+          `Da het BIB cho prefix ${currentPrefix}. Toi da ${MAX_PER_PREFIX} VDV.`,
+        );
+      }
+
+      currentPrefix = String(Number.parseInt(currentPrefix, 10) + 1);
+      minimumNextNumber = 1;
+      continue;
+    }
+  }
+}
+
 /**
- * Generate unique BIB number for registration
- * Format:
- * - Without goals: PREFIX-001, PREFIX-002...
- * - With goals: GOAL_PREFIX-001, GOAL_PREFIX-002...
- *
- * Example:
- * - No goals: 5K-001, 10K-001, 21K-001
- * - With goals: 5K45-001, 5K60-001, 5K75-001
+ * Generate unique BIB number for imports.
+ * Format: PREFIX001, PREFIX002...
  */
 export async function generateBibNumber(
   eventId: string,
   bibPrefix: string,
   distanceGoalId?: string | null,
 ): Promise<string> {
-  // Build where clause based on whether we have a goal
-  const whereClause: any = {
+  return findNextBibForPrefix(bibPrefix, {
     eventId,
-    bibNumber: { startsWith: bibPrefix },
-  };
-
-  if (distanceGoalId) {
-    // For goal-based registration, only count BIBs from same goal
-    whereClause.distanceGoalId = distanceGoalId;
-  } else {
-    // For non-goal registration, only count BIBs without goals
-    whereClause.distanceGoalId = null;
-  }
-
-  // Find highest BIB number with this prefix
-  const existingBibs = await prisma.registration.findMany({
-    where: whereClause,
-    select: { bibNumber: true },
-    orderBy: { bibNumber: "desc" },
-    take: 1,
   });
-
-  let nextNumber = 1;
-
-  if (existingBibs.length > 0 && existingBibs[0].bibNumber) {
-    const lastBib = existingBibs[0].bibNumber;
-    const match = lastBib.match(/-(\d+)$/);
-    if (match) {
-      nextNumber = parseInt(match[1]) + 1;
-    }
-  }
-
-  // Format with leading zeros (3 digits)
-  const bibNumber = `${bibPrefix}${nextNumber.toString().padStart(3, "0")}`;
-
-  // Verify uniqueness (double check)
-  const existing = await prisma.registration.findUnique({
-    where: { bibNumber },
-  });
-
-  if (existing) {
-    // Collision detected, try next number
-    return generateBibNumber(eventId, bibPrefix, distanceGoalId);
-  }
-
-  return bibNumber;
 }
 
 /**
- * Regenerate BIB numbers for all registrations in an event
- * Useful after changing distance prefixes or goals
+ * Regenerate BIB numbers for all registrations in an event.
  */
 export async function regenerateAllBibs(eventId: string): Promise<number> {
   const registrations = await prisma.registration.findMany({
@@ -109,7 +150,7 @@ export async function regenerateAllBibs(eventId: string): Promise<number> {
 }
 
 /**
- * Get BIB statistics for an event
+ * Get BIB statistics for an event.
  */
 export async function getBibStats(eventId: string) {
   const registrations = await prisma.registration.findMany({
@@ -178,74 +219,17 @@ export async function generateBibNumberHybrid(
     throw new Error("Distance not found");
   }
 
-  // Determine BIB prefix (from goal or distance)
-  let basePrefix = distance.bibPrefix;
+  const basePrefix =
+    distanceGoalId && distance.distanceGoals && distance.distanceGoals.length > 0
+      ? distance.distanceGoals[0].bibPrefix || distance.bibPrefix
+      : distance.bibPrefix;
 
-  if (
-    distanceGoalId &&
-    distance.distanceGoals &&
-    distance.distanceGoals.length > 0
-  ) {
-    basePrefix = distance.distanceGoals[0].bibPrefix || distance.bibPrefix;
-  }
-
-  // Count existing BIBs with this prefix
-  const whereClause: any = {
-    distanceId,
-    paymentStatus: "PAID",
-    bibNumber: {
-      not: null,
-      startsWith: basePrefix,
-    },
-  };
-
-  if (distanceGoalId) {
-    whereClause.distanceGoalId = distanceGoalId;
-  } else {
-    whereClause.distanceGoalId = null;
-  }
-
-  const paidCount = await prisma.registration.count({
-    where: whereClause,
+  const bibNumber = await findNextBibForPrefix(basePrefix, {
+    eventId: distance.eventId,
+    excludeRegistrationId: registrationId,
   });
 
-  const MAX_PER_PREFIX = 999;
-
-  // ✅ CASE 1: Numeric prefix (17, 57) → Auto increment
-  if (/^\d+$/.test(basePrefix)) {
-    const prefixIncrement = Math.floor(paidCount / MAX_PER_PREFIX);
-    const numberInCurrentPrefix = (paidCount % MAX_PER_PREFIX) + 1;
-    const numericPrefix = parseInt(basePrefix) + prefixIncrement;
-    const finalPrefix = String(numericPrefix);
-    const bibNumber = `${finalPrefix}${String(numberInCurrentPrefix).padStart(3, "0")}`;
-
-    console.log(`📊 BIB Generated (Numeric):
-    - Base: ${basePrefix}
-    - Count: ${paidCount}
-    - Increment: ${prefixIncrement}
-    - Final Prefix: ${finalPrefix}
-    - BIB: ${bibNumber}
-    `);
-
-    return bibNumber;
-  }
-
-  // ✅ CASE 2: Alphanumeric prefix (5K, 10K) → Fixed range
-  if (paidCount >= MAX_PER_PREFIX) {
-    throw new Error(
-      `❌ Đã hết BIB cho cự ly ${distance.name} (prefix: ${basePrefix}). ` +
-        `Tối đa ${MAX_PER_PREFIX} VĐV. ` +
-        `Hiện tại: ${paidCount} VĐV đã thanh toán.`,
-    );
-  }
-
-  const bibNumber = `${basePrefix}${String(paidCount + 1).padStart(3, "0")}`;
-
-  console.log(`📊 BIB Generated (Alpha):
-  - Prefix: ${basePrefix}
-  - Count: ${paidCount}/${MAX_PER_PREFIX}
-  - BIB: ${bibNumber}
-  `);
+  console.log(`BIB generated: ${bibNumber}`);
 
   return bibNumber;
 }
