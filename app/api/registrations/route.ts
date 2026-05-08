@@ -154,6 +154,27 @@ export async function POST(req: NextRequest) {
       },
     });
 
+    // Get decrypted bank account once so QR and manual transfer info match.
+    const bankAccountInfo = await getEventBankAccount(eventId);
+    const eventBankAccount = bankAccountInfo
+      ? {
+          accountNumber: bankAccountInfo.accountNumber,
+          bankCode: bankAccountInfo.bankCode,
+          accountName: bankAccountInfo.accountName,
+        }
+      : null;
+    const emailBankInfo = bankAccountInfo
+      ? {
+          bankName: bankAccountInfo.bankName || bankAccountInfo.bankCode,
+          accountNumber: bankAccountInfo.accountNumber,
+          accountHolder: bankAccountInfo.accountName,
+        }
+      : {
+          bankName: process.env.SEPAY_BANK_NAME || "",
+          accountNumber: process.env.SEPAY_ACCOUNT_NUMBER || "",
+          accountHolder: process.env.SEPAY_BANK_HOLDER || "",
+        };
+
     const registrationNumberRows = await prisma.$queryRaw<
       { registration_number: number }[]
     >`
@@ -166,6 +187,7 @@ export async function POST(req: NextRequest) {
     const shortCode = buildRegistrationTransferContent(
       newRegistration.phone,
       newRegistration.id,
+      eventBankAccount?.bankCode || process.env.SEPAY_BANK_CODE,
     );
 
     await prisma.$executeRaw`
@@ -211,27 +233,6 @@ export async function POST(req: NextRequest) {
 
     let qrPaymentUrl: string | null = null;
     let paymentInfo: any = null;
-
-    // Get decrypted bank account once so QR and manual transfer info match.
-    const bankAccountInfo = await getEventBankAccount(eventId);
-    const eventBankAccount = bankAccountInfo
-      ? {
-          accountNumber: bankAccountInfo.accountNumber,
-          bankCode: bankAccountInfo.bankCode,
-          accountName: bankAccountInfo.accountName,
-        }
-      : null;
-    const emailBankInfo = bankAccountInfo
-      ? {
-          bankName: bankAccountInfo.bankName || bankAccountInfo.bankCode,
-          accountNumber: bankAccountInfo.accountNumber,
-          accountHolder: bankAccountInfo.accountName,
-        }
-      : {
-          bankName: process.env.SEPAY_BANK_NAME || "",
-          accountNumber: process.env.SEPAY_ACCOUNT_NUMBER || "",
-          accountHolder: process.env.SEPAY_BANK_HOLDER || "",
-        };
 
     if (requireOnlinePayment) {
       // ============================================

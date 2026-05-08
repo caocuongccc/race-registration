@@ -59,7 +59,11 @@ export async function GET(
     const registrationNumber = registration.registrationNumber ?? null;
     const transferContent =
       registration.shortCode ||
-      buildRegistrationTransferContent(registration.phone, registration.id);
+      buildRegistrationTransferContent(
+        registration.phone,
+        registration.id,
+        bankAccount?.bankCode || process.env.SEPAY_BANK_CODE,
+      );
     const event = {
       ...registration.event,
       bankName:

@@ -1,8 +1,24 @@
 export function buildRegistrationTransferContent(
   _phone: string,
   registrationId: string,
+  bankCode?: string | null,
 ): string {
+  if (isVietinBank(bankCode)) {
+    return `SEVQRDH${registrationId}`;
+  }
+
   return `DH${registrationId}`;
+}
+
+export function isVietinBank(bankCode?: string | null): boolean {
+  if (!bankCode) return false;
+  const normalized = bankCode.replace(/[\s_-]/g, "").toUpperCase();
+  return (
+    normalized === "VIETINBANK" ||
+    normalized === "ICB" ||
+    normalized === "CTG" ||
+    normalized === "970415"
+  );
 }
 
 export function extractRegistrationIdFromTransferContent(
