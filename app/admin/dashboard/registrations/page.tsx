@@ -36,6 +36,7 @@ interface Registration {
   distance: { name: string };
   registrationSource: string;
   event: { name: string };
+  notes?: string | null;
 }
 
 interface PaginationMeta {
@@ -184,6 +185,7 @@ export default function RegistrationsPage() {
       const data = await res.json();
 
       setRegistrations(data.registrations || []);
+      setFilteredRegistrations(data.registrations || []);
       setPagination(data.pagination);
 
       // Load selected event info if needed
@@ -356,7 +358,7 @@ export default function RegistrationsPage() {
             Tổng: {filteredRegistrations.length} đăng ký (
             <span className="text-green-600">{paidCount} đã TT</span>,{" "}
             <span className="text-yellow-600">{pendingCount} chờ</span>)
-            {selectedEventData && !selectedEventData.requireOnlinePayment && (
+            {selectedEventData && (
               <span className="ml-2 text-orange-600 font-medium">
                 • Xác nhận thủ công
               </span>
@@ -366,9 +368,7 @@ export default function RegistrationsPage() {
 
         <div className="flex gap-3">
           {/* Quick confirm */}
-          {selectedEvent !== "all" &&
-            selectedEventData &&
-            !selectedEventData.requireOnlinePayment && (
+          {selectedEvent !== "all" && selectedEventData && (
               <Button
                 variant={quickConfirmMode ? "primary" : "outline"}
                 onClick={() => setQuickConfirmMode(!quickConfirmMode)}
@@ -569,15 +569,11 @@ export default function RegistrationsPage() {
                                     "_blank",
                                   )
                                 }
-                                placeholder="Xem chi tiết."
                               >
                                 <Eye className="w-4 h-4" />
                               </Button>
 
-                              {r.paymentStatus === "PENDING" &&
-                                (quickConfirmMode ||
-                                  (selectedEventData &&
-                                    !selectedEventData.requireOnlinePayment)) && (
+                              {r.paymentStatus === "PENDING" && (
                                   <Button
                                     variant="ghost"
                                     size="sm"
@@ -591,11 +587,9 @@ export default function RegistrationsPage() {
                                       <Check className="w-4 h-4" />
                                     )}
                                   </Button>
-                                )}
+                              )}
 
-                              {r.paymentStatus === "PENDING" &&
-                                selectedEventData &&
-                                !selectedEventData.requireOnlinePayment && (
+                              {r.paymentStatus === "PENDING" && (
                                   <Button
                                     variant="ghost"
                                     size="sm"
@@ -604,7 +598,7 @@ export default function RegistrationsPage() {
                                   >
                                     <X className="w-4 h-4" />
                                   </Button>
-                                )}
+                              )}
                             </div>
                           </td>
                         </tr>
