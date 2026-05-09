@@ -342,7 +342,7 @@ export default function OrderShirtPage() {
               </h3>
               <ul className="text-sm text-purple-800 space-y-1">
                 <li>✓ Áo chất lượng cao, thiết kế độc quyền cho sự kiện</li>
-                <li>✓ Giá: Từ 260,000đ/áo (có thể mua nhiều áo, nhiều size)</li>
+                <li>✓ Giá: Từ 130,000đ/áo (có thể mua nhiều áo, nhiều size)</li>
                 <li>
                   ⚠️ Đây là áo MUA RIÊNG, KHÔNG bao gồm quyền tham gia thi đấu
                 </li>
