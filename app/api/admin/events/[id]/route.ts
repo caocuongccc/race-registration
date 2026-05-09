@@ -117,13 +117,28 @@ export async function PUT(
     await requireEventPermission(eventId, user.id, "edit", user.role);
 
     // ✅ Encrypt bank info before saving if the fields are non-empty
-    let bankAccountToSave = body.bankAccount || null;
-    let bankCodeToSave = body.bankCode || null;
-    let bankHolderToSave = body.bankHolder || null;
-    let bankNameToSave = body.bankName || null;
+    const hasBankFieldsInBody =
+      "bankAccount" in body ||
+      "bankCode" in body ||
+      "bankHolder" in body ||
+      "bankName" in body;
+    let bankData = {};
+
+    let bankAccountToSave = hasBankFieldsInBody
+      ? body.bankAccount || null
+      : undefined;
+    let bankCodeToSave = hasBankFieldsInBody
+      ? body.bankCode || null
+      : undefined;
+    let bankHolderToSave = hasBankFieldsInBody
+      ? body.bankHolder || null
+      : undefined;
+    let bankNameToSave = hasBankFieldsInBody
+      ? body.bankName || null
+      : undefined;
 
     const hasBankInfo =
-      bankAccountToSave && bankCodeToSave;
+      hasBankFieldsInBody && bankAccountToSave && bankCodeToSave;
 
     if (hasBankInfo) {
       try {
@@ -147,6 +162,15 @@ export async function PUT(
       }
     }
 
+    if (hasBankFieldsInBody) {
+      bankData = {
+        bankName: bankNameToSave,
+        bankAccount: bankAccountToSave,
+        bankHolder: bankHolderToSave,
+        bankCode: bankCodeToSave,
+      };
+    }
+
     // Update event with all fields including images
     const event = await prisma.event.update({
       where: { id: eventId },
@@ -166,10 +190,7 @@ export async function PUT(
         allowRegistration: body.allowRegistration,
 
         // Bank info (encrypted)
-        bankName: bankNameToSave,
-        bankAccount: bankAccountToSave,
-        bankHolder: bankHolderToSave,
-        bankCode: bankCodeToSave,
+        ...bankData,
 
         // Contact
         hotline: body.hotline,

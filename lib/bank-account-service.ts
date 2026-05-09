@@ -5,6 +5,7 @@ import { prisma } from "./prisma";
 import {
   encryptBankAccount,
   decryptBankAccount,
+  decryptBankData,
   maskAccountNumber,
   BankAccount,
 } from "./encryption";
@@ -49,6 +50,46 @@ export async function getEventBankAccount(
     console.error("❌ Error getting event bank account:", error);
     // Fallback to default on error
     return getDefaultBankAccount();
+  }
+}
+
+/**
+ * Get decrypted bank account for event without falling back to env.
+ * Use this for real payment flows where sending money to the wrong default
+ * account is worse than failing fast.
+ */
+export async function getRequiredEventBankAccount(
+  eventId: string,
+): Promise<BankAccount | null> {
+  try {
+    const event = await prisma.event.findUnique({
+      where: { id: eventId },
+      select: {
+        bankAccount: true,
+        bankCode: true,
+        bankName: true,
+        bankHolder: true,
+      },
+    });
+
+    if (
+      !event ||
+      !event.bankAccount ||
+      !event.bankCode ||
+      !event.bankHolder
+    ) {
+      return null;
+    }
+
+    return {
+      accountNumber: decryptBankData(event.bankAccount),
+      bankCode: decryptBankData(event.bankCode),
+      accountName: decryptBankData(event.bankHolder),
+      bankName: event.bankName ? decryptBankData(event.bankName) : "",
+    };
+  } catch (error) {
+    console.error("❌ Error getting required event bank account:", error);
+    return null;
   }
 }
 

@@ -5,6 +5,7 @@ import { sendRegistrationPendingEmailGmailFirst } from "@/lib/email-service-gmai
 import { createSepayPayment } from "@/lib/sepay-service";
 import { buildRegistrationTransferContent } from "@/lib/payment-content";
 import { generatePaymentQR } from "@/lib/imgbb"; // Fallback QR generator
+import { getRequiredEventBankAccount } from "@/lib/bank-account-service";
 import { getEventBankAccount } from "@/lib/bank-account-service"; // ✅ Per-event bank account with decryption
 
 export async function POST(req: NextRequest) {
@@ -111,6 +112,20 @@ export async function POST(req: NextRequest) {
     }
 
     const totalAmount = raceFee + shirtFee;
+    const bankAccountInfo = event.requireOnlinePayment
+      ? await getRequiredEventBankAccount(eventId)
+      : await getEventBankAccount(eventId);
+
+    if (event.requireOnlinePayment && !bankAccountInfo) {
+      return NextResponse.json(
+        {
+          error:
+            "Sự kiện chưa cấu hình tài khoản nhận thanh toán. Vui lòng liên hệ ban tổ chức.",
+          code: "EVENT_BANK_ACCOUNT_REQUIRED",
+        },
+        { status: 400 },
+      );
+    }
 
     const newRegistration = await prisma.registration.create({
       data: {
@@ -155,7 +170,6 @@ export async function POST(req: NextRequest) {
     });
 
     // Get decrypted bank account once so QR and manual transfer info match.
-    const bankAccountInfo = await getEventBankAccount(eventId);
     const eventBankAccount = bankAccountInfo
       ? {
           accountNumber: bankAccountInfo.accountNumber,

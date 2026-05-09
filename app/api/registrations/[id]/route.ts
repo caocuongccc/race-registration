@@ -1,7 +1,7 @@
 // app/api/registrations/[id]/route.ts
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { getEventBankAccount } from "@/lib/bank-account-service";
+import { getRequiredEventBankAccount } from "@/lib/bank-account-service";
 import { buildRegistrationTransferContent } from "@/lib/payment-content";
 
 export async function GET(
@@ -29,6 +29,8 @@ export async function GET(
             bankName: true,
             bankAccount: true,
             bankHolder: true,
+            bankCode: true,
+            requireOnlinePayment: true,
             hotline: true,
             emailSupport: true,
             racePackLocation: true,
@@ -53,7 +55,7 @@ export async function GET(
       );
     }
 
-    const bankAccount = await getEventBankAccount(registration.eventId);
+    const bankAccount = await getRequiredEventBankAccount(registration.eventId);
     const isEncryptedValue = (value?: string | null) =>
       Boolean(value && value.split(":").length === 3);
     const registrationNumber = registration.registrationNumber ?? null;
@@ -62,7 +64,10 @@ export async function GET(
       buildRegistrationTransferContent(
         registration.phone,
         registration.id,
-        bankAccount?.bankCode || process.env.SEPAY_BANK_CODE,
+        bankAccount?.bankCode ||
+          (isEncryptedValue(registration.event.bankCode)
+            ? undefined
+            : registration.event.bankCode || undefined),
       );
     const event = {
       ...registration.event,
