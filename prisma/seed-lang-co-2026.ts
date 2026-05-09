@@ -10,7 +10,7 @@ async function main() {
   // ============================================
   // 1. CREATE ADMIN USER (if not exists)
   // ============================================
-  const adminEmail = "admin@langco2026.vn";
+  const adminEmail = "";
   let adminUser = await prisma.user.findUnique({
     where: { email: adminEmail },
   });
