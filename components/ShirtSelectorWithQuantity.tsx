@@ -132,8 +132,8 @@ export function ShirtSelectorWithQuantity({
         </p>
         <p className="text-sm text-gray-600 mt-1">
           {orderType === "STANDALONE"
-            ? "Giá: Từ 260,000đ/áo (có thể mua nhiều áo)"
-            : "Giá: 200,000đ/áo khi đăng ký kèm BIB"}
+            ? "Giá: Từ 130,000đ/áo (có thể mua nhiều áo)"
+            : "Giá: 130,000đ/áo khi đăng ký kèm BIB"}
         </p>
       </div>
 
