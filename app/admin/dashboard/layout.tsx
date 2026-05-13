@@ -19,6 +19,7 @@ import {
   ShoppingBag,
   Activity,
   QrCode,
+  Wrench,
 } from "lucide-react";
 import { useEffect, useState } from "react";
 
@@ -38,6 +39,7 @@ const navigationConfig = {
     { name: "Email", href: "/admin/dashboard/emails", icon: Mail },
     { name: "Email Logs", href: "/admin/dashboard/email-logs", icon: Mail },
     { name: "Gửi lại QR", href: "/admin/dashboard/resend-qr", icon: QrCode },
+    { name: "Sửa thông tin áo", href: "/admin/dashboard/fix-shirt-data", icon: Wrench },
     { name: "Webhook Logs", href: "/admin/dashboard/webhooks", icon: Activity },
     { name: "Upload Excel", href: "/admin/dashboard/import", icon: Upload },
   ],

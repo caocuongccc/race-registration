@@ -158,8 +158,20 @@ export function PaymentConfirmedEmail({
                 <div style={row}>
                   <span style={label}>Áo:</span>
                   <span style={value}>
-                    {registration.shirtCategory === "MALE" ? "Nam" : "Nữ"} -
-                    Size {registration.shirtSize}
+                    {registration.shirtCategory === "MALE"
+                      ? "Nam"
+                      : registration.shirtCategory === "FEMALE"
+                        ? "Nữ"
+                        : registration.shirtCategory === "KID"
+                          ? "Trẻ em"
+                          : registration.shirtCategory || ""}
+                    {" "}(
+                    {registration.shirtType === "SHORT_SLEEVE"
+                      ? "Có tay"
+                      : registration.shirtType === "SLEEVELESS"
+                        ? "3 lỗ"
+                        : registration.shirtType || ""})
+                    {" "}- Size <strong>{registration.shirtSize}</strong>
                   </span>
                 </div>
               )}

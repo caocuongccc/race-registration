@@ -336,6 +336,9 @@ export default function RegistrationPage() {
       // Shirt data (if selected)
       if (data.shirtId) {
         submissionData.shirtId = data.shirtId;
+        submissionData.shirtCategory = data.shirtCategory || null; // ✅ Fix: gửi đủ thông tin áo
+        submissionData.shirtType = data.shirtType || null;
+        submissionData.shirtSize = data.shirtSize || null;
       }
 
       const res = await fetch("/api/registrations", {

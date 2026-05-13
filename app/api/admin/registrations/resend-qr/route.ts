@@ -211,6 +211,8 @@ export async function GET(req: NextRequest) {
         registrationDate: true,
         paymentDate: true,
         shirtSize: true,
+        shirtCategory: true,
+        shirtType: true,
         event: { select: { id: true, name: true } },
         distance: { select: { name: true } },
         emailLogs: {

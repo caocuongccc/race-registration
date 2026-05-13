@@ -24,6 +24,9 @@ interface Registration {
   bibNumber: string | null;
   paymentStatus: string;
   paymentDate: string | null;
+  shirtCategory: string | null;
+  shirtType: string | null;
+  shirtSize: string | null;
   distance: { name: string };
   event: { name: string };
   emailLogs: { sentAt: string; status: string }[];
@@ -280,6 +283,9 @@ export default function ResendQRPage() {
                       Cự ly
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                      Áo
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
                       Ngày TT
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
@@ -320,6 +326,32 @@ export default function ResendQRPage() {
                         <td className="px-6 py-4 text-sm text-gray-600">{reg.phone}</td>
                         <td className="px-6 py-4 text-sm text-gray-900">
                           {reg.distance.name}
+                        </td>
+                        <td className="px-6 py-4 text-sm">
+                          {reg.shirtSize ? (
+                            <span className="inline-flex flex-col gap-0.5">
+                              <span className="font-medium text-purple-700">
+                                {reg.shirtCategory === "MALE"
+                                  ? "Nam"
+                                  : reg.shirtCategory === "FEMALE"
+                                    ? "Nữ"
+                                    : reg.shirtCategory === "KID"
+                                      ? "Trẻ em"
+                                      : reg.shirtCategory || "—"}
+                                {" "}
+                                {reg.shirtType === "SHORT_SLEEVE"
+                                  ? "(Có tay)"
+                                  : reg.shirtType === "SLEEVELESS"
+                                    ? "(3 lỗ)"
+                                    : ""}
+                              </span>
+                              <span className="text-xs bg-purple-100 text-purple-800 px-2 py-0.5 rounded-full w-fit">
+                                Size {reg.shirtSize}
+                              </span>
+                            </span>
+                          ) : (
+                            <span className="text-gray-400 text-xs">Không có áo</span>
+                          )}
                         </td>
                         <td className="px-6 py-4 text-xs text-gray-500">
                           {formatDate(reg.paymentDate)}
