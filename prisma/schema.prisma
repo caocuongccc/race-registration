@@ -453,6 +453,10 @@ enum ShirtSize {
   XL
   XXL
   XXXL
+  KID_1
+  KID_2
+  KID_3
+  KID_4
   KID_5
   KID_7
   KID_9
