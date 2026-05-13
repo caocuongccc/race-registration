@@ -35,6 +35,7 @@ export function ImageGallery({
     if (!files?.length) return;
 
     setUploading(true);
+    let successCount = 0;
 
     for (const file of files) {
       try {
@@ -59,13 +60,20 @@ export function ImageGallery({
             title: file.name.replace(/\..+$/, ""),
           }),
         });
+        successCount++;
       } catch (err: any) {
-        toast.error(err.message);
+        toast.error(`Lỗi upload ${file.name}: ${err.message}`);
       }
     }
 
     setUploading(false);
-    onImagesChange();
+    // Reset input để có thể chọn lại cùng file
+    e.target.value = "";
+
+    if (successCount > 0) {
+      toast.success(`✅ Upload thành công ${successCount} ảnh`);
+      onImagesChange();
+    }
   };
 
   const handleDelete = async (id: string) => {
@@ -87,7 +95,9 @@ export function ImageGallery({
           <p className="text-xs text-gray-500">{filtered.length} ảnh</p>
         </div>
 
+        {/* type="button" bắt buộc để không trigger form submit */}
         <Button
+          type="button"
           size="sm"
           onClick={() => fileInputRef.current?.click()}
           disabled={uploading}

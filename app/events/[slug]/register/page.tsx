@@ -844,9 +844,10 @@ export default function RegistrationPage() {
                     <h3 className="text-lg font-bold text-center text-purple-900 mb-6">
                       👕 Xem trước các mẫu áo kỷ niệm
                     </h3>
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    {/* Flex layout: các card tự co giãn theo số loại áo có ảnh */}
+                    <div className="flex flex-wrap justify-center gap-6">
                       {shirtImages.MALE?.length > 0 && (
-                        <div className="bg-white rounded-lg p-4 shadow-sm">
+                        <div className="bg-white rounded-lg p-4 shadow-sm w-full sm:w-auto sm:min-w-[260px] sm:max-w-[320px] flex-1">
                           <ShirtImageCarousel
                             images={shirtImages.MALE}
                             category="MALE"
@@ -854,7 +855,7 @@ export default function RegistrationPage() {
                         </div>
                       )}
                       {shirtImages.FEMALE?.length > 0 && (
-                        <div className="bg-white rounded-lg p-4 shadow-sm">
+                        <div className="bg-white rounded-lg p-4 shadow-sm w-full sm:w-auto sm:min-w-[260px] sm:max-w-[320px] flex-1">
                           <ShirtImageCarousel
                             images={shirtImages.FEMALE}
                             category="FEMALE"
@@ -862,7 +863,7 @@ export default function RegistrationPage() {
                         </div>
                       )}
                       {shirtImages.KID?.length > 0 && (
-                        <div className="bg-white rounded-lg p-4 shadow-sm">
+                        <div className="bg-white rounded-lg p-4 shadow-sm w-full sm:w-auto sm:min-w-[260px] sm:max-w-[320px] flex-1">
                           <ShirtImageCarousel
                             images={shirtImages.KID}
                             category="KID"

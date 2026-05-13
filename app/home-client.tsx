@@ -67,9 +67,10 @@ export default function HomePage() {
     try {
       const res = await fetch("/api/events");
       const data = await res.json();
-      setEvents(data.events);
+      setEvents(data.events || []);
     } catch (error) {
       console.error("Failed to load events:", error);
+      setEvents([]);
     } finally {
       setLoading(false);
     }

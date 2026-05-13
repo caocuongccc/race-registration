@@ -124,8 +124,9 @@ export async function sendEmailGmailFirst(
 export async function sendPaymentConfirmationEmailGmailFirst(data: {
   registration: any;
   event: any;
+  qrCode?: string; // ✅ base64 data URL – ưu tiên dùng khi gen inline
 }): Promise<void> {
-  const { registration, event } = data;
+  const { registration, event, qrCode } = data;
 
   const emailConfig = await prisma.emailConfig.findUnique({
     where: { eventId: event.id },
@@ -172,7 +173,8 @@ export async function sendPaymentConfirmationEmailGmailFirst(data: {
       react: emailReact,
       fromName,
       fromEmail,
-      qrCode: registration.qrCode, // ✅ Pass QR for CID attachment
+      // ✅ Ưu tiên qrCode truyền vào (gen inline), fallback về qrCheckinUrl trong DB
+      qrCode: qrCode || registration.qrCheckinUrl || undefined,
     },
     emailConfig?.id,
   );

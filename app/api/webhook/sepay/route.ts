@@ -1,7 +1,7 @@
 // app/api/webhook/sepay/route.ts - CORRECT SEPAY WEBHOOK
 import { after, NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { generateCheckinQR } from "@/lib/imgbb";
+import { generateCheckinQRBuffer } from "@/lib/qr-inline";
 import { parseSepayWebhook, verifySepayWebhook } from "@/lib/sepay-service";
 import { sendPaymentConfirmationEmailGmailFirst } from "@/lib/email-service-gmail-first";
 import { generateBibNumberHybrid } from "@/lib/bib-generator";
@@ -30,34 +30,33 @@ async function sendPaymentConfirmationInBackground(
     }
     recipientEmail = registration.email;
 
-    let registrationForEmail = registration;
-    if (!registrationForEmail.qrCheckinUrl && registrationForEmail.bibNumber) {
-      const qrCheckinUrl = await generateCheckinQR(
-        registrationForEmail.id,
-        registrationForEmail.bibNumber,
-        registrationForEmail.fullName,
-        registrationForEmail.gender,
-        registrationForEmail.dob,
-        registrationForEmail.phone,
-        registrationForEmail.shirtCategory,
-        registrationForEmail.shirtType,
-        registrationForEmail.shirtSize,
-      );
-
-      registrationForEmail = await prisma.registration.update({
-        where: { id: registrationForEmail.id },
-        data: { qrCheckinUrl },
-        include: {
-          distance: true,
-          event: true,
-          shirt: true,
-        },
-      });
+    // ✅ Gen QR inline (Buffer) – không upload lên ImgBB
+    let qrCode: string | undefined;
+    if (registration.bibNumber) {
+      try {
+        const qrBuffer = await generateCheckinQRBuffer(
+          registration.id,
+          registration.bibNumber,
+          registration.fullName,
+          registration.gender,
+          registration.dob,
+          registration.phone,
+          registration.shirtCategory,
+          registration.shirtType,
+          registration.shirtSize,
+        );
+        // Chuyển Buffer → base64 data URL để truyền vào email service
+        qrCode = `data:image/png;base64,${qrBuffer.toString("base64")}`;
+        console.log(`✅ QR generated inline for BIB ${registration.bibNumber}`);
+      } catch (qrErr) {
+        console.warn("⚠️ QR generation failed, sending email without QR:", qrErr);
+      }
     }
 
     await sendPaymentConfirmationEmailGmailFirst({
-      registration: registrationForEmail,
-      event: registrationForEmail.event,
+      registration,
+      event: registration.event,
+      qrCode, // ✅ Truyền QR dưới dạng base64 để gắn CID attachment
     });
 
     console.log(`âœ… Confirmation email sent`);
