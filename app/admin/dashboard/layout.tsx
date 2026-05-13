@@ -43,11 +43,11 @@ const navigationConfig = {
     { name: "Tổng quan", href: "/admin/dashboard", icon: LayoutDashboard },
     // { name: "Sự kiện của tôi", href: "/admin/dashboard/events", icon: Calendar, },
     // { name: "Đăng ký", href: "/admin/dashboard/registrations", icon: Users },
-    {
-      name: "Đơn hàng áo",
-      href: "/admin/dashboard/shirt-orders",
-      icon: ShoppingBag,
-    },
+    // {
+    //   name: "Đơn hàng áo",
+    //   href: "/admin/dashboard/shirt-orders",
+    //   icon: ShoppingBag,
+    // },
     // { name: "Số BIB", href: "/admin/dashboard/bibs", icon: Award }, // NEW
     // { name: "Thống kê", href: "/admin/dashboard/statistics", icon: BarChart3 },
   ],
