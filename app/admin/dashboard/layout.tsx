@@ -42,7 +42,7 @@ const navigationConfig = {
   ORGANIZER: [
     { name: "Tổng quan", href: "/admin/dashboard", icon: LayoutDashboard },
     // { name: "Sự kiện của tôi", href: "/admin/dashboard/events", icon: Calendar, },
-    { name: "Đăng ký", href: "/admin/dashboard/registrations", icon: Users },
+    // { name: "Đăng ký", href: "/admin/dashboard/registrations", icon: Users },
     {
       name: "Đơn hàng áo",
       href: "/admin/dashboard/shirt-orders",
