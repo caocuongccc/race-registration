@@ -10,6 +10,17 @@ export function buildRegistrationTransferContent(
   return `DH${registrationId}`;
 }
 
+export function buildShirtOrderTransferContent(
+  shirtOrderId: string,
+  bankCode?: string | null,
+): string {
+  if (isVietinBank(bankCode)) {
+    return `SEVQRAO${shirtOrderId}`;
+  }
+
+  return `DHAO${shirtOrderId}`;
+}
+
 export function isVietinBank(bankCode?: string | null): boolean {
   if (!bankCode) return false;
   const normalized = bankCode.replace(/[\s_-]/g, "").toUpperCase();
@@ -34,4 +45,16 @@ export function extractRegistrationIdFromTransferContent(
 
   const phoneAndNumberMatch = content.match(/\b\d{8,15}\s+(\d{1,10})\b/);
   return phoneAndNumberMatch?.[1] ?? null;
+}
+
+export function extractShirtOrderIdFromTransferContent(
+  content?: string | null,
+): string | null {
+  if (!content) return null;
+
+  const shirtOrderMatch = content.match(
+    /\b(?:SEVQRAO|DHAO|SHIRTORDER|SHIRT|AO)\s*-?\s*([\w-]+)/i,
+  );
+
+  return shirtOrderMatch?.[1] ?? null;
 }

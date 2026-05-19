@@ -27,6 +27,12 @@ interface ShirtOrder {
   paymentStatus: string;
   createdAt: Date;
   paymentDate?: Date;
+  fullName?: string;
+  email?: string;
+  phone?: string;
+  address?: string;
+  city?: string;
+  notes?: string;
   registration?: {
     fullName: string;
     email: string;
@@ -111,13 +117,13 @@ export default function ShirtOrdersPage() {
 
     const query = searchQuery.toLowerCase();
     const filtered = orders.filter((order) => {
-      const matchName = order.registration?.fullName
+      const matchName = (order.fullName || order.registration?.fullName)
         ?.toLowerCase()
         .includes(query);
-      const matchEmail = order.registration?.email
+      const matchEmail = (order.email || order.registration?.email)
         ?.toLowerCase()
         .includes(query);
-      const matchPhone = order.registration?.phone?.includes(query);
+      const matchPhone = (order.phone || order.registration?.phone)?.includes(query);
       const matchBib = order.registration?.bibNumber
         ?.toLowerCase()
         .includes(query);
@@ -421,18 +427,18 @@ export default function ShirtOrdersPage() {
                     </td>
 
                     <td className="px-6 py-4">
-                      {order.registration ? (
+                      {order.registration || order.fullName ? (
                         <div>
                           <div className="font-medium">
-                            {order.registration.fullName}
+                            {order.fullName || order.registration?.fullName}
                           </div>
                           <div className="text-sm text-gray-500">
-                            {order.registration.email}
+                            {order.email || order.registration?.email}
                           </div>
                           <div className="text-sm text-gray-500">
-                            {order.registration.phone}
+                            {order.phone || order.registration?.phone}
                           </div>
-                          {order.registration.bibNumber && (
+                          {order.registration?.bibNumber && (
                             <div className="text-xs text-blue-600 font-mono mt-1">
                               BIB: {order.registration.bibNumber}
                             </div>

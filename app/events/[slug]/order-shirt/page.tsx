@@ -72,7 +72,7 @@ export default function OrderShirtPage() {
 
   const calculateTotal = () => {
     return selectedShirts.reduce((sum, item) => {
-      const price = item.standalonePrice || item.price + 50000;
+      const price = item.standalonePrice || item.price;
       return sum + price * item.quantity;
     }, 0);
   };
@@ -155,6 +155,8 @@ export default function OrderShirtPage() {
 
   // Order success screen
   if (orderCreated && orderResult) {
+    const transferContent =
+      orderResult.order?.transferContent || orderResult.transferContent;
     return (
       <div className="min-h-screen bg-gray-50 py-12">
         <div className="max-w-3xl mx-auto px-4">
@@ -204,7 +206,9 @@ export default function OrderShirtPage() {
                   <div className="mt-4 bg-yellow-50 border border-yellow-200 rounded-lg p-4">
                     <p className="text-sm text-yellow-900">
                       ⚠️ <strong>Nội dung chuyển khoản:</strong>{" "}
-                      <span className="font-mono font-bold">{phone}</span>
+                      <span className="font-mono font-bold">
+                        {transferContent}
+                      </span>
                     </p>
                   </div>
                 </div>
@@ -232,7 +236,7 @@ export default function OrderShirtPage() {
                   <p>
                     <strong>Nội dung:</strong>{" "}
                     <span className="font-mono font-bold text-red-600">
-                      {phone}
+                      {transferContent}
                     </span>
                   </p>
                 </div>

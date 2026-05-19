@@ -249,7 +249,9 @@ model Registration {
 
 model Payment {
   id             String        @id @default(cuid())
-  registrationId String
+  registrationId String?
+  shirtOrderId   String?
+  purpose        PaymentPurpose @default(REGISTRATION)
   transactionId  String?       @unique
   amount         Int
   status         PaymentStatus @default(PENDING)
@@ -257,9 +259,12 @@ model Payment {
   webhookData    Json?
   createdAt      DateTime      @default(now())
   updatedAt      DateTime      @updatedAt
-  registration   Registration  @relation(fields: [registrationId], references: [id])
+  registration   Registration? @relation(fields: [registrationId], references: [id])
+  shirtOrder     ShirtOrder?   @relation(fields: [shirtOrderId], references: [id])
 
   @@index([registrationId])
+  @@index([shirtOrderId])
+  @@index([purpose])
   @@map("payments")
 }
 
@@ -353,6 +358,7 @@ model ShirtOrder {
   createdAt      DateTime         @default(now())
   updatedAt      DateTime         @default(now()) @updatedAt
   email          String?
+  payments       Payment[]
   items          ShirtOrderItem[]
   event          Event            @relation(fields: [eventId], references: [id])
   registration   Registration?    @relation(fields: [registrationId], references: [id])
@@ -481,6 +487,11 @@ enum PaymentStatus {
   PAID
   FAILED
   REFUNDED
+}
+
+enum PaymentPurpose {
+  REGISTRATION
+  SHIRT_ORDER
 }
 
 enum ImportStatus {

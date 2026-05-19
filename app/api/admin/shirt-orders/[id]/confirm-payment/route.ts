@@ -44,14 +44,26 @@ export async function POST(
       return NextResponse.json({ error: "Already confirmed" }, { status: 400 });
     }
 
-    // Update order
-    await prisma.shirtOrder.update({
-      where: { id: orderId },
-      data: {
-        paymentStatus: "PAID",
-        paymentDate: new Date(),
-      },
-    });
+    await prisma.$transaction([
+      prisma.shirtOrder.update({
+        where: { id: orderId },
+        data: {
+          paymentStatus: "PAID",
+          paymentDate: new Date(),
+        },
+      }),
+      prisma.payment.create({
+        data: {
+          registrationId: order.registrationId,
+          shirtOrderId: order.id,
+          purpose: "SHIRT_ORDER",
+          transactionId: `manual_shirt_${order.id}`,
+          amount: order.totalAmount,
+          status: "PAID",
+          paymentMethod: "manual_confirmation",
+        },
+      }),
+    ]);
     console.log("Shirt order payment confirmed:", order);
     // ✅ Send confirmation email
     try {

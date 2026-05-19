@@ -5,6 +5,13 @@ EXCEPTION
   WHEN duplicate_object THEN NULL;
 END $$;
 
+DO $$ 
+BEGIN
+  CREATE TYPE "PaymentPurpose" AS ENUM ('REGISTRATION', 'SHIRT_ORDER');
+EXCEPTION
+  WHEN duplicate_object THEN NULL;
+END $$;
+
 CREATE TABLE IF NOT EXISTS "shirt_orders" (
   "id" TEXT PRIMARY KEY,
   "registrationId" TEXT,
@@ -13,6 +20,12 @@ CREATE TABLE IF NOT EXISTS "shirt_orders" (
   "totalAmount" INTEGER NOT NULL,
   "paymentStatus" "PaymentStatus" NOT NULL DEFAULT 'PENDING',
   "paymentDate" TIMESTAMP(3),
+  "email" TEXT,
+  "fullName" TEXT,
+  "phone" TEXT,
+  "address" TEXT,
+  "city" TEXT,
+  "notes" TEXT,
   "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
   "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
@@ -34,6 +47,15 @@ ON "shirt_orders" ("eventId", "paymentStatus");
 
 CREATE INDEX IF NOT EXISTS "shirt_orders_registrationId_idx"
 ON "shirt_orders" ("registrationId");
+
+CREATE INDEX IF NOT EXISTS "shirt_orders_email_idx"
+ON "shirt_orders" ("email");
+
+CREATE INDEX IF NOT EXISTS "shirt_orders_phone_idx"
+ON "shirt_orders" ("phone");
+
+CREATE INDEX IF NOT EXISTS "shirt_orders_fullName_idx"
+ON "shirt_orders" ("fullName");
 
 CREATE TABLE IF NOT EXISTS "shirt_order_items" (
   "id" TEXT PRIMARY KEY,

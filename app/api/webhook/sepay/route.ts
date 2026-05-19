@@ -266,6 +266,114 @@ async function processPaymentConfirmation(
   }
 }
 
+async function processShirtOrderPaymentConfirmation(
+  shirtOrderId: string,
+  transactionId: string,
+  amount: number,
+  webhookData: any,
+) {
+  try {
+    console.log(`Processing shirt order payment for: ${shirtOrderId}`);
+
+    const order = await prisma.shirtOrder.findUnique({
+      where: { id: shirtOrderId },
+      include: {
+        event: true,
+        items: {
+          include: {
+            shirt: true,
+          },
+        },
+      },
+    });
+
+    if (!order) {
+      throw new Error(`Shirt order not found: ${shirtOrderId}`);
+    }
+
+    if (order.paymentStatus === "PAID") {
+      console.log(`Already paid shirt order: ${shirtOrderId}`);
+      return {
+        success: true,
+        message: "Already paid",
+        shirtOrderId,
+        eventId: order.eventId,
+      };
+    }
+
+    const existingPayment = await prisma.payment.findFirst({
+      where: { transactionId },
+    });
+    if (existingPayment) {
+      console.log(`Transaction ${transactionId} already processed`);
+      return {
+        success: true,
+        message: "Transaction already processed",
+        shirtOrderId,
+        eventId: order.eventId,
+      };
+    }
+
+    const receivedAccountNumbers = [
+      webhookData.subAccount,
+      webhookData.accountNumber,
+    ].filter(Boolean);
+    if (receivedAccountNumbers.length > 0) {
+      const eventBank = await getEventBankAccount(order.eventId);
+      const expectedAccount =
+        eventBank?.accountNumber || process.env.SEPAY_ACCOUNT_NUMBER;
+      const isExpectedAccount = expectedAccount
+        ? receivedAccountNumbers.includes(expectedAccount)
+        : true;
+
+      if (!isExpectedAccount) {
+        console.warn(
+          `Account mismatch: received ${receivedAccountNumbers.join(", ")}, expected ${expectedAccount?.substring(0, 4)}****`,
+        );
+      }
+    }
+
+    const amountDiff = Math.abs(amount - order.totalAmount);
+    if (amountDiff > 1000 && amount < order.totalAmount) {
+      throw new Error(
+        `Payment amount ${amount} is less than required ${order.totalAmount}`,
+      );
+    }
+
+    await prisma.$transaction([
+      prisma.shirtOrder.update({
+        where: { id: shirtOrderId },
+        data: {
+          paymentStatus: "PAID",
+          paymentDate: new Date(),
+        },
+      }),
+      prisma.payment.create({
+        data: {
+          shirtOrderId,
+          purpose: "SHIRT_ORDER",
+          transactionId,
+          amount,
+          status: "PAID",
+          paymentMethod: "sepay_transfer",
+          webhookData,
+        },
+      }),
+    ]);
+
+    console.log(`Shirt order payment updated successfully`);
+
+    return {
+      success: true,
+      shirtOrderId,
+      eventId: order.eventId,
+    };
+  } catch (error) {
+    console.error("Shirt order payment processing error:", error);
+    throw error;
+  }
+}
+
 /**
  * SePay Webhook Handler
  * Receives bank transaction notifications from SePay
@@ -300,8 +408,14 @@ export async function POST(req: NextRequest) {
     const parsed = parseSepayWebhook(webhookData);
     console.log("📋 Parsed:", parsed);
 
-    const { orderCode, amount, transactionId, transactionDate, bankName } =
-      parsed;
+    const {
+      orderCode,
+      orderType,
+      amount,
+      transactionId,
+      transactionDate,
+      bankName,
+    } = parsed;
 
     // Check if order code found
     if (!orderCode) {
@@ -324,12 +438,20 @@ export async function POST(req: NextRequest) {
     console.log(`📦 Processing order: ${orderCode}`);
 
     // Process payment
-    const result = await processPaymentConfirmation(
-      orderCode,
-      transactionId,
-      amount,
-      webhookData,
-    );
+    const result =
+      orderType === "SHIRT_ORDER"
+        ? await processShirtOrderPaymentConfirmation(
+            orderCode,
+            transactionId,
+            amount,
+            webhookData,
+          )
+        : await processPaymentConfirmation(
+            orderCode,
+            transactionId,
+            amount,
+            webhookData,
+          );
 
     console.log(`✅ Payment processed:`, result);
     console.log("=".repeat(60) + "\n");
@@ -342,7 +464,8 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({
       success: true,
       message: "Payment confirmed",
-      bibNumber: result.bibNumber,
+      bibNumber: "bibNumber" in result ? result.bibNumber : undefined,
+      shirtOrderId: "shirtOrderId" in result ? result.shirtOrderId : undefined,
     });
   } catch (error) {
     console.error("❌ Webhook error:", error);
