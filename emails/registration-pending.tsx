@@ -45,6 +45,34 @@ export function RegistrationPendingEmail({
 
   const trackingUrl = `${process.env.NEXTAUTH_URL || "https://dangkygiaichay.vercel.app"}/registrations/${registration.id}/payment`;
   const transferContent = registration.shortCode || `DH${registration.id}`;
+  const shirtCategoryText =
+    registration.shirtCategory === "MALE"
+      ? "Nam"
+      : registration.shirtCategory === "FEMALE"
+        ? "Ná»¯"
+        : registration.shirtCategory === "KID"
+          ? "Tráº» em"
+          : registration.shirtCategory || "";
+  const shirtTypeText =
+    registration.shirtType === "SHORT_SLEEVE"
+      ? "T-shirt"
+      : registration.shirtType === "TANK_TOP"
+        ? "Singlet"
+        : registration.shirtType || "";
+  const finisherShirtCategoryText =
+    registration.finisherShirtCategory === "MALE"
+      ? "Nam"
+      : registration.finisherShirtCategory === "FEMALE"
+        ? "Ná»¯"
+        : registration.finisherShirtCategory === "KID"
+          ? "Tráº» em"
+          : registration.finisherShirtCategory || "";
+  const finisherShirtTypeText =
+    registration.finisherShirtType === "SHORT_SLEEVE"
+      ? "T-shirt"
+      : registration.finisherShirtType === "TANK_TOP"
+        ? "Singlet"
+        : registration.finisherShirtType || "";
 
   return (
     <Html>
@@ -60,10 +88,10 @@ export function RegistrationPendingEmail({
             />
           )}
 
-          <Text style={heading}>Xác nhận đăng ký thành công! 🎉</Text>
+          <Text style={heading}>Xác nhận đăng ký thành công! ðŸŽ‰</Text>
 
           <Text style={paragraph}>
-            Xin chào <strong>{registration.fullName}</strong>,
+            Xin chÃ o <strong>{registration.fullName}</strong>,
           </Text>
 
           <Text style={paragraph}>
@@ -119,21 +147,22 @@ export function RegistrationPendingEmail({
                       </td>
                     </tr>
                     <tr>
-                      <td style={labelCell}>Áo:</td>
+                      <td style={labelCell}>Áo racekit:</td>
                       <td style={valueCell}>
-                        {registration.shirtCategory === "MALE"
-                          ? "Nam"
-                          : registration.shirtCategory === "FEMALE"
-                            ? "Nữ"
-                            : "Trẻ em"}{" "}
-                        -{" "}
-                        {registration.shirtType === "SHORT_SLEEVE"
-                          ? "Có tay"
-                          : "3 lỗ"}{" "}
-                        - Size {registration.shirtSize}
+                        {shirtCategoryText} - {shirtTypeText} - Size{" "}
+                        {registration.shirtSize}
                       </td>
                     </tr>
                   </>
+                )}
+                {registration.finisherShirtSize && (
+                  <tr>
+                    <td style={labelCell}>Áo finish:</td>
+                    <td style={valueCell}>
+                      {finisherShirtCategoryText} - {finisherShirtTypeText} -
+                      Size {registration.finisherShirtSize}
+                    </td>
+                  </tr>
                 )}
               </tbody>
             </table>
@@ -151,12 +180,25 @@ export function RegistrationPendingEmail({
                     {formatCurrency(registration.raceFee)}
                   </td>
                 </tr>
-                {registration.shirtFee > 0 && (
+                {registration.shirtSize && (
                   <tr>
-                    <td>Áo kỷ niệm:</td>
+                    <td>
+                      Áo racekit {shirtCategoryText} {shirtTypeText} Size{" "}
+                      {registration.shirtSize}:
+                    </td>
                     <td style={priceCell}>
                       {formatCurrency(registration.shirtFee)}
                     </td>
+                  </tr>
+                )}
+                {registration.finisherShirtSize && (
+                  <tr>
+                    <td>
+                      Áo finish {finisherShirtCategoryText}{" "}
+                      {finisherShirtTypeText} Size{" "}
+                      {registration.finisherShirtSize}:
+                    </td>
+                    <td style={priceCell}>{formatCurrency(0)}</td>
                   </tr>
                 )}
                 <tr style={totalRow}>
@@ -194,8 +236,7 @@ export function RegistrationPendingEmail({
                   Số tiền:{" "}
                   <strong>{formatCurrency(registration.totalAmount)}</strong>
                   <br />
-                  Nội dung:{" "}
-                  <strong>{transferContent}</strong>
+                  Nội dung: <strong>{transferContent}</strong>
                 </Text>
 
                 <Text style={warningText}>

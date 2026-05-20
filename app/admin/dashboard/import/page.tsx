@@ -152,8 +152,16 @@ export default function ImportExcelPage() {
   };
 
   const handleDownloadTemplate = async () => {
+    if (!selectedEvent || selectedEvent === "all") {
+      toast.error("Vui lòng chọn sự kiện trước khi tải mẫu");
+      return;
+    }
+
     try {
-      const res = await fetch("/api/admin/import/template");
+      const res = await fetch(`/api/admin/import/template?eventId=${selectedEvent}`);
+      if (!res.ok) {
+        throw new Error("Failed to download template");
+      }
       const blob = await res.blob();
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");

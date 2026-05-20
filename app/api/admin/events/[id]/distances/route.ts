@@ -83,6 +83,7 @@ export async function POST(
               ? parseInt(distance.maxParticipants)
               : null,
             isAvailable: distance.isAvailable !== false,
+            requiresFinisherShirt: distance.requiresFinisherShirt === true,
             sortOrder: index,
           };
 

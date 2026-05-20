@@ -17,6 +17,7 @@ interface Distance {
   maxParticipants?: number;
   currentParticipants: number;
   isAvailable: boolean;
+  requiresFinisherShirt: boolean;
   sortOrder: number;
   isNew?: boolean;
 }
@@ -82,6 +83,7 @@ export default function DistanceShirtManager({ eventId }: { eventId: string }) {
         maxParticipants: undefined,
         currentParticipants: 0,
         isAvailable: true,
+        requiresFinisherShirt: false,
         sortOrder: distances.length,
         isNew: true,
       },
@@ -270,7 +272,7 @@ export default function DistanceShirtManager({ eventId }: { eventId: string }) {
               {distances.map((distance) => (
                 <div
                   key={distance.id}
-                  className="grid grid-cols-6 gap-4 p-4 bg-gray-50 rounded-lg"
+                  className="grid grid-cols-7 gap-4 p-4 bg-gray-50 rounded-lg"
                 >
                   <Input
                     label="Tên cự ly"
@@ -336,6 +338,24 @@ export default function DistanceShirtManager({ eventId }: { eventId: string }) {
                         className="h-4 w-4 text-blue-600 rounded"
                       />
                       <span className="text-sm">Khả dụng</span>
+                    </label>
+                  </div>
+
+                  <div className="flex items-end">
+                    <label className="flex items-center gap-2">
+                      <input
+                        type="checkbox"
+                        checked={distance.requiresFinisherShirt}
+                        onChange={(e) =>
+                          updateDistance(
+                            distance.id,
+                            "requiresFinisherShirt",
+                            e.target.checked,
+                          )
+                        }
+                        className="h-4 w-4 text-blue-600 rounded"
+                      />
+                      <span className="text-sm">Ao finish</span>
                     </label>
                   </div>
 

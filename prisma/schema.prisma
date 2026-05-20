@@ -111,6 +111,7 @@ model Distance {
   createdAt           DateTime       @default(now())
   updatedAt           DateTime       @updatedAt
   hasGoals            Boolean        @default(false)
+  requiresFinisherShirt Boolean      @default(false) @map("requires_finisher_shirt")
   distanceGoals       DistanceGoal[]
   event               Event          @relation(fields: [eventId], references: [id], onDelete: Cascade)
   registrations       Registration[]
@@ -203,6 +204,9 @@ model Registration {
   shirtCategory         ShirtCategory?
   shirtType             ShirtType?
   shirtSize             ShirtSize?
+  finisherShirtCategory ShirtCategory?      @map("finisher_shirt_category")
+  finisherShirtType     ShirtType?          @map("finisher_shirt_type")
+  finisherShirtSize     ShirtSize?          @map("finisher_shirt_size")
   raceFee               Int
   shirtFee              Int                 @default(0)
   totalAmount           Int

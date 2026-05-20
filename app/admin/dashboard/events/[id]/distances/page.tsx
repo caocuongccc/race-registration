@@ -14,6 +14,7 @@ interface Distance {
   price: number;
   bibPrefix: string;
   hasGoals: boolean;
+  requiresFinisherShirt: boolean;
   maxParticipants?: number;
   currentParticipants: number;
 }
@@ -110,6 +111,11 @@ export default function DistanceManagementPage({ params }: any) {
                       <span className="px-2 py-1 bg-purple-100 text-purple-700 text-xs font-medium rounded-full flex items-center gap-1">
                         <Target className="w-3 h-3" />
                         Có mục tiêu
+                      </span>
+                    )}
+                    {distance.requiresFinisherShirt && (
+                      <span className="px-2 py-1 bg-blue-100 text-blue-700 text-xs font-medium rounded-full">
+                        Ao finish
                       </span>
                     )}
                   </div>

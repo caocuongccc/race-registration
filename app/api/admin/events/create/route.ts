@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { encryptBankAccount } from "@/lib/encryption";
 
 export async function POST(req: NextRequest) {
   try {
@@ -25,6 +26,16 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    const bankData =
+      body.bankAccount && body.bankCode
+        ? encryptBankAccount({
+            accountNumber: body.bankAccount,
+            bankCode: body.bankCode,
+            accountName: body.bankHolder || "",
+            bankName: body.bankName || "",
+          })
+        : null;
+
     // Create event
     const event = await prisma.event.create({
       data: {
@@ -37,12 +48,14 @@ export async function POST(req: NextRequest) {
         city: body.city,
         status: body.status,
         isPublished: body.isPublished,
+        allowRegistration: body.allowRegistration,
         hasShirt: body.hasShirt,
         requireOnlinePayment: body.requireOnlinePayment,
-        bankName: body.bankName,
-        bankAccount: body.bankAccount,
-        bankHolder: body.bankHolder,
-        bankCode: body.bankCode,
+        sendBibImmediately: body.sendBibImmediately,
+        bankName: bankData?.bankNameEncrypted || null,
+        bankAccount: bankData?.accountNumberEncrypted || null,
+        bankHolder: bankData?.accountNameEncrypted || null,
+        bankCode: bankData?.bankCodeEncrypted || null,
         hotline: body.hotline,
         emailSupport: body.emailSupport,
         facebookUrl: body.facebookUrl,

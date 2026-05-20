@@ -8,6 +8,10 @@ import { generatePaymentQR } from "@/lib/imgbb"; // Fallback QR generator
 import { getRequiredEventBankAccount } from "@/lib/bank-account-service";
 import { getEventBankAccount } from "@/lib/bank-account-service"; // ✅ Per-event bank account with decryption
 
+const FINISHER_SHIRT_SIZES = ["XS", "S", "M", "L", "XL", "XXL", "XXXL"];
+const FINISHER_SHIRT_CATEGORIES = ["MALE", "FEMALE", "KID"];
+const FINISHER_SHIRT_TYPES = ["SHORT_SLEEVE", "TANK_TOP"];
+
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
@@ -31,6 +35,9 @@ export async function POST(req: NextRequest) {
       shirtCategory,
       shirtType,
       shirtSize,
+      finisherShirtCategory,
+      finisherShirtType,
+      finisherShirtSize,
       utmSource,
     } = body;
 
@@ -97,18 +104,62 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    if (distance.requiresFinisherShirt) {
+      if (!finisherShirtCategory || !finisherShirtType || !finisherShirtSize) {
+        return NextResponse.json(
+          { error: "Vui long chon loai, kieu va size ao finish cho cu ly nay" },
+          { status: 400 },
+        );
+      }
+
+      if (!FINISHER_SHIRT_CATEGORIES.includes(finisherShirtCategory)) {
+        return NextResponse.json(
+          { error: "Loai ao finish khong hop le" },
+          { status: 400 },
+        );
+      }
+
+      if (!FINISHER_SHIRT_TYPES.includes(finisherShirtType)) {
+        return NextResponse.json(
+          { error: "Kieu ao finish khong hop le" },
+          { status: 400 },
+        );
+      }
+
+      if (!FINISHER_SHIRT_SIZES.includes(finisherShirtSize)) {
+        return NextResponse.json(
+          { error: "Size ao finish khong hop le" },
+          { status: 400 },
+        );
+      }
+    }
+
+    const isRacekitShirtIncluded = event.distances.some(
+      (d) => d.requiresFinisherShirt,
+    );
+
     // Calculate fees
-    let raceFee = distance.price;
+    const raceFee = distance.price;
     let shirtFee = 0;
 
+    if (event.hasShirt && !shirtId) {
+      return NextResponse.json(
+        { error: "Vui long chon size ao racekit" },
+        { status: 400 },
+      );
+    }
+
     if (shirtId) {
-      const shirt = await prisma.eventShirt.findUnique({
-        where: { id: shirtId },
+      const shirt = await prisma.eventShirt.findFirst({
+        where: { id: shirtId, eventId },
       });
       if (!shirt) {
         return NextResponse.json({ error: "Áo đã hết hàng" }, { status: 404 });
       }
-      shirtFee = shirt.price;
+      if (!shirt.isAvailable || shirt.soldQuantity >= shirt.stockQuantity) {
+        return NextResponse.json({ error: "Ao da het hang" }, { status: 400 });
+      }
+      shirtFee = isRacekitShirtIncluded ? 0 : shirt.price;
     }
 
     const totalAmount = raceFee + shirtFee;
@@ -152,6 +203,9 @@ export async function POST(req: NextRequest) {
         shirtCategory: body.shirtCategory || null,
         shirtType: body.shirtType || null,
         shirtSize: body.shirtSize || null,
+        finisherShirtSize: distance.requiresFinisherShirt
+          ? body.finisherShirtSize
+          : null,
 
         raceFee: raceFee,
         shirtFee: shirtFee,
@@ -198,6 +252,16 @@ export async function POST(req: NextRequest) {
       LIMIT 1
     `;
     const registrationNumber = registrationNumberRows[0]?.registration_number;
+    if (distance.requiresFinisherShirt) {
+      await prisma.$executeRaw`
+        UPDATE "registrations"
+        SET
+          "finisher_shirt_category" = ${body.finisherShirtCategory}::"ShirtCategory",
+          "finisher_shirt_type" = ${body.finisherShirtType}::"ShirtType"
+        WHERE "id" = ${newRegistration.id}
+      `;
+    }
+
     const shortCode = buildRegistrationTransferContent(
       newRegistration.phone,
       newRegistration.id,
@@ -239,6 +303,12 @@ export async function POST(req: NextRequest) {
       ...newRegistration,
       registrationNumber,
       shortCode,
+      finisherShirtCategory: distance.requiresFinisherShirt
+        ? body.finisherShirtCategory
+        : null,
+      finisherShirtType: distance.requiresFinisherShirt
+        ? body.finisherShirtType
+        : null,
     };
 
     console.log(`✅ Registration created: ${registration.id}`);

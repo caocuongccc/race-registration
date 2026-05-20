@@ -1,7 +1,7 @@
 // app/admin/dashboard/events/create/page.tsx - UPDATED WITH TABS
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -21,12 +21,20 @@ import {
   Contact,
 } from "lucide-react";
 
+interface BankOption {
+  name: string;
+  shortName: string;
+  code: string;
+  bin: string;
+}
+
 export default function CreateEventPage() {
   const router = useRouter();
   const [saving, setSaving] = useState(false);
   const [activeTab, setActiveTab] = useState<
     "basic" | "payment" | "contact" | "config"
   >("basic");
+  const [banks, setBanks] = useState<BankOption[]>([]);
 
   const [formData, setFormData] = useState({
     name: "",
@@ -58,6 +66,29 @@ export default function CreateEventPage() {
     racePackLocation: "",
     racePackTime: "",
   });
+
+  useEffect(() => {
+    async function loadBanks() {
+      try {
+        const res = await fetch("/api/banks");
+        const data = await res.json();
+        setBanks(data.banks || []);
+      } catch {
+        setBanks([]);
+      }
+    }
+
+    loadBanks();
+  }, []);
+
+  const handleBankChange = (code: string) => {
+    const bank = banks.find((item) => item.code === code);
+    setFormData({
+      ...formData,
+      bankCode: code,
+      bankName: bank?.name || formData.bankName,
+    });
+  };
 
   // Auto generate slug from name
   const handleNameChange = (name: string) => {
@@ -453,13 +484,18 @@ export default function CreateEventPage() {
                 </h4>
 
                 <div className="grid grid-cols-2 gap-4">
-                  <Input
+                  <Select
                     label="Tên ngân hàng"
-                    value={formData.bankName}
-                    onChange={(e) =>
-                      setFormData({ ...formData, bankName: e.target.value })
-                    }
-                  />
+                    value={formData.bankCode}
+                    onChange={(e) => handleBankChange(e.target.value)}
+                  >
+                    <option value="">Chọn ngân hàng</option>
+                    {banks.map((bank) => (
+                      <option key={`${bank.code}-${bank.bin}`} value={bank.code}>
+                        {bank.shortName || bank.name} - {bank.name}
+                      </option>
+                    ))}
+                  </Select>
 
                   <Input
                     label="Mã ngân hàng"

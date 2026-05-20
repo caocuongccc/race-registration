@@ -34,6 +34,34 @@ export function PaymentReceivedNoBibEmail({
       year: "numeric",
     }).format(new Date(date));
   };
+  const shirtCategoryText =
+    registration.shirtCategory === "MALE"
+      ? "Nam"
+      : registration.shirtCategory === "FEMALE"
+        ? "Ná»¯"
+        : registration.shirtCategory === "KID"
+          ? "Tráº» em"
+          : registration.shirtCategory || "";
+  const shirtTypeText =
+    registration.shirtType === "SHORT_SLEEVE"
+      ? "T-shirt"
+      : registration.shirtType === "TANK_TOP"
+        ? "Singlet"
+        : registration.shirtType || "";
+  const finisherShirtCategoryText =
+    registration.finisherShirtCategory === "MALE"
+      ? "Nam"
+      : registration.finisherShirtCategory === "FEMALE"
+        ? "Ná»¯"
+        : registration.finisherShirtCategory === "KID"
+          ? "Tráº» em"
+          : registration.finisherShirtCategory || "";
+  const finisherShirtTypeText =
+    registration.finisherShirtType === "SHORT_SLEEVE"
+      ? "T-shirt"
+      : registration.finisherShirtType === "TANK_TOP"
+        ? "Singlet"
+        : registration.finisherShirtType || "";
 
   return (
     <Html>
@@ -55,7 +83,7 @@ export function PaymentReceivedNoBibEmail({
           </Section>
 
           <Text style={paragraph}>
-            Xin chào <strong>{registration.fullName}</strong>,
+            Xin chÃ o <strong>{registration.fullName}</strong>,
           </Text>
 
           <Text style={paragraph}>
@@ -63,7 +91,7 @@ export function PaymentReceivedNoBibEmail({
             <strong>{event.name}</strong>.
           </Text>
 
-          {/* ✅ NEW: Event Info Card */}
+          {/* âœ… NEW: Event Info Card */}
           <Section style={eventInfoBox}>
             <Text style={eventInfoTitle}>📅 THÔNG TIN SỰ KIỆN</Text>
 
@@ -108,18 +136,19 @@ export function PaymentReceivedNoBibEmail({
                 </tr>
                 {registration.shirtSize && (
                   <tr>
-                    <td style={labelCell}>Áo:</td>
+                    <td style={labelCell}>Áo racekit:</td>
                     <td style={valueCell}>
-                      {registration.shirtCategory === "MALE"
-                        ? "Nam"
-                        : registration.shirtCategory === "FEMALE"
-                          ? "Nữ"
-                          : "Trẻ em"}{" "}
-                      -{" "}
-                      {registration.shirtType === "SHORT_SLEEVE"
-                        ? "Có tay"
-                        : "3 lỗ"}{" "}
-                      - Size {registration.shirtSize}
+                      {shirtCategoryText} - {shirtTypeText} - Size{" "}
+                      {registration.shirtSize}
+                    </td>
+                  </tr>
+                )}
+                {registration.finisherShirtSize && (
+                  <tr>
+                    <td style={labelCell}>Áo finish:</td>
+                    <td style={valueCell}>
+                      {finisherShirtCategoryText} - {finisherShirtTypeText} -
+                      Size {registration.finisherShirtSize}
                     </td>
                   </tr>
                 )}

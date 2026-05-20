@@ -154,6 +154,7 @@ export async function GET(
         bibPrefix: d.bibPrefix,
         maxParticipants: d.maxParticipants,
         currentParticipants: d.currentParticipants,
+        requiresFinisherShirt: d.requiresFinisherShirt,
         isAvailable:
           d.isAvailable &&
           (!d.maxParticipants || d.currentParticipants < d.maxParticipants),

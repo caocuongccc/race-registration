@@ -207,7 +207,7 @@ export default function HomePage() {
               {events.map((event) => (
                 <Card
                   key={event.id}
-                  className="hover:shadow-xl transition-all duration-300 overflow-hidden group"
+                  className="hover:shadow-xl transition-all duration-300 overflow-hidden group flex flex-col h-full"
                 >
                   {/* Cover Image */}
                   <div className="relative h-48 overflow-hidden bg-gradient-to-br from-blue-500 to-indigo-600">
@@ -246,63 +246,72 @@ export default function HomePage() {
                     )}
                   </div>
 
-                  <CardHeader>
-                    {/* ✅ NEW: Clickable title that opens modal */}
+                  <CardHeader className="pb-3">
                     <CardTitle
-                      className="text-xl line-clamp-2 group-hover:text-blue-600 transition-colors cursor-pointer"
+                      className="text-xl line-clamp-2 min-h-[3.5rem] group-hover:text-blue-600 transition-colors cursor-pointer"
                       onClick={() => handleViewDetail(event)}
                     >
                       {event.name}
                     </CardTitle>
                   </CardHeader>
 
-                  <CardContent className="space-y-4">
-                    <div className="space-y-2">
-                      <div className="flex items-center gap-2 text-gray-600">
-                        <Calendar className="w-4 h-4" />
-                        <span className="text-sm">
-                          {formatDate(event.date)}
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-2 text-gray-600">
-                        <MapPin className="w-4 h-4" />
-                        <span className="text-sm line-clamp-1">
-                          {event.location}
-                        </span>
-                      </div>
-                    </div>
+                  {/* ✅ FIXED CONTENT */}
+                  <CardContent className="flex flex-col h-full pt-0">
+                    {/* FLEX AREA */}
+                    <div className="flex-1 space-y-3">
+                      {/* Info */}
+                      <div className="space-y-1.5">
+                        <div className="flex items-center gap-2 text-gray-600">
+                          <Calendar className="w-4 h-4 shrink-0" />
+                          <span className="text-sm">
+                            {formatDate(event.date)}
+                          </span>
+                        </div>
 
-                    {event.description && (
-                      <p className="text-sm text-gray-600 line-clamp-2">
-                        {event.description}
+                        <div className="flex items-center gap-2 text-gray-600">
+                          <MapPin className="w-4 h-4 shrink-0" />
+                          <span className="text-sm line-clamp-1">
+                            {event.location}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Description */}
+                      <p className="text-sm text-gray-600 line-clamp-2 min-h-[2.8rem]">
+                        {event.description || ""}
                       </p>
-                    )}
 
-                    <div className="space-y-2">
-                      <div className="flex items-center gap-2 text-sm font-medium text-gray-700">
-                        <Award className="w-4 h-4" />
-                        Cự ly:
-                      </div>
-                      <div className="flex flex-wrap gap-2">
-                        {event.distances.slice(0, 3).map((distance, idx) => (
-                          <span
-                            key={idx}
-                            className="px-3 py-1 bg-blue-50 text-blue-700 rounded-full text-sm font-medium"
-                          >
-                            {distance.name}
-                          </span>
-                        ))}
-                        {event.distances.length > 3 && (
-                          <span className="px-3 py-1 bg-gray-100 text-gray-600 rounded-full text-sm font-medium">
-                            +{event.distances.length - 3}
-                          </span>
-                        )}
+                      {/* Distances */}
+                      <div className="space-y-1.5">
+                        <div className="flex items-center gap-2 text-sm font-medium text-gray-700">
+                          <Award className="w-4 h-4 shrink-0" />
+                          Cự ly:
+                        </div>
+
+                        <div className="flex flex-wrap gap-2 min-h-[3.5rem] content-start">
+                          {event.distances.slice(0, 3).map((distance, idx) => (
+                            <span
+                              key={idx}
+                              className="px-3 py-1 bg-blue-50 text-blue-700 rounded-full text-xs font-medium whitespace-nowrap"
+                            >
+                              {distance.name}
+                            </span>
+                          ))}
+
+                          {event.distances.length > 3 && (
+                            <span className="px-3 py-1 bg-gray-100 text-gray-600 rounded-full text-xs font-medium">
+                              +{event.distances.length - 3}
+                            </span>
+                          )}
+                        </div>
                       </div>
                     </div>
 
-                    <div className="pt-3 border-t border-gray-100">
+                    {/* PRICE */}
+                    <div className="pt-3 border-t border-gray-100 mt-4">
                       <div className="flex items-center justify-between">
                         <span className="text-sm text-gray-600">Giá từ:</span>
+
                         <span className="text-lg font-bold text-blue-600">
                           {formatCurrency(
                             Math.min(...event.distances.map((d) => d.price)),
@@ -311,15 +320,15 @@ export default function HomePage() {
                       </div>
                     </div>
 
-                    {/* CTA Buttons */}
-                    <div className="grid grid-cols-2 gap-3 pt-2">
+                    {/* BUTTONS */}
+                    <div className="grid grid-cols-2 gap-3 mt-3">
                       <Button
                         variant="outline"
                         className="w-full"
                         size="sm"
                         onClick={() => handleViewDetail(event)}
                       >
-                        <Eye className="w-4 h-4 mr-2" />
+                        <Eye className="w-4 h-4 mr-1" />
                         Chi tiết
                       </Button>
 
@@ -327,7 +336,7 @@ export default function HomePage() {
                         <Link href={`/events/${event.slug}/register`}>
                           <Button className="w-full" size="sm">
                             Đăng ký
-                            <ArrowRight className="w-4 h-4 ml-2" />
+                            <ArrowRight className="w-4 h-4 ml-1" />
                           </Button>
                         </Link>
                       ) : (
@@ -343,18 +352,19 @@ export default function HomePage() {
                       )}
                     </div>
 
-                    {!event.allowRegistration && (
-                      <p className="text-xs text-center text-orange-600 pt-2 border-t">
-                        {event.status === "PUBLISHED"
+                    {/* FIX HEIGHT STATUS */}
+                    <p className="text-xs text-center text-orange-600 min-h-[16px] mt-2">
+                      {!event.allowRegistration
+                        ? event.status === "PUBLISHED"
                           ? "🔔 Sắp mở đăng ký"
-                          : "🚫 Đã đóng đăng ký"}
-                      </p>
-                    )}
-                    {event.hasShirt && (
-                      <p className="text-xs text-center text-gray-500 pt-2 border-t">
-                        🎽 Có bán kèm áo kỷ niệm
-                      </p>
-                    )}
+                          : "🚫 Đã đóng đăng ký"
+                        : ""}
+                    </p>
+
+                    {/* FIX HEIGHT SHIRT */}
+                    <p className="text-xs text-center text-gray-500 min-h-[16px]">
+                      {event.hasShirt ? "🎽 Có bán kèm áo kỷ niệm" : ""}
+                    </p>
                   </CardContent>
                 </Card>
               ))}

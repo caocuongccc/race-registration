@@ -25,6 +25,13 @@ import {
 } from "lucide-react";
 import { FormFieldConfigManager } from "@/components/FormFieldConfigManager";
 
+interface BankOption {
+  name: string;
+  shortName: string;
+  code: string;
+  bin: string;
+}
+
 export default function EditEventPage() {
   const params = useParams();
   const [id, setId] = useState<string | null>(null);
@@ -41,6 +48,7 @@ export default function EditEventPage() {
     | "form-config"
   >("basic");
   const [eventImages, setEventImages] = useState<any[]>([]);
+  const [banks, setBanks] = useState<BankOption[]>([]);
 
   const [formData, setFormData] = useState({
     name: "",
@@ -89,6 +97,29 @@ export default function EditEventPage() {
       loadImages();
     }
   }, [id]);
+
+  useEffect(() => {
+    async function loadBanks() {
+      try {
+        const res = await fetch("/api/banks");
+        const data = await res.json();
+        setBanks(data.banks || []);
+      } catch {
+        setBanks([]);
+      }
+    }
+
+    loadBanks();
+  }, []);
+
+  const handleBankChange = (code: string) => {
+    const bank = banks.find((item) => item.code === code);
+    setFormData({
+      ...formData,
+      bankCode: code,
+      bankName: bank?.name || formData.bankName,
+    });
+  };
   // Thêm useEffect để handle URL hash
   useEffect(() => {
     // Check URL hash to open specific tab
@@ -636,14 +667,18 @@ export default function EditEventPage() {
                 </h4>
 
                 <div className="grid grid-cols-2 gap-4">
-                  <Input
+                  <Select
                     label="Tên ngân hàng"
-                    placeholder="MB Bank"
-                    value={formData.bankName}
-                    onChange={(e) =>
-                      setFormData({ ...formData, bankName: e.target.value })
-                    }
-                  />
+                    value={formData.bankCode}
+                    onChange={(e) => handleBankChange(e.target.value)}
+                  >
+                    <option value="">Chọn ngân hàng</option>
+                    {banks.map((bank) => (
+                      <option key={`${bank.code}-${bank.bin}`} value={bank.code}>
+                        {bank.shortName || bank.name} - {bank.name}
+                      </option>
+                    ))}
+                  </Select>
 
                   <Input
                     label="Mã ngân hàng"

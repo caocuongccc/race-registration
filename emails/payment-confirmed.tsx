@@ -48,12 +48,40 @@ export function PaymentConfirmedEmail({
       minute: "2-digit",
     }).format(new Date(date));
   };
+  const shirtCategoryText =
+    registration.shirtCategory === "MALE"
+      ? "Nam"
+      : registration.shirtCategory === "FEMALE"
+        ? "Ná»¯"
+        : registration.shirtCategory === "KID"
+          ? "Tráº» em"
+          : registration.shirtCategory || "";
+  const shirtTypeText =
+    registration.shirtType === "SHORT_SLEEVE"
+      ? "T-shirt"
+      : registration.shirtType === "TANK_TOP"
+        ? "Singlet"
+        : registration.shirtType || "";
+  const finisherShirtCategoryText =
+    registration.finisherShirtCategory === "MALE"
+      ? "Nam"
+      : registration.finisherShirtCategory === "FEMALE"
+        ? "Ná»¯"
+        : registration.finisherShirtCategory === "KID"
+          ? "Tráº» em"
+          : registration.finisherShirtCategory || "";
+  const finisherShirtTypeText =
+    registration.finisherShirtType === "SHORT_SLEEVE"
+      ? "T-shirt"
+      : registration.finisherShirtType === "TANK_TOP"
+        ? "Singlet"
+        : registration.finisherShirtType || "";
 
   return (
     <Html>
       <Head />
       <Preview>
-        Thanh toán thành công - {event.name} - BIB {registration.bibNumber}
+        Thanh toÃ¡n thÃ nh cÃ´ng - {event.name} - BIB {registration.bibNumber}
       </Preview>
       <Body style={main}>
         <Container style={container}>
@@ -156,22 +184,19 @@ export function PaymentConfirmedEmail({
               </div>
               {registration.shirtSize && (
                 <div style={row}>
-                  <span style={label}>Áo:</span>
+                  <span style={label}>Áo racekit:</span>
                   <span style={value}>
-                    {registration.shirtCategory === "MALE"
-                      ? "Nam"
-                      : registration.shirtCategory === "FEMALE"
-                        ? "Nữ"
-                        : registration.shirtCategory === "KID"
-                          ? "Trẻ em"
-                          : registration.shirtCategory || ""}
-                    {" "}(
-                    {registration.shirtType === "SHORT_SLEEVE"
-                      ? "Có tay"
-                      : registration.shirtType === "SLEEVELESS"
-                        ? "3 lỗ"
-                        : registration.shirtType || ""})
-                    {" "}- Size <strong>{registration.shirtSize}</strong>
+                    {shirtCategoryText} - {shirtTypeText} - Size{" "}
+                    <strong>{registration.shirtSize}</strong>
+                  </span>
+                </div>
+              )}
+              {registration.finisherShirtSize && (
+                <div style={row}>
+                  <span style={label}>Áo finish:</span>
+                  <span style={value}>
+                    {finisherShirtCategoryText} - {finisherShirtTypeText} - Size{" "}
+                    <strong>{registration.finisherShirtSize}</strong>
                   </span>
                 </div>
               )}

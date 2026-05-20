@@ -1,4 +1,4 @@
-// emails/registration-confirmation.tsx
+﻿// emails/registration-confirmation.tsx
 // UPDATED: Beautiful layout for batch emails with CID QR
 
 import {
@@ -24,6 +24,9 @@ interface Props {
     shirtCategory?: string;
     shirtType?: string;
     shirtSize?: string;
+    finisherShirtCategory?: string;
+    finisherShirtType?: string;
+    finisherShirtSize?: string;
   };
   event: {
     name: string;
@@ -60,12 +63,26 @@ export function RegistrationConfirmationEmail({
       year: "numeric",
     }).format(new Date(date));
   };
+  const shirtCategoryText =
+    registration.shirtCategory === "MALE"
+      ? "Nam"
+      : registration.shirtCategory === "FEMALE"
+        ? "Ná»¯"
+        : registration.shirtCategory === "KID"
+          ? "Tráº» em"
+          : registration.shirtCategory || "";
+  const shirtTypeText =
+    registration.shirtType === "SHORT_SLEEVE"
+      ? "T-shirt"
+      : registration.shirtType === "TANK_TOP"
+        ? "Singlet"
+        : registration.shirtType || "";
 
   return (
     <Html>
       <Head />
       <Preview>
-        Thanh toán thành công - {event.name} - BIB {registration.bibNumber}
+        Thanh toÃ¡n thÃ nh cÃ´ng - {event.name} - BIB {registration.bibNumber}
       </Preview>
       <Body style={main}>
         <Container style={container}>
@@ -154,10 +171,32 @@ export function RegistrationConfirmationEmail({
               </div>
               {registration.shirtSize && (
                 <div style={row}>
-                  <span style={label}>Áo:</span>
+                  <span style={label}>Áo racekit:</span>
                   <span style={value}>
-                    {registration.shirtCategory === "MALE" ? "Nam" : "Nữ"} -
-                    Size {registration.shirtSize}
+                    {shirtCategoryText} - {shirtTypeText} - Size{" "}
+                    {registration.shirtSize}
+                  </span>
+                </div>
+              )}
+              {registration.finisherShirtSize && (
+                <div style={row}>
+                  <span style={label}>Áo finish:</span>
+                  <span style={value}>
+                    {registration.finisherShirtCategory === "MALE"
+                      ? "Nam"
+                      : registration.finisherShirtCategory === "FEMALE"
+                        ? "Ná»¯"
+                        : registration.finisherShirtCategory === "KID"
+                          ? "Kid"
+                          : "Áo"}
+                    {" - "}
+                    {registration.finisherShirtType === "SHORT_SLEEVE"
+                      ? "T-shirt"
+                      : registration.finisherShirtType === "TANK_TOP"
+                        ? "Singlet"
+                        : registration.finisherShirtType || ""}
+                    {" - Size "}
+                    {registration.finisherShirtSize}
                   </span>
                 </div>
               )}

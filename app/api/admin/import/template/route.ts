@@ -1,270 +1,360 @@
-// app/api/admin/import/template/route.ts - UPDATED WITH DROPDOWNS
-import { NextResponse } from "next/server";
+// app/api/admin/import/template/route.ts
+import { NextRequest, NextResponse } from "next/server";
+import { getServerSession } from "next-auth";
 import * as XLSX from "xlsx";
+import { deflateRawSync, inflateRawSync } from "zlib";
+import { authOptions } from "@/lib/auth";
+import { prisma } from "@/lib/prisma";
 
-export async function GET() {
+const IMPORT_COLUMNS = [
+  "Email",
+  "Họ tên",
+  "Tên BIB",
+  "Ngày sinh",
+  "CCCD/CMND/Hộ chiếu",
+  "Giới tính",
+  "Cự ly",
+  "Loại áo",
+  "Kiểu áo",
+  "Size áo",
+];
+
+const categoryLabel: Record<string, string> = {
+  MALE: "Nam",
+  FEMALE: "Nữ",
+  KID: "Kid",
+};
+
+const typeLabel: Record<string, string> = {
+  SHORT_SLEEVE: "T-shirt",
+  TANK_TOP: "Singlet",
+};
+
+type ZipEntry = {
+  name: string;
+  data: Buffer;
+};
+
+type ValidationRule = {
+  column: string;
+  formula: string;
+};
+
+const crcTable = Array.from({ length: 256 }, (_, index) => {
+  let crc = index;
+  for (let bit = 0; bit < 8; bit++) {
+    crc = crc & 1 ? 0xedb88320 ^ (crc >>> 1) : crc >>> 1;
+  }
+  return crc >>> 0;
+});
+
+function crc32(buffer: Buffer) {
+  let crc = 0xffffffff;
+  for (const byte of buffer) {
+    crc = crcTable[(crc ^ byte) & 0xff] ^ (crc >>> 8);
+  }
+  return (crc ^ 0xffffffff) >>> 0;
+}
+
+function escapeXml(value: string) {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+}
+
+function readZipEntries(zip: Buffer): ZipEntry[] {
+  const eocdSignature = 0x06054b50;
+  let eocdOffset = -1;
+
+  for (let offset = zip.length - 22; offset >= 0; offset--) {
+    if (zip.readUInt32LE(offset) === eocdSignature) {
+      eocdOffset = offset;
+      break;
+    }
+  }
+
+  if (eocdOffset === -1) {
+    throw new Error("Invalid XLSX file");
+  }
+
+  const entryCount = zip.readUInt16LE(eocdOffset + 10);
+  const centralDirectoryOffset = zip.readUInt32LE(eocdOffset + 16);
+  const entries: ZipEntry[] = [];
+  let offset = centralDirectoryOffset;
+
+  for (let index = 0; index < entryCount; index++) {
+    if (zip.readUInt32LE(offset) !== 0x02014b50) {
+      throw new Error("Invalid XLSX central directory");
+    }
+
+    const method = zip.readUInt16LE(offset + 10);
+    const compressedSize = zip.readUInt32LE(offset + 20);
+    const nameLength = zip.readUInt16LE(offset + 28);
+    const extraLength = zip.readUInt16LE(offset + 30);
+    const commentLength = zip.readUInt16LE(offset + 32);
+    const localHeaderOffset = zip.readUInt32LE(offset + 42);
+    const name = zip
+      .subarray(offset + 46, offset + 46 + nameLength)
+      .toString("utf8");
+
+    const localNameLength = zip.readUInt16LE(localHeaderOffset + 26);
+    const localExtraLength = zip.readUInt16LE(localHeaderOffset + 28);
+    const dataStart = localHeaderOffset + 30 + localNameLength + localExtraLength;
+    const compressedData = zip.subarray(dataStart, dataStart + compressedSize);
+
+    if (method !== 0 && method !== 8) {
+      throw new Error(`Unsupported XLSX compression method: ${method}`);
+    }
+
+    entries.push({
+      name,
+      data: method === 8 ? inflateRawSync(compressedData) : Buffer.from(compressedData),
+    });
+    offset += 46 + nameLength + extraLength + commentLength;
+  }
+
+  return entries;
+}
+
+function rebuildZip(entries: ZipEntry[]) {
+  const localParts: Buffer[] = [];
+  const centralParts: Buffer[] = [];
+  let localOffset = 0;
+
+  for (const entry of entries) {
+    const name = Buffer.from(entry.name, "utf8");
+    const compressed = deflateRawSync(entry.data);
+    const checksum = crc32(entry.data);
+
+    const localHeader = Buffer.alloc(30);
+    localHeader.writeUInt32LE(0x04034b50, 0);
+    localHeader.writeUInt16LE(20, 4);
+    localHeader.writeUInt16LE(0x0800, 6);
+    localHeader.writeUInt16LE(8, 8);
+    localHeader.writeUInt32LE(0, 10);
+    localHeader.writeUInt32LE(checksum, 14);
+    localHeader.writeUInt32LE(compressed.length, 18);
+    localHeader.writeUInt32LE(entry.data.length, 22);
+    localHeader.writeUInt16LE(name.length, 26);
+    localHeader.writeUInt16LE(0, 28);
+    localParts.push(localHeader, name, compressed);
+
+    const centralHeader = Buffer.alloc(46);
+    centralHeader.writeUInt32LE(0x02014b50, 0);
+    centralHeader.writeUInt16LE(20, 4);
+    centralHeader.writeUInt16LE(20, 6);
+    centralHeader.writeUInt16LE(0x0800, 8);
+    centralHeader.writeUInt16LE(8, 10);
+    centralHeader.writeUInt32LE(0, 12);
+    centralHeader.writeUInt32LE(checksum, 16);
+    centralHeader.writeUInt32LE(compressed.length, 20);
+    centralHeader.writeUInt32LE(entry.data.length, 24);
+    centralHeader.writeUInt16LE(name.length, 28);
+    centralHeader.writeUInt16LE(0, 30);
+    centralHeader.writeUInt16LE(0, 32);
+    centralHeader.writeUInt16LE(0, 34);
+    centralHeader.writeUInt16LE(0, 36);
+    centralHeader.writeUInt32LE(0, 38);
+    centralHeader.writeUInt32LE(localOffset, 42);
+    centralParts.push(centralHeader, name);
+
+    localOffset += localHeader.length + name.length + compressed.length;
+  }
+
+  const centralDirectory = Buffer.concat(centralParts);
+  const eocd = Buffer.alloc(22);
+  eocd.writeUInt32LE(0x06054b50, 0);
+  eocd.writeUInt16LE(0, 4);
+  eocd.writeUInt16LE(0, 6);
+  eocd.writeUInt16LE(entries.length, 8);
+  eocd.writeUInt16LE(entries.length, 10);
+  eocd.writeUInt32LE(centralDirectory.length, 12);
+  eocd.writeUInt32LE(localOffset, 16);
+  eocd.writeUInt16LE(0, 20);
+
+  return Buffer.concat([...localParts, centralDirectory, eocd]);
+}
+
+function addDropdownsToSheet(sheetXml: string, rules: ValidationRule[]) {
+  const validations = rules.filter((rule) => rule.formula);
+  if (validations.length === 0) return sheetXml;
+
+  const xml = `<dataValidations count="${validations.length}">${validations
+    .map(
+      (rule) =>
+        `<dataValidation type="list" allowBlank="1" showErrorMessage="1" sqref="${rule.column}2:${rule.column}1000"><formula1>${escapeXml(
+          rule.formula,
+        )}</formula1></dataValidation>`,
+    )
+    .join("")}</dataValidations>`;
+
+  if (sheetXml.includes("<dataValidations")) {
+    return sheetXml.replace(/<dataValidations[\s\S]*?<\/dataValidations>/, xml);
+  }
+
+  const sheetDataEnd = sheetXml.indexOf("</sheetData>");
+  if (sheetDataEnd >= 0) {
+    const insertAt = sheetDataEnd + "</sheetData>".length;
+    return `${sheetXml.slice(0, insertAt)}${xml}${sheetXml.slice(insertAt)}`;
+  }
+
+  return sheetXml.replace("</worksheet>", `${xml}</worksheet>`);
+}
+
+function patchXlsxDropdowns(buffer: Buffer, rules: ValidationRule[]) {
+  const entries = readZipEntries(buffer);
+  const mainSheet = entries.find((entry) => entry.name === "xl/worksheets/sheet1.xml");
+  if (!mainSheet) return buffer;
+
+  mainSheet.data = Buffer.from(
+    addDropdownsToSheet(mainSheet.data.toString("utf8"), rules),
+    "utf8",
+  );
+
+  return rebuildZip(entries);
+}
+
+function catalogRange(column: string, count: number) {
+  if (count <= 0) return "";
+  return `'Danh mục'!$${column}$2:$${column}$${count + 1}`;
+}
+
+export async function GET(req: NextRequest) {
   try {
-    // Create workbook
-    const wb = XLSX.utils.book_new();
+    const session = await getServerSession(authOptions);
+    if (!session) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
 
-    // Sample data with all required fields
+    const { searchParams } = new URL(req.url);
+    const eventId = searchParams.get("eventId");
+
+    if (!eventId) {
+      return NextResponse.json(
+        { error: "Missing eventId" },
+        { status: 400 },
+      );
+    }
+
+    const event = await prisma.event.findUnique({
+      where: { id: eventId },
+      include: {
+        distances: {
+          where: { isAvailable: true },
+          orderBy: { sortOrder: "asc" },
+        },
+        shirts: {
+          where: { isAvailable: true },
+          orderBy: [{ category: "asc" }, { type: "asc" }, { size: "asc" }],
+        },
+      },
+    });
+
+    if (!event) {
+      return NextResponse.json({ error: "Event not found" }, { status: 404 });
+    }
+
+    const distances = event.distances.map((distance) => distance.name);
+    const shirtCategories = Array.from(
+      new Set(event.shirts.map((shirt) => categoryLabel[shirt.category])),
+    ).filter(Boolean);
+    const shirtTypes = Array.from(
+      new Set(event.shirts.map((shirt) => typeLabel[shirt.type])),
+    ).filter(Boolean);
+    const shirtSizes = Array.from(
+      new Set(event.shirts.map((shirt) => shirt.size)),
+    ).filter(Boolean);
+
     const sampleData = [
       {
+        Email: "runner@example.com",
         "Họ tên": "Nguyễn Văn A",
-        Email: "nguyenvana@example.com",
-        "Số điện thoại": "0901234567",
+        "Tên BIB": "VAN A",
         "Ngày sinh": "15/08/1990",
+        "CCCD/CMND/Hộ chiếu": "001234567890",
         "Giới tính": "Nam",
-        "Cự ly": "5km",
-        "Mục tiêu": "Hoàn thành trong 45 phút",
-        CCCD: "001234567890",
-        "Địa chỉ": "123 Đường ABC",
-        "Thành phố": "Hà Nội",
-        "Loại áo": "Nam", // Changed column name
-        "Kiểu áo": "Có tay", // Changed values
-        "Size áo": "L",
-        "Người liên hệ khẩn cấp": "Nguyễn Thị B",
-        "SĐT khẩn cấp": "0912345678",
-        "Nhóm máu": "O",
-        "Số BIB": "",
-      },
-      {
-        "Họ tên": "Trần Thị C",
-        Email: "tranthic@example.com",
-        "Số điện thoại": "0909876543",
-        "Ngày sinh": "20/03/1992",
-        "Giới tính": "Nữ",
-        "Cự ly": "5km",
-        "Mục tiêu": "Hoàn thành trong 60 phút",
-        CCCD: "002345678901",
-        "Địa chỉ": "456 Đường XYZ",
-        "Thành phố": "TP.HCM",
-        "Loại áo": "Nữ",
-        "Kiểu áo": "3 lỗ",
-        "Size áo": "M",
-        "Người liên hệ khẩn cấp": "Trần Văn D",
-        "SĐT khẩn cấp": "0923456789",
-        "Nhóm máu": "A",
-        "Số BIB": "",
+        "Cự ly": distances[0] || "",
+        "Loại áo": shirtCategories[0] || "",
+        "Kiểu áo": shirtTypes[0] || "",
+        "Size áo": shirtSizes[0] || "",
       },
     ];
 
-    // Create worksheet from data
-    const ws = XLSX.utils.json_to_sheet(sampleData);
+    const wb = XLSX.utils.book_new();
+    const ws = XLSX.utils.json_to_sheet(sampleData, { header: IMPORT_COLUMNS });
 
-    // Set column widths
     ws["!cols"] = [
-      { wch: 20 }, // Họ tên
-      { wch: 25 }, // Email
-      { wch: 15 }, // Số điện thoại
-      { wch: 12 }, // Ngày sinh
-      { wch: 10 }, // Giới tính
-      { wch: 10 }, // Cự ly
-      { wch: 30 }, // Mục tiêu
-      { wch: 15 }, // CCCD
-      { wch: 25 }, // Địa chỉ
-      { wch: 15 }, // Thành phố
-      { wch: 12 }, // Loại áo
-      { wch: 12 }, // Kiểu áo
-      { wch: 8 }, // Size áo
-      { wch: 20 }, // Người liên hệ
-      { wch: 15 }, // SĐT khẩn cấp
-      { wch: 10 }, // Nhóm máu
-      { wch: 10 }, // Số BIB
+      { wch: 28 },
+      { wch: 24 },
+      { wch: 18 },
+      { wch: 14 },
+      { wch: 20 },
+      { wch: 12 },
+      { wch: 18 },
+      { wch: 12 },
+      { wch: 14 },
+      { wch: 12 },
     ];
 
-    // ✅ ADD DATA VALIDATION FOR DROPDOWNS
-    // Note: Excel data validation requires specific cell ranges
-    // We'll add validation for the most common fields (rows 2-1000)
-
-    // Column E (Giới tính) - Gender dropdown
-    ws["!dataValidation"] = ws["!dataValidation"] || [];
-
-    // Gender validation (column E)
-    for (let row = 2; row <= 1000; row++) {
-      const cell = `E${row}`;
-      if (!ws[cell]) ws[cell] = { t: "s", v: "" };
-      ws[cell].s = {
-        dataValidation: {
-          type: "list",
-          allowBlank: true,
-          showInputMessage: true,
-          showErrorMessage: true,
-          formula1: '"Nam,Nữ"',
-          promptTitle: "Giới tính",
-          prompt: "Chọn Nam hoặc Nữ",
-          errorTitle: "Giá trị không hợp lệ",
-          error: "Vui lòng chọn Nam hoặc Nữ",
-        },
-      };
-    }
-
-    // Shirt Category validation (column K - Loại áo)
-    for (let row = 2; row <= 1000; row++) {
-      const cell = `K${row}`;
-      if (!ws[cell]) ws[cell] = { t: "s", v: "" };
-      ws[cell].s = {
-        dataValidation: {
-          type: "list",
-          allowBlank: true,
-          showInputMessage: true,
-          showErrorMessage: true,
-          formula1: '"Nam,Nữ,Trẻ em"',
-          promptTitle: "Loại áo",
-          prompt: "Chọn Nam, Nữ, hoặc Trẻ em",
-          errorTitle: "Giá trị không hợp lệ",
-          error: "Vui lòng chọn Nam, Nữ, hoặc Trẻ em",
-        },
-      };
-    }
-
-    // Shirt Type validation (column L - Kiểu áo)
-    for (let row = 2; row <= 1000; row++) {
-      const cell = `L${row}`;
-      if (!ws[cell]) ws[cell] = { t: "s", v: "" };
-      ws[cell].s = {
-        dataValidation: {
-          type: "list",
-          allowBlank: true,
-          showInputMessage: true,
-          showErrorMessage: true,
-          formula1: '"Có tay,3 lỗ"',
-          promptTitle: "Kiểu áo",
-          prompt: "Chọn Có tay hoặc 3 lỗ",
-          errorTitle: "Giá trị không hợp lệ",
-          error: "Vui lòng chọn Có tay hoặc 3 lỗ",
-        },
-      };
-    }
-
-    // Shirt Size validation (column M - Size áo)
-    for (let row = 2; row <= 1000; row++) {
-      const cell = `M${row}`;
-      if (!ws[cell]) ws[cell] = { t: "s", v: "" };
-      ws[cell].s = {
-        dataValidation: {
-          type: "list",
-          allowBlank: true,
-          showInputMessage: true,
-          showErrorMessage: true,
-          formula1: '"XS,S,M,L,XL,XXL,XXXL"',
-          promptTitle: "Size áo",
-          prompt: "Chọn XS, S, M, L, XL, XXL, hoặc XXXL",
-          errorTitle: "Giá trị không hợp lệ",
-          error: "Vui lòng chọn một size hợp lệ",
-        },
-      };
-    }
 
     XLSX.utils.book_append_sheet(wb, ws, "Danh sách VĐV");
 
-    // Create instructions sheet
-    const instructions = [
-      { Cột: "Họ tên", "Bắt buộc": "CÓ", "Ghi chú": "Họ và tên đầy đủ" },
-      { Cột: "Email", "Bắt buộc": "CÓ", "Ghi chú": "Email hợp lệ" },
-      {
-        Cột: "Số điện thoại",
-        "Bắt buộc": "CÓ",
-        "Ghi chú": "Số điện thoại 10 số",
-      },
-      {
-        Cột: "Ngày sinh",
-        "Bắt buộc": "CÓ",
-        "Ghi chú": "Định dạng: DD/MM/YYYY",
-      },
-      {
-        Cột: "Giới tính",
-        "Bắt buộc": "CÓ",
-        "Ghi chú": "Chọn từ dropdown: Nam hoặc Nữ",
-      },
-      {
-        Cột: "Cự ly",
-        "Bắt buộc": "CÓ",
-        "Ghi chú": "Phải khớp tên cự ly trong sự kiện",
-      },
-      {
-        Cột: "Mục tiêu",
-        "Bắt buộc": "KHÔNG",
-        "Ghi chú":
-          "Nếu có: phải khớp tên mục tiêu. Ví dụ: 'Hoàn thành trong 45 phút'",
-      },
-      { Cột: "CCCD", "Bắt buộc": "KHÔNG", "Ghi chú": "Số CCCD/CMND" },
-      { Cột: "Địa chỉ", "Bắt buộc": "KHÔNG", "Ghi chú": "" },
-      { Cột: "Thành phố", "Bắt buộc": "KHÔNG", "Ghi chú": "" },
-      {
-        Cột: "Loại áo",
-        "Bắt buộc": "KHÔNG",
-        "Ghi chú":
-          "Chọn từ dropdown: Nam, Nữ, hoặc Trẻ em. Để trống nếu không mua áo.",
-      },
-      {
-        Cột: "Kiểu áo",
-        "Bắt buộc": "KHÔNG (nếu chọn áo)",
-        "Ghi chú": "Chọn từ dropdown: Có tay hoặc 3 lỗ",
-      },
-      {
-        Cột: "Size áo",
-        "Bắt buộc": "KHÔNG (nếu chọn áo)",
-        "Ghi chú": "Chọn từ dropdown: XS, S, M, L, XL, XXL, XXXL",
-      },
-      {
-        Cột: "Người liên hệ khẩn cấp",
-        "Bắt buộc": "KHÔNG",
-        "Ghi chú": "",
-      },
-      { Cột: "SĐT khẩn cấp", "Bắt buộc": "KHÔNG", "Ghi chú": "" },
-      {
-        Cột: "Nhóm máu",
-        "Bắt buộc": "KHÔNG",
-        "Ghi chú": "A, B, AB, O, A+, B+, AB+, O+, A-, B-, AB-, O-",
-      },
-      {
-        Cột: "Số BIB",
-        "Bắt buộc": "KHÔNG",
-        "Ghi chú": "Để trống để hệ thống tự sinh. Nếu điền phải unique.",
-      },
+    const guide = [
+      { Cot: "Email", "Bat buoc": "CO", "Ghi chu": "Email hop le. Dung lam thong tin lien he chinh." },
+      { Cot: "Ho ten", "Bat buoc": "CO", "Ghi chu": "Ho ten day du." },
+      { Cot: "Ten BIB", "Bat buoc": "KHONG", "Ghi chu": "Neu de trong, he thong tu lay Ho ten." },
+      { Cot: "Ngay sinh", "Bat buoc": "CO", "Ghi chu": "Dinh dang dd/mm/yyyy, vi du 15/08/1990." },
+      { Cot: "CCCD/CMND/Ho chieu", "Bat buoc": "KHONG", "Ghi chu": "Co the de trong." },
+      { Cot: "Gioi tinh", "Bat buoc": "CO", "Ghi chu": "Nhap Nam hoac Nu. Xem sheet Danh muc de tranh nhap sai." },
+      { Cot: "Cu ly", "Bat buoc": "CO", "Ghi chu": "Nhap dung ten cu ly trong sheet Danh muc." },
+      { Cot: "Loai ao / Kieu ao / Size ao", "Bat buoc": "KHONG", "Ghi chu": "Neu chon ao, dien du ca 3 cot. Xem sheet Danh muc de chon dung du lieu cua event." },
     ];
+    const guideSheet = XLSX.utils.json_to_sheet(guide);
+    guideSheet["!cols"] = [{ wch: 28 }, { wch: 14 }, { wch: 72 }];
+    XLSX.utils.book_append_sheet(wb, guideSheet, "Hướng dẫn");
 
-    const wsInstructions = XLSX.utils.json_to_sheet(instructions);
-    wsInstructions["!cols"] = [{ wch: 30 }, { wch: 25 }, { wch: 70 }];
-    XLSX.utils.book_append_sheet(wb, wsInstructions, "Hướng dẫn");
-
-    // Add additional notes sheet
-    const notes = [
-      {
-        "Lưu ý quan trọng": "TÍNH PHÍ ÁO TỰ ĐỘNG",
-        "Chi tiết":
-          "Nếu bạn điền đầy đủ Loại áo + Kiểu áo + Size áo, hệ thống sẽ TỰ ĐỘNG tính phí áo và cộng vào tổng chi phí đăng ký.",
-      },
-      {
-        "Lưu ý quan trọng": "ĐỂ TRỐNG NẾU KHÔNG MUA ÁO",
-        "Chi tiết":
-          "Nếu VĐV không mua áo, hãy để trống CẢ 3 cột: Loại áo, Kiểu áo, Size áo",
-      },
-      {
-        "Lưu ý quan trọng": "SỬ DỤNG DROPDOWN",
-        "Chi tiết":
-          "Click vào ô trong Excel sẽ hiện mũi tên dropdown. Chọn từ dropdown thay vì gõ tay để tránh lỗi.",
-      },
-      {
-        "Lưu ý quan trọng": "KIỂM TRA TRƯỚC KHI IMPORT",
-        "Chi tiết":
-          "Hãy kiểm tra kỹ tất cả thông tin trong file Excel trước khi upload. Đặc biệt là: Email (không trùng), Số điện thoại, Ngày sinh, Size áo (nếu có).",
-      },
+    const maxCatalogRows = Math.max(
+      distances.length,
+      shirtCategories.length,
+      shirtTypes.length,
+      shirtSizes.length,
+      1,
+    );
+    const catalogRows = Array.from({ length: maxCatalogRows }, (_, index) => [
+      index === 0 ? "Nam" : index === 1 ? "Nữ" : "",
+      distances[index] || "",
+      shirtCategories[index] || "",
+      shirtTypes[index] || "",
+      shirtSizes[index] || "",
+    ]);
+    const catalogSheet = XLSX.utils.aoa_to_sheet([
+      ["Giới tính", "Cự ly", "Loại áo", "Kiểu áo", "Size áo"],
+      ...catalogRows,
+    ]);
+    catalogSheet["!cols"] = [
+      { wch: 14 },
+      { wch: 20 },
+      { wch: 14 },
+      { wch: 16 },
+      { wch: 12 },
     ];
+    XLSX.utils.book_append_sheet(wb, catalogSheet, "Danh mục");
 
-    const wsNotes = XLSX.utils.json_to_sheet(notes);
-    wsNotes["!cols"] = [{ wch: 30 }, { wch: 80 }];
-    XLSX.utils.book_append_sheet(wb, wsNotes, "⚠️ Lưu ý quan trọng");
+    const rawBuffer = XLSX.write(wb, { type: "buffer", bookType: "xlsx" });
+    const buffer = patchXlsxDropdowns(rawBuffer, [
+      { column: "F", formula: catalogRange("A", 2) },
+      { column: "G", formula: catalogRange("B", distances.length) },
+      { column: "H", formula: catalogRange("C", shirtCategories.length) },
+      { column: "I", formula: catalogRange("D", shirtTypes.length) },
+      { column: "J", formula: catalogRange("E", shirtSizes.length) },
+    ]);
 
-    // Generate buffer
-    const buffer = XLSX.write(wb, { type: "buffer", bookType: "xlsx" });
-
-    return new NextResponse(buffer, {
+    return new NextResponse(new Uint8Array(buffer), {
       headers: {
         "Content-Type":
           "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        "Content-Disposition": `attachment; filename="mau-import-v2-${Date.now()}.xlsx"`,
+        "Content-Disposition": `attachment; filename="mau-import-${event.slug}-${Date.now()}.xlsx"`,
       },
     });
   } catch (error) {

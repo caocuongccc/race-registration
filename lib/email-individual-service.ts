@@ -27,8 +27,8 @@ export async function sendRegistrationConfirmationEmail(data: {
     try {
       qrCode = await generateIndividualQR(
         registration.id,
-        registration.importBatchId.bibRangeStart,
-        registration.importBatchId.bibRangeEnd,
+        registration.bibNumber,
+        registration.bibNumber,
         registration.fullName,
         registration.gender,
         registration.dob,
@@ -59,18 +59,32 @@ export async function sendRegistrationConfirmationEmail(data: {
 
     const result = await sendEmailGmailFirst({
       to: registration.email,
-      subject: `Xác nhận đăng ký - ${event.name} - BIB ${registration.bibNumber}`,
+      subject: `Thanh toán thành công - ${event.name} - BIB ${registration.bibNumber}`,
       react: RegistrationConfirmationEmail({
         registration: {
           fullName: registration.fullName,
           bibNumber: registration.bibNumber,
           email: registration.email,
           phone: registration.phone || "",
+          bibName: registration.bibName || "",
+          shirtCategory: registration.shirtCategory || "",
+          shirtType: registration.shirtType || "",
+          shirtSize: registration.shirtSize || "",
+          finisherShirtCategory: registration.finisherShirtCategory || "",
+          finisherShirtType: registration.finisherShirtType || "",
+          finisherShirtSize: registration.finisherShirtSize || "",
           //qrCheckinUrl: qrCode, // ✅ QR with full info, not just ID
         },
         event: {
           name: event.name,
           date: event.date,
+          location: event.location || "",
+          logoUrl: event.logoUrl || "",
+          racePackLocation: event.racePackLocation || "",
+          racePackTime: event.racePackTime || "",
+          hotline: event.hotline || "",
+          emailSupport: event.emailSupport || "",
+          facebookUrl: event.facebookUrl || "",
         },
         distance: {
           name: registration.distance?.name || "N/A",
