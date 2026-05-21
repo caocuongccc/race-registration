@@ -31,6 +31,7 @@ interface Event {
   coverImageUrl?: string;
   hasShirt: boolean;
   allowRegistration: boolean;
+  status: string;
   distances: Array<{
     name: string;
     price: number;
@@ -207,7 +208,7 @@ export default function HomePage() {
               {events.map((event) => (
                 <Card
                   key={event.id}
-                  className="hover:shadow-xl transition-all duration-300 overflow-hidden group flex flex-col h-full"
+                  className="hover:shadow-xl transition-all duration-300 overflow-hidden group flex flex-col h-full min-h-[520px]"
                 >
                   {/* Cover Image */}
                   <div className="relative h-48 overflow-hidden bg-gradient-to-br from-blue-500 to-indigo-600">
@@ -219,7 +220,7 @@ export default function HomePage() {
                           className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                           loading="lazy"
                           style={{
-                            imageRendering: "high-quality",
+                            imageRendering: "auto",
                             objectFit: "cover",
                           }}
                           onError={(e) => {
@@ -248,7 +249,7 @@ export default function HomePage() {
 
                   <CardHeader className="pb-3">
                     <CardTitle
-                      className="text-xl line-clamp-2 min-h-[3.5rem] group-hover:text-blue-600 transition-colors cursor-pointer"
+                      className="text-base leading-5 line-clamp-2 min-h-[2.5rem] group-hover:text-blue-600 transition-colors cursor-pointer"
                       onClick={() => handleViewDetail(event)}
                     >
                       {event.name}
@@ -256,7 +257,7 @@ export default function HomePage() {
                   </CardHeader>
 
                   {/* ✅ FIXED CONTENT */}
-                  <CardContent className="flex flex-col h-full pt-0">
+                  <CardContent className="flex flex-col flex-1 pt-0">
                     {/* FLEX AREA */}
                     <div className="flex-1 space-y-3">
                       {/* Info */}
@@ -277,7 +278,7 @@ export default function HomePage() {
                       </div>
 
                       {/* Description */}
-                      <p className="text-sm text-gray-600 line-clamp-2 min-h-[2.8rem]">
+                      <p className="text-sm text-gray-600 line-clamp-2 min-h-[2.7rem]">
                         {event.description || ""}
                       </p>
 
@@ -308,7 +309,7 @@ export default function HomePage() {
                     </div>
 
                     {/* PRICE */}
-                    <div className="pt-3 border-t border-gray-100 mt-4">
+                    <div className="mt-auto pt-3 border-t border-gray-100">
                       <div className="flex items-center justify-between">
                         <span className="text-sm text-gray-600">Giá từ:</span>
 
@@ -324,7 +325,7 @@ export default function HomePage() {
                     <div className="grid grid-cols-2 gap-3 mt-3">
                       <Button
                         variant="outline"
-                        className="w-full"
+                        className="w-full h-8 text-xs whitespace-nowrap"
                         size="sm"
                         onClick={() => handleViewDetail(event)}
                       >
@@ -333,15 +334,15 @@ export default function HomePage() {
                       </Button>
 
                       {event.allowRegistration ? (
-                        <Link href={`/events/${event.slug}/register`}>
-                          <Button className="w-full" size="sm">
+                        <Link href={`/events/${event.slug}/register`} className="min-w-0">
+                          <Button className="w-full h-8 text-xs whitespace-nowrap" size="sm">
                             Đăng ký
                             <ArrowRight className="w-4 h-4 ml-1" />
                           </Button>
                         </Link>
                       ) : (
                         <Button
-                          className="w-full opacity-50 cursor-not-allowed"
+                          className="w-full h-8 text-xs whitespace-nowrap opacity-50 cursor-not-allowed"
                           size="sm"
                           disabled
                         >
@@ -353,7 +354,7 @@ export default function HomePage() {
                     </div>
 
                     {/* FIX HEIGHT STATUS */}
-                    <p className="text-xs text-center text-orange-600 min-h-[16px] mt-2">
+                    <p className="text-xs text-center text-orange-600 min-h-[16px] leading-4 mt-2">
                       {!event.allowRegistration
                         ? event.status === "PUBLISHED"
                           ? "🔔 Sắp mở đăng ký"
@@ -362,7 +363,7 @@ export default function HomePage() {
                     </p>
 
                     {/* FIX HEIGHT SHIRT */}
-                    <p className="text-xs text-center text-gray-500 min-h-[16px]">
+                    <p className="text-xs text-center text-gray-500 min-h-[16px] leading-4">
                       {event.hasShirt ? "🎽 Có bán kèm áo kỷ niệm" : ""}
                     </p>
                   </CardContent>

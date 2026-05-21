@@ -137,14 +137,16 @@ export async function POST(req: NextRequest) {
     const isRacekitShirtIncluded = event.distances.some(
       (d) => d.requiresFinisherShirt,
     );
+    const racekitShirtOptedOut =
+      !isRacekitShirtIncluded && shirtCategory === "NONE";
 
     // Calculate fees
     const raceFee = distance.price;
     let shirtFee = 0;
 
-    if (event.hasShirt && !shirtId) {
+    if (event.hasShirt && !racekitShirtOptedOut && !shirtId) {
       return NextResponse.json(
-        { error: "Vui long chon size ao racekit" },
+        { error: "Vui lòng chọn size áo racekit" },
         { status: 400 },
       );
     }
@@ -200,9 +202,9 @@ export async function POST(req: NextRequest) {
         healthDeclaration: body.healthDeclaration || false,
         bloodType: body.bloodType || null,
 
-        shirtCategory: body.shirtCategory || null,
-        shirtType: body.shirtType || null,
-        shirtSize: body.shirtSize || null,
+        shirtCategory: racekitShirtOptedOut ? null : body.shirtCategory || null,
+        shirtType: racekitShirtOptedOut ? null : body.shirtType || null,
+        shirtSize: racekitShirtOptedOut ? null : body.shirtSize || null,
         finisherShirtSize: distance.requiresFinisherShirt
           ? body.finisherShirtSize
           : null,

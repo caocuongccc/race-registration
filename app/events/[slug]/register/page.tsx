@@ -415,11 +415,13 @@ export default function RegistrationPage() {
       return;
     }
 
-    if (
-      eventData?.event.hasShirt &&
-      data.shirtCategory !== "NONE" &&
-      !data.shirtId
-    ) {
+    const racekitOptedOut = data.shirtCategory === "NONE";
+    if (eventData?.event.hasShirt && !data.shirtCategory) {
+      toast.error("Vui lòng chọn loại áo racekit");
+      return;
+    }
+
+    if (eventData?.event.hasShirt && !racekitOptedOut && !data.shirtId) {
       toast.error("Vui lòng chọn size áo racekit");
       return;
     }
@@ -479,8 +481,10 @@ export default function RegistrationPage() {
         submissionData.finisherShirtSize = data.finisherShirtSize;
       }
 
-      // Shirt data (if selected and not opted out)
-      if (data.shirtId && data.shirtCategory !== "NONE") {
+      // Shirt data
+      if (racekitOptedOut) {
+        submissionData.shirtCategory = "NONE";
+      } else if (data.shirtId) {
         submissionData.shirtId = data.shirtId;
         submissionData.shirtCategory = data.shirtCategory || null;
         submissionData.shirtType = data.shirtType || null;
