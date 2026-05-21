@@ -206,11 +206,19 @@ export default function RegistrationPage() {
           shirt.type === watchFinisherShirtType,
       )
       ?.sizes?.map((size: any) => size.size) || [];
+
+  const racekitShirtOptedOut = watchShirtCategory === "NONE";
   const needsRacekitCategory = eventData?.event.hasShirt && !watchShirtCategory;
   const needsRacekitType =
-    eventData?.event.hasShirt && watchShirtCategory && !watchShirtType;
+    eventData?.event.hasShirt &&
+    watchShirtCategory &&
+    !racekitShirtOptedOut &&
+    !watchShirtType;
   const needsRacekitSize =
-    eventData?.event.hasShirt && watchShirtType && !watchShirtSize;
+    eventData?.event.hasShirt &&
+    watchShirtType &&
+    !racekitShirtOptedOut &&
+    !watchShirtSize;
   const needsFinisherCategory =
     selectedDistance?.requiresFinisherShirt && !watchFinisherShirtCategory;
   const needsFinisherType =
@@ -240,6 +248,7 @@ export default function RegistrationPage() {
         !watchFinisherShirtType ||
         !watchFinisherShirtSize)) ||
     (eventData?.event.hasShirt &&
+      !racekitShirtOptedOut &&
       (!watchShirtCategory || !watchShirtType || !watchShirtSize)) ||
     !!emailError ||
     !!phoneError ||
@@ -406,7 +415,11 @@ export default function RegistrationPage() {
       return;
     }
 
-    if (eventData?.event.hasShirt && !data.shirtId) {
+    if (
+      eventData?.event.hasShirt &&
+      data.shirtCategory !== "NONE" &&
+      !data.shirtId
+    ) {
       toast.error("Vui lòng chọn size áo racekit");
       return;
     }
@@ -466,10 +479,10 @@ export default function RegistrationPage() {
         submissionData.finisherShirtSize = data.finisherShirtSize;
       }
 
-      // Shirt data (if selected)
-      if (data.shirtId) {
+      // Shirt data (if selected and not opted out)
+      if (data.shirtId && data.shirtCategory !== "NONE") {
         submissionData.shirtId = data.shirtId;
-        submissionData.shirtCategory = data.shirtCategory || null; // ✅ Fix: gửi đủ thông tin áo
+        submissionData.shirtCategory = data.shirtCategory || null;
         submissionData.shirtType = data.shirtType || null;
         submissionData.shirtSize = data.shirtSize || null;
       }
@@ -725,7 +738,6 @@ export default function RegistrationPage() {
                         {...register("bibName")}
                         placeholder="Nickname hoặc để trống sử dụng tên đầy đủ"
                       />
-
                     </div>
                   )}
                   <p className="text-xs text-gray-500 mt-1">
@@ -1018,6 +1030,31 @@ export default function RegistrationPage() {
                     Loại áo
                   </label>
                   <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                    {!isRacekitShirtIncluded && (
+                      <label className="relative">
+                        <input
+                          type="radio"
+                          value="NONE"
+                          {...register("shirtCategory")}
+                          onChange={() => {
+                            setValue("shirtCategory", "NONE");
+                            setValue("shirtType", "");
+                            setValue("shirtSize", "");
+                            setValue("shirtId", "");
+                          }}
+                          className="sr-only peer"
+                        />
+                        <div
+                          className={optionButtonClass(
+                            watchShirtCategory === "NONE",
+                          )}
+                        >
+                          <div className="text-sm font-medium">
+                            🚫 Không mua
+                          </div>
+                        </div>
+                      </label>
+                    )}
                     {racekitShirtCategories.map((cat) => (
                       <label key={cat} className="relative">
                         <input
@@ -1031,13 +1068,17 @@ export default function RegistrationPage() {
                           }}
                           className="sr-only peer"
                         />
-                        <div className={optionButtonClass(watchShirtCategory === cat)}>
+                        <div
+                          className={optionButtonClass(
+                            watchShirtCategory === cat,
+                          )}
+                        >
                           <div className="text-sm font-medium">
                             {cat === "MALE"
-                                ? "Áo Nam"
-                                : cat === "FEMALE"
-                                  ? "Áo Nữ"
-                                  : "Áo Trẻ Em"}
+                              ? "Áo Nam"
+                              : cat === "FEMALE"
+                                ? "Áo Nữ"
+                                : "Áo Trẻ Em"}
                           </div>
                         </div>
                       </label>
@@ -1045,94 +1086,104 @@ export default function RegistrationPage() {
                   </div>
                 </div>
                 {/* Type Selection */}
-                {watchShirtCategory && watchShirtCategory !== "" && (
-                  <div className={stepBoxClass(needsRacekitType)}>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Kiểu áo
-                    </label>
-                    <div className="grid grid-cols-2 gap-3">
-                      {racekitShirtTypes.map((type) => (
-                      <label key={type} className="relative">
-                        <input
-                          type="radio"
-                          value={type}
-                          {...register("shirtType")}
-                          onChange={(e) => {
-                            setValue("shirtType", e.target.value);
-                            setValue("shirtSize", ""); // Reset size
-                          }}
-                          className="sr-only peer"
-                        />
-                        <div className={`${optionButtonClass(watchShirtType === type)} relative`}>
-                          <div className="text-base font-medium">
-                            {shirtTypeLabels[type] || type}
-                          </div>
-                        </div>
+                {watchShirtCategory &&
+                  watchShirtCategory !== "" &&
+                  !racekitShirtOptedOut && (
+                    <div className={stepBoxClass(needsRacekitType)}>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Kiểu áo
                       </label>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {watchShirtType && availableSizes.length > 0 && (
-                  <div className={`space-y-3 ${stepBoxClass(needsRacekitSize)}`}>
-                    {/* Header với tổng số size available */}
-                    <div className="flex items-center justify-between">
-                      <label className="block text-sm font-medium text-gray-700">
-                        Chọn size áo
-                      </label>
-                      {shouldShowShirtStock && (
-                        <span className="text-sm text-gray-500">
-                          {availableSizes.filter((s) => s.isAvailable).length}/
-                          {availableSizes.length} size còn hàng
-                        </span>
-                      )}
-                    </div>
-
-                    {/* Price info */}
-                    {selectedShirtPrice > 0 && (
-                      <div className="inline-flex items-center gap-2 px-3 py-1 bg-purple-100 text-purple-700 rounded-full text-sm font-medium">
-                        <svg
-                          className="w-4 h-4"
-                          fill="currentColor"
-                          viewBox="0 0 20 20"
-                        >
-                          <path d="M8.433 7.418c.155-.103.346-.196.567-.267v1.698a2.305 2.305 0 01-.567-.267C8.07 8.34 8 8.114 8 8c0-.114.07-.34.433-.582zM11 12.849v-1.698c.22.071.412.164.567.267.364.243.433.468.433.582 0 .114-.07.34-.433.582a2.305 2.305 0 01-.567.267z" />
-                          <path
-                            fillRule="evenodd"
-                            d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-13a1 1 0 10-2 0v.092a4.535 4.535 0 00-1.676.662C6.602 6.234 6 7.009 6 8c0 .99.602 1.765 1.324 2.246.48.32 1.054.545 1.676.662v1.941c-.391-.127-.68-.317-.843-.504a1 1 0 10-1.51 1.31c.562.649 1.413 1.076 2.353 1.253V15a1 1 0 102 0v-.092a4.535 4.535 0 001.676-.662C13.398 13.766 14 12.991 14 12c0-.99-.602-1.765-1.324-2.246A4.535 4.535 0 0011 9.092V7.151c.391.127.68.317.843.504a1 1 0 101.511-1.31c-.563-.649-1.413-1.076-2.354-1.253V5z"
-                            clipRule="evenodd"
-                          />
-                        </svg>
-                        {isRacekitShirtIncluded
-                          ? "Áo racekit đã bao gồm trong phí đăng ký"
-                          : `Giá áo: ${formatCurrency(selectedShirtPrice)}`}
+                      <div className="grid grid-cols-2 gap-3">
+                        {racekitShirtTypes.map((type) => (
+                          <label key={type} className="relative">
+                            <input
+                              type="radio"
+                              value={type}
+                              {...register("shirtType")}
+                              onChange={(e) => {
+                                setValue("shirtType", e.target.value);
+                                setValue("shirtSize", ""); // Reset size
+                              }}
+                              className="sr-only peer"
+                            />
+                            <div
+                              className={`${optionButtonClass(watchShirtType === type)} relative`}
+                            >
+                              <div className="text-base font-medium">
+                                {shirtTypeLabels[type] || type}
+                              </div>
+                            </div>
+                          </label>
+                        ))}
                       </div>
-                    )}
+                    </div>
+                  )}
 
-                    {/* Grid buttons - Responsive: 4 cols mobile, 6 cols tablet, 8 cols desktop */}
-                    <div className="grid grid-cols-4 sm:grid-cols-5 md:grid-cols-6 lg:grid-cols-8 gap-3">
-                      {availableSizes.map((sizeOption) => {
-                        const isSelected = watchShirtSize === sizeOption.size;
-                        const isAvailable = shouldShowShirtStock
-                          ? sizeOption.isAvailable
-                          : true;
-                        const stockLeft =
-                          sizeOption.stockQuantity - sizeOption.soldQuantity;
-                        const isLowStock =
-                          shouldShowShirtStock && stockLeft > 0 && stockLeft <= 5;
+                {watchShirtType &&
+                  !racekitShirtOptedOut &&
+                  availableSizes.length > 0 && (
+                    <div
+                      className={`space-y-3 ${stepBoxClass(needsRacekitSize)}`}
+                    >
+                      {/* Header với tổng số size available */}
+                      <div className="flex items-center justify-between">
+                        <label className="block text-sm font-medium text-gray-700">
+                          Chọn size áo
+                        </label>
+                        {shouldShowShirtStock && (
+                          <span className="text-sm text-gray-500">
+                            {availableSizes.filter((s) => s.isAvailable).length}
+                            /{availableSizes.length} size còn hàng
+                          </span>
+                        )}
+                      </div>
 
-                        return (
-                          <button
-                            key={sizeOption.id}
-                            type="button"
-                            onClick={() => {
-                              if (isAvailable) {
-                                setValue("shirtSize", sizeOption.size);
-                              }
-                            }}
-                            disabled={!isAvailable}
-                            className={`
+                      {/* Price info */}
+                      {selectedShirtPrice > 0 && (
+                        <div className="inline-flex items-center gap-2 px-3 py-1 bg-purple-100 text-purple-700 rounded-full text-sm font-medium">
+                          <svg
+                            className="w-4 h-4"
+                            fill="currentColor"
+                            viewBox="0 0 20 20"
+                          >
+                            <path d="M8.433 7.418c.155-.103.346-.196.567-.267v1.698a2.305 2.305 0 01-.567-.267C8.07 8.34 8 8.114 8 8c0-.114.07-.34.433-.582zM11 12.849v-1.698c.22.071.412.164.567.267.364.243.433.468.433.582 0 .114-.07.34-.433.582a2.305 2.305 0 01-.567.267z" />
+                            <path
+                              fillRule="evenodd"
+                              d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-13a1 1 0 10-2 0v.092a4.535 4.535 0 00-1.676.662C6.602 6.234 6 7.009 6 8c0 .99.602 1.765 1.324 2.246.48.32 1.054.545 1.676.662v1.941c-.391-.127-.68-.317-.843-.504a1 1 0 10-1.51 1.31c.562.649 1.413 1.076 2.353 1.253V15a1 1 0 102 0v-.092a4.535 4.535 0 001.676-.662C13.398 13.766 14 12.991 14 12c0-.99-.602-1.765-1.324-2.246A4.535 4.535 0 0011 9.092V7.151c.391.127.68.317.843.504a1 1 0 101.511-1.31c-.563-.649-1.413-1.076-2.354-1.253V5z"
+                              clipRule="evenodd"
+                            />
+                          </svg>
+                          {isRacekitShirtIncluded
+                            ? "Áo racekit đã bao gồm trong phí đăng ký"
+                            : `Giá áo: ${formatCurrency(selectedShirtPrice)}`}
+                        </div>
+                      )}
+
+                      {/* Grid buttons - Responsive: 4 cols mobile, 6 cols tablet, 8 cols desktop */}
+                      <div className="grid grid-cols-4 sm:grid-cols-5 md:grid-cols-6 lg:grid-cols-8 gap-3">
+                        {availableSizes.map((sizeOption) => {
+                          const isSelected = watchShirtSize === sizeOption.size;
+                          const isAvailable = shouldShowShirtStock
+                            ? sizeOption.isAvailable
+                            : true;
+                          const stockLeft =
+                            sizeOption.stockQuantity - sizeOption.soldQuantity;
+                          const isLowStock =
+                            shouldShowShirtStock &&
+                            stockLeft > 0 &&
+                            stockLeft <= 5;
+
+                          return (
+                            <button
+                              key={sizeOption.id}
+                              type="button"
+                              onClick={() => {
+                                if (isAvailable) {
+                                  setValue("shirtSize", sizeOption.size);
+                                }
+                              }}
+                              disabled={!isAvailable}
+                              className={`
               group relative p-4 rounded-xl border-2 transition-all duration-200 transform
               ${
                 isSelected
@@ -1142,12 +1193,155 @@ export default function RegistrationPage() {
                     : "border-gray-200 bg-gray-50 cursor-not-allowed opacity-60"
               }
             `}
+                            >
+                              {/* Checkmark badge khi selected */}
+                              {isSelected && (
+                                <div className="absolute -top-2 -right-2 bg-purple-500 rounded-full p-1 shadow-md">
+                                  <svg
+                                    className="w-3 h-3 text-white"
+                                    fill="currentColor"
+                                    viewBox="0 0 20 20"
+                                  >
+                                    <path
+                                      fillRule="evenodd"
+                                      d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                                      clipRule="evenodd"
+                                    />
+                                  </svg>
+                                </div>
+                              )}
+
+                              {/* Low stock warning badge */}
+                              {shouldShowShirtStock &&
+                                isLowStock &&
+                                !isSelected && (
+                                  <div className="absolute -top-1 -right-1 bg-orange-500 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center">
+                                    !
+                                  </div>
+                                )}
+
+                              {/* Size label */}
+                              <div
+                                className={`text-xl font-bold mb-2 ${
+                                  isSelected
+                                    ? "text-purple-700"
+                                    : isAvailable
+                                      ? "text-gray-900"
+                                      : "text-gray-400"
+                                }`}
+                              >
+                                {sizeOption.size}
+                              </div>
+
+                              {/* Stock info với color coding */}
+                              {shouldShowShirtStock && (
+                                <div
+                                  className={`text-xs font-medium ${
+                                    isSelected
+                                      ? "text-purple-600"
+                                      : !isAvailable
+                                        ? "text-red-500 font-semibold"
+                                        : isLowStock
+                                          ? "text-orange-600 font-semibold"
+                                          : "text-green-600"
+                                  }`}
+                                >
+                                  {!isAvailable ? (
+                                    <>
+                                      <div className="flex items-center justify-center gap-1">
+                                        <svg
+                                          className="w-3 h-3"
+                                          fill="currentColor"
+                                          viewBox="0 0 20 20"
+                                        >
+                                          <path
+                                            fillRule="evenodd"
+                                            d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"
+                                            clipRule="evenodd"
+                                          />
+                                        </svg>
+                                        Hết
+                                      </div>
+                                    </>
+                                  ) : isLowStock ? (
+                                    <>
+                                      <div className="flex items-center justify-center gap-1">
+                                        <svg
+                                          className="w-3 h-3"
+                                          fill="currentColor"
+                                          viewBox="0 0 20 20"
+                                        >
+                                          <path
+                                            fillRule="evenodd"
+                                            d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z"
+                                            clipRule="evenodd"
+                                          />
+                                        </svg>
+                                        {stockLeft}
+                                      </div>
+                                    </>
+                                  ) : (
+                                    <>
+                                      <div className="flex items-center justify-center gap-1">
+                                        <svg
+                                          className="w-3 h-3"
+                                          fill="currentColor"
+                                          viewBox="0 0 20 20"
+                                        >
+                                          <path
+                                            fillRule="evenodd"
+                                            d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+                                            clipRule="evenodd"
+                                          />
+                                        </svg>
+                                        {stockLeft}
+                                      </div>
+                                    </>
+                                  )}
+                                </div>
+                              )}
+
+                              {/* Hover tooltip cho available sizes */}
+                              {isAvailable && !isSelected && (
+                                <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 bg-gray-900 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap">
+                                  Click để chọn
+                                </div>
+                              )}
+                            </button>
+                          );
+                        })}
+                      </div>
+
+                      {/* Empty state nếu không có size nào */}
+                      {availableSizes.length === 0 && (
+                        <div className="text-center py-8 bg-gray-50 rounded-lg border-2 border-dashed border-gray-300">
+                          <svg
+                            className="w-12 h-12 text-gray-400 mx-auto mb-2"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
                           >
-                            {/* Checkmark badge khi selected */}
-                            {isSelected && (
-                              <div className="absolute -top-2 -right-2 bg-purple-500 rounded-full p-1 shadow-md">
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"
+                            />
+                          </svg>
+                          <p className="text-sm text-gray-500">
+                            Không có size nào cho lựa chọn này
+                          </p>
+                        </div>
+                      )}
+
+                      {/* Thông báo đã chọn - Enhanced với animation */}
+                      {watchShirtSize && (
+                        <div className="animate-fadeIn p-4 bg-gradient-to-r from-green-50 to-emerald-50 border-2 border-green-300 rounded-xl shadow-sm">
+                          <div className="flex items-start gap-3">
+                            <div className="flex-shrink-0 mt-0.5">
+                              <div className="w-8 h-8 bg-green-500 rounded-full flex items-center justify-center">
                                 <svg
-                                  className="w-3 h-3 text-white"
+                                  className="w-5 h-5 text-white"
                                   fill="currentColor"
                                   viewBox="0 0 20 20"
                                 >
@@ -1158,236 +1352,95 @@ export default function RegistrationPage() {
                                   />
                                 </svg>
                               </div>
-                            )}
-
-                            {/* Low stock warning badge */}
-                            {shouldShowShirtStock && isLowStock && !isSelected && (
-                              <div className="absolute -top-1 -right-1 bg-orange-500 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center">
-                                !
-                              </div>
-                            )}
-
-                            {/* Size label */}
-                            <div
-                              className={`text-xl font-bold mb-2 ${
-                                isSelected
-                                  ? "text-purple-700"
-                                  : isAvailable
-                                    ? "text-gray-900"
-                                    : "text-gray-400"
-                              }`}
-                            >
-                              {sizeOption.size}
                             </div>
-
-                            {/* Stock info với color coding */}
-                            {shouldShowShirtStock && (
-                            <div
-                              className={`text-xs font-medium ${
-                                isSelected
-                                  ? "text-purple-600"
-                                  : !isAvailable
-                                    ? "text-red-500 font-semibold"
-                                    : isLowStock
-                                      ? "text-orange-600 font-semibold"
-                                      : "text-green-600"
-                              }`}
-                            >
-                              {!isAvailable ? (
-                                <>
-                                  <div className="flex items-center justify-center gap-1">
-                                    <svg
-                                      className="w-3 h-3"
-                                      fill="currentColor"
-                                      viewBox="0 0 20 20"
-                                    >
-                                      <path
-                                        fillRule="evenodd"
-                                        d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"
-                                        clipRule="evenodd"
-                                      />
-                                    </svg>
-                                    Hết
-                                  </div>
-                                </>
-                              ) : isLowStock ? (
-                                <>
-                                  <div className="flex items-center justify-center gap-1">
-                                    <svg
-                                      className="w-3 h-3"
-                                      fill="currentColor"
-                                      viewBox="0 0 20 20"
-                                    >
-                                      <path
-                                        fillRule="evenodd"
-                                        d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z"
-                                        clipRule="evenodd"
-                                      />
-                                    </svg>
-                                    {stockLeft}
-                                  </div>
-                                </>
-                              ) : (
-                                <>
-                                  <div className="flex items-center justify-center gap-1">
-                                    <svg
-                                      className="w-3 h-3"
-                                      fill="currentColor"
-                                      viewBox="0 0 20 20"
-                                    >
-                                      <path
-                                        fillRule="evenodd"
-                                        d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
-                                        clipRule="evenodd"
-                                      />
-                                    </svg>
-                                    {stockLeft}
-                                  </div>
-                                </>
-                              )}
-                            </div>
-                            )}
-
-                            {/* Hover tooltip cho available sizes */}
-                            {isAvailable && !isSelected && (
-                              <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 bg-gray-900 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap">
-                                Click để chọn
+                            <div className="flex-1">
+                              <p className="text-sm font-semibold text-green-900 mb-1">
+                                Đã chọn size áo
+                              </p>
+                              <div className="flex flex-wrap items-center gap-2">
+                                <span className="inline-flex items-center px-3 py-1 bg-white border border-green-300 rounded-full text-sm font-bold text-green-700">
+                                  Size {watchShirtSize}
+                                </span>
+                                <span className="text-sm text-green-700">
+                                  {isRacekitShirtIncluded
+                                    ? "Đã bao gồm trong phí đăng ký"
+                                    : `Cộng thêm ${formatCurrency(selectedShirtPrice)}`}
+                                </span>
                               </div>
-                            )}
-                          </button>
-                        );
-                      })}
-                    </div>
-
-                    {/* Empty state nếu không có size nào */}
-                    {availableSizes.length === 0 && (
-                      <div className="text-center py-8 bg-gray-50 rounded-lg border-2 border-dashed border-gray-300">
-                        <svg
-                          className="w-12 h-12 text-gray-400 mx-auto mb-2"
-                          fill="none"
-                          stroke="currentColor"
-                          viewBox="0 0 24 24"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"
-                          />
-                        </svg>
-                        <p className="text-sm text-gray-500">
-                          Không có size nào cho lựa chọn này
-                        </p>
-                      </div>
-                    )}
-
-                    {/* Thông báo đã chọn - Enhanced với animation */}
-                    {watchShirtSize && (
-                      <div className="animate-fadeIn p-4 bg-gradient-to-r from-green-50 to-emerald-50 border-2 border-green-300 rounded-xl shadow-sm">
-                        <div className="flex items-start gap-3">
-                          <div className="flex-shrink-0 mt-0.5">
-                            <div className="w-8 h-8 bg-green-500 rounded-full flex items-center justify-center">
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => setValue("shirtSize", "")}
+                              className="flex-shrink-0 text-green-600 hover:text-green-800 transition-colors"
+                              title="Bỏ chọn"
+                            >
                               <svg
-                                className="w-5 h-5 text-white"
+                                className="w-5 h-5"
                                 fill="currentColor"
                                 viewBox="0 0 20 20"
                               >
                                 <path
                                   fillRule="evenodd"
-                                  d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                                  d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
                                   clipRule="evenodd"
                                 />
                               </svg>
-                            </div>
-                          </div>
-                          <div className="flex-1">
-                            <p className="text-sm font-semibold text-green-900 mb-1">
-                              Đã chọn size áo
-                            </p>
-                            <div className="flex flex-wrap items-center gap-2">
-                              <span className="inline-flex items-center px-3 py-1 bg-white border border-green-300 rounded-full text-sm font-bold text-green-700">
-                                Size {watchShirtSize}
-                              </span>
-                              <span className="text-sm text-green-700">
-                                {isRacekitShirtIncluded
-                                  ? "Đã bao gồm trong phí đăng ký"
-                                  : `Cộng thêm ${formatCurrency(selectedShirtPrice)}`}
-                              </span>
-                            </div>
-                          </div>
-                          <button
-                            type="button"
-                            onClick={() => setValue("shirtSize", "")}
-                            className="flex-shrink-0 text-green-600 hover:text-green-800 transition-colors"
-                            title="Bỏ chọn"
-                          >
-                            <svg
-                              className="w-5 h-5"
-                              fill="currentColor"
-                              viewBox="0 0 20 20"
-                            >
-                              <path
-                                fillRule="evenodd"
-                                d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
-                                clipRule="evenodd"
-                              />
-                            </svg>
-                          </button>
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Legend / Chú thích */}
-                    {shouldShowShirtStock && (
-                    <div className="flex items-start gap-4 p-3 bg-gray-50 rounded-lg text-xs text-gray-600">
-                      <div className="flex items-center gap-1.5">
-                        <div className="w-3 h-3 bg-green-500 rounded-full"></div>
-                        <span>Còn hàng</span>
-                      </div>
-                      <div className="flex items-center gap-1.5">
-                        <div className="w-3 h-3 bg-orange-500 rounded-full"></div>
-                        <span>Sắp hết</span>
-                      </div>
-                      <div className="flex items-center gap-1.5">
-                        <div className="w-3 h-3 bg-gray-300 rounded-full"></div>
-                        <span>Hết hàng</span>
-                      </div>
-                    </div>
-                    )}
-
-                    {/* ⚠️ THÊM CẢNH BÁO MỚI - Hiện khi chọn loại/kiểu nhưng chưa chọn size */}
-                    {watchShirtCategory &&
-                      watchShirtCategory !== "" &&
-                      watchShirtType &&
-                      !watchShirtSize && (
-                        <div className="bg-orange-50 border-l-4 border-orange-400 p-3 rounded animate-fadeIn">
-                          <div className="flex items-start gap-2">
-                            <svg
-                              className="w-4 h-4 text-orange-600 mt-0.5 flex-shrink-0"
-                              fill="currentColor"
-                              viewBox="0 0 20 20"
-                            >
-                              <path
-                                fillRule="evenodd"
-                                d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z"
-                                clipRule="evenodd"
-                              />
-                            </svg>
-                            <div className="flex-1">
-                              <p className="text-sm text-orange-800 font-semibold mb-1">
-                                Chưa chọn size áo
-                              </p>
-                              <p className="text-xs text-orange-700">
-                                Vui lòng chọn size để hoàn tất việc thêm áo vào
-                                đơn hàng. Nếu không chọn size, bạn sẽ không nhận
-                                được áo kỷ niệm.
-                              </p>
-                            </div>
+                            </button>
                           </div>
                         </div>
                       )}
-                  </div>
-                )}
+
+                      {/* Legend / Chú thích */}
+                      {shouldShowShirtStock && (
+                        <div className="flex items-start gap-4 p-3 bg-gray-50 rounded-lg text-xs text-gray-600">
+                          <div className="flex items-center gap-1.5">
+                            <div className="w-3 h-3 bg-green-500 rounded-full"></div>
+                            <span>Còn hàng</span>
+                          </div>
+                          <div className="flex items-center gap-1.5">
+                            <div className="w-3 h-3 bg-orange-500 rounded-full"></div>
+                            <span>Sắp hết</span>
+                          </div>
+                          <div className="flex items-center gap-1.5">
+                            <div className="w-3 h-3 bg-gray-300 rounded-full"></div>
+                            <span>Hết hàng</span>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* ⚠️ THÊM CẢNH BÁO MỚI - Hiện khi chọn loại/kiểu nhưng chưa chọn size */}
+                      {watchShirtCategory &&
+                        watchShirtCategory !== "" &&
+                        watchShirtType &&
+                        !watchShirtSize && (
+                          <div className="bg-orange-50 border-l-4 border-orange-400 p-3 rounded animate-fadeIn">
+                            <div className="flex items-start gap-2">
+                              <svg
+                                className="w-4 h-4 text-orange-600 mt-0.5 flex-shrink-0"
+                                fill="currentColor"
+                                viewBox="0 0 20 20"
+                              >
+                                <path
+                                  fillRule="evenodd"
+                                  d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z"
+                                  clipRule="evenodd"
+                                />
+                              </svg>
+                              <div className="flex-1">
+                                <p className="text-sm text-orange-800 font-semibold mb-1">
+                                  Chưa chọn size áo
+                                </p>
+                                <p className="text-xs text-orange-700">
+                                  Vui lòng chọn size để hoàn tất việc thêm áo
+                                  vào đơn hàng. Nếu không chọn size, bạn sẽ
+                                  không nhận được áo kỷ niệm.
+                                </p>
+                              </div>
+                            </div>
+                          </div>
+                        )}
+                    </div>
+                  )}
               </CardContent>
             </Card>
           )}
@@ -1412,7 +1465,8 @@ export default function RegistrationPage() {
                   </label>
                   <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                     {finisherShirtCategories.map((category) => {
-                      const isSelected = watchFinisherShirtCategory === category;
+                      const isSelected =
+                        watchFinisherShirtCategory === category;
 
                       return (
                         <button
@@ -1433,56 +1487,85 @@ export default function RegistrationPage() {
                 </div>
 
                 {watchFinisherShirtCategory && (
-                <div className={stepBoxClass(needsFinisherType)}>
-                  <label className="block text-sm font-medium mb-3">
-                    Kiểu áo finish
-                  </label>
-                  <div className="grid grid-cols-2 gap-3">
-                    {finisherShirtTypes.map((type) => {
-                      const isSelected = watchFinisherShirtType === type;
+                  <div className={stepBoxClass(needsFinisherType)}>
+                    <label className="block text-sm font-medium mb-3">
+                      Kiểu áo finish
+                    </label>
+                    <div className="grid grid-cols-2 gap-3">
+                      {finisherShirtTypes.map((type) => {
+                        const isSelected = watchFinisherShirtType === type;
 
-                      return (
-                        <button
-                          key={type}
-                          type="button"
-                          onClick={() => {
-                            setValue("finisherShirtType", type);
-                            setValue("finisherShirtSize", "");
-                          }}
-                          className={optionButtonClass(isSelected)}
-                        >
-                          {shirtTypeLabels[type] || type}
-                        </button>
-                      );
-                    })}
+                        return (
+                          <button
+                            key={type}
+                            type="button"
+                            onClick={() => {
+                              setValue("finisherShirtType", type);
+                              setValue("finisherShirtSize", "");
+                            }}
+                            className={optionButtonClass(isSelected)}
+                          >
+                            {shirtTypeLabels[type] || type}
+                          </button>
+                        );
+                      })}
+                    </div>
                   </div>
-                </div>
                 )}
 
                 {watchFinisherShirtType && (
-                <div className={stepBoxClass(needsFinisherSize)}>
-                  <label className="block text-sm font-medium mb-3">
-                    Size áo finish
-                  </label>
-                  <div className="grid grid-cols-4 sm:grid-cols-5 md:grid-cols-6 lg:grid-cols-8 gap-3">
-                    {finisherShirtSizes.map((size: string) => {
-                      const isSelected = watchFinisherShirtSize === size;
+                  <div className={stepBoxClass(needsFinisherSize)}>
+                    <label className="block text-sm font-medium mb-3">
+                      Size áo finish
+                    </label>
+                    <div className="grid grid-cols-4 sm:grid-cols-5 md:grid-cols-6 lg:grid-cols-8 gap-3">
+                      {finisherShirtSizes.map((size: string) => {
+                        const isSelected = watchFinisherShirtSize === size;
 
-                      return (
-                        <button
-                          key={size}
-                          type="button"
-                          onClick={() => setValue("finisherShirtSize", size)}
-                          className={`group relative p-4 rounded-xl border-2 transition-all duration-200 transform ${
-                            isSelected
-                              ? "border-purple-500 bg-gradient-to-br from-purple-50 to-purple-100 ring-4 ring-purple-200 shadow-lg scale-105"
-                              : "border-gray-300 bg-white hover:border-purple-400 hover:bg-purple-50 hover:shadow-md hover:scale-102"
-                          }`}
-                        >
-                          {isSelected && (
-                            <div className="absolute -top-2 -right-2 bg-purple-500 rounded-full p-1 shadow-md">
+                        return (
+                          <button
+                            key={size}
+                            type="button"
+                            onClick={() => setValue("finisherShirtSize", size)}
+                            className={`group relative p-4 rounded-xl border-2 transition-all duration-200 transform ${
+                              isSelected
+                                ? "border-purple-500 bg-gradient-to-br from-purple-50 to-purple-100 ring-4 ring-purple-200 shadow-lg scale-105"
+                                : "border-gray-300 bg-white hover:border-purple-400 hover:bg-purple-50 hover:shadow-md hover:scale-102"
+                            }`}
+                          >
+                            {isSelected && (
+                              <div className="absolute -top-2 -right-2 bg-purple-500 rounded-full p-1 shadow-md">
+                                <svg
+                                  className="w-3 h-3 text-white"
+                                  fill="currentColor"
+                                  viewBox="0 0 20 20"
+                                >
+                                  <path
+                                    fillRule="evenodd"
+                                    d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                                    clipRule="evenodd"
+                                  />
+                                </svg>
+                              </div>
+                            )}
+                            <div
+                              className={`text-xl font-bold ${
+                                isSelected ? "text-purple-700" : "text-gray-900"
+                              }`}
+                            >
+                              {size}
+                            </div>
+                          </button>
+                        );
+                      })}
+                    </div>
+                    {watchFinisherShirtSize && (
+                      <div className="animate-fadeIn p-4 bg-gradient-to-r from-green-50 to-emerald-50 border-2 border-green-300 rounded-xl shadow-sm">
+                        <div className="flex items-start gap-3">
+                          <div className="flex-shrink-0 mt-0.5">
+                            <div className="w-8 h-8 bg-green-500 rounded-full flex items-center justify-center">
                               <svg
-                                className="w-3 h-3 text-white"
+                                className="w-5 h-5 text-white"
                                 fill="currentColor"
                                 viewBox="0 0 20 20"
                               >
@@ -1493,71 +1576,42 @@ export default function RegistrationPage() {
                                 />
                               </svg>
                             </div>
-                          )}
-                          <div
-                            className={`text-xl font-bold ${
-                              isSelected ? "text-purple-700" : "text-gray-900"
-                            }`}
-                          >
-                            {size}
                           </div>
-                        </button>
-                      );
-                    })}
-                  </div>
-                  {watchFinisherShirtSize && (
-                    <div className="animate-fadeIn p-4 bg-gradient-to-r from-green-50 to-emerald-50 border-2 border-green-300 rounded-xl shadow-sm">
-                      <div className="flex items-start gap-3">
-                        <div className="flex-shrink-0 mt-0.5">
-                          <div className="w-8 h-8 bg-green-500 rounded-full flex items-center justify-center">
+                          <div className="flex-1">
+                            <p className="text-sm font-semibold text-green-900 mb-1">
+                              Đã chọn size áo finish
+                            </p>
+                            <div className="flex flex-wrap items-center gap-2">
+                              <span className="inline-flex items-center px-3 py-1 bg-white border border-green-300 rounded-full text-sm font-bold text-green-700">
+                                Size {watchFinisherShirtSize}
+                              </span>
+                              <span className="text-sm text-green-700">
+                                Đi kèm cự ly {selectedDistance.name}
+                              </span>
+                            </div>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => setValue("finisherShirtSize", "")}
+                            className="flex-shrink-0 text-green-600 hover:text-green-800 transition-colors"
+                            title="Bỏ chọn"
+                          >
                             <svg
-                              className="w-5 h-5 text-white"
+                              className="w-5 h-5"
                               fill="currentColor"
                               viewBox="0 0 20 20"
                             >
                               <path
                                 fillRule="evenodd"
-                                d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                                d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
                                 clipRule="evenodd"
                               />
                             </svg>
-                          </div>
+                          </button>
                         </div>
-                        <div className="flex-1">
-                          <p className="text-sm font-semibold text-green-900 mb-1">
-                            Đã chọn size áo finish
-                          </p>
-                          <div className="flex flex-wrap items-center gap-2">
-                            <span className="inline-flex items-center px-3 py-1 bg-white border border-green-300 rounded-full text-sm font-bold text-green-700">
-                              Size {watchFinisherShirtSize}
-                            </span>
-                            <span className="text-sm text-green-700">
-                              Đi kèm cự ly {selectedDistance.name}
-                            </span>
-                          </div>
-                        </div>
-                        <button
-                          type="button"
-                          onClick={() => setValue("finisherShirtSize", "")}
-                          className="flex-shrink-0 text-green-600 hover:text-green-800 transition-colors"
-                          title="Bỏ chọn"
-                        >
-                          <svg
-                            className="w-5 h-5"
-                            fill="currentColor"
-                            viewBox="0 0 20 20"
-                          >
-                            <path
-                              fillRule="evenodd"
-                              d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
-                              clipRule="evenodd"
-                            />
-                          </svg>
-                        </button>
                       </div>
-                    </div>
-                  )}
-                </div>
+                    )}
+                  </div>
                 )}
               </CardContent>
             </Card>
@@ -1575,17 +1629,20 @@ export default function RegistrationPage() {
                     <div>
                       <div className="font-medium">{selectedDistance.name}</div>
                       <div className="text-xs text-gray-500">Phí đăng ký</div>
-                      {watchShirtCategory && watchShirtType && watchShirtSize && (
-                        <div className="text-xs text-gray-600 mt-1">
-                          Áo racekit:{" "}
-                          {shirtCategoryLabels[watchShirtCategory] ||
-                            watchShirtCategory}
-                          {" - "}
-                          {shirtTypeLabels[watchShirtType] || watchShirtType}
-                          {" - "}
-                          Size {watchShirtSize}
-                        </div>
-                      )}
+                      {watchShirtCategory &&
+                        !racekitShirtOptedOut &&
+                        watchShirtType &&
+                        watchShirtSize && (
+                          <div className="text-xs text-gray-600 mt-1">
+                            Áo racekit:{" "}
+                            {shirtCategoryLabels[watchShirtCategory] ||
+                              watchShirtCategory}
+                            {" - "}
+                            {shirtTypeLabels[watchShirtType] || watchShirtType}
+                            {" - "}
+                            Size {watchShirtSize}
+                          </div>
+                        )}
                     </div>
                     <span className="text-lg font-semibold text-blue-600">
                       {formatCurrency(selectedDistance.price)}
@@ -1620,34 +1677,39 @@ export default function RegistrationPage() {
                     </div>
                   )}
 
-                {watchShirtSize && selectedShirtPrice > 0 && !isRacekitShirtIncluded && (
-                  <div className="flex justify-between items-center text-gray-700 p-3 bg-purple-50 rounded-lg animate-fadeIn">
-                    <div>
-                      <div className="font-medium">
-                        Áo{" "}
-                        {watchShirtCategory === "MALE"
-                          ? "Nam"
-                          : watchShirtCategory === "FEMALE"
-                            ? "Nữ"
-                            : "Trẻ Em"}
-                        {" - "}
-                        {watchShirtType === "SHORT_SLEEVE" ? "Có tay" : "3 lỗ"}
-                        {/* ✅ THÊM hiển thị size */}
-                        {watchShirtSize && ` - Size ${watchShirtSize}`}
+                {watchShirtSize &&
+                  !racekitShirtOptedOut &&
+                  selectedShirtPrice > 0 &&
+                  !isRacekitShirtIncluded && (
+                    <div className="flex justify-between items-center text-gray-700 p-3 bg-purple-50 rounded-lg animate-fadeIn">
+                      <div>
+                        <div className="font-medium">
+                          Áo{" "}
+                          {watchShirtCategory === "MALE"
+                            ? "Nam"
+                            : watchShirtCategory === "FEMALE"
+                              ? "Nữ"
+                              : "Trẻ Em"}
+                          {" - "}
+                          {watchShirtType === "SHORT_SLEEVE"
+                            ? "Có tay"
+                            : "3 lỗ"}
+                          {/* ✅ THÊM hiển thị size */}
+                          {watchShirtSize && ` - Size ${watchShirtSize}`}
+                        </div>
+                        <div className="text-xs text-gray-500">
+                          {isRacekitShirtIncluded
+                            ? "Áo racekit đi kèm đăng ký"
+                            : "Phí áo racekit"}
+                        </div>
                       </div>
-                      <div className="text-xs text-gray-500">
-                        {isRacekitShirtIncluded
-                          ? "Áo racekit đi kèm đăng ký"
-                          : "Phí áo racekit"}
-                      </div>
+                      <span className="text-lg font-semibold text-purple-600">
+                        {formatCurrency(
+                          isRacekitShirtIncluded ? 0 : selectedShirtPrice,
+                        )}
+                      </span>
                     </div>
-                    <span className="text-lg font-semibold text-purple-600">
-                      {formatCurrency(
-                        isRacekitShirtIncluded ? 0 : selectedShirtPrice,
-                      )}
-                    </span>
-                  </div>
-                )}
+                  )}
 
                 <div className="border-t-2 border-gray-200 pt-3 mt-3">
                   <div className="flex justify-between items-center">
@@ -1714,11 +1776,14 @@ export default function RegistrationPage() {
 
               {selectedDistance &&
                 eventData.event.hasShirt &&
+                !racekitShirtOptedOut &&
                 (!watchShirtCategory || !watchShirtType || !watchShirtSize) && (
                   <div className="mt-3 p-3 bg-red-50 border-l-4 border-red-400 rounded-lg">
                     <p className="text-sm text-red-700 flex items-center gap-2">
                       <AlertCircle className="w-4 h-4 flex-shrink-0" />
-                      <span>Vui lòng chọn đủ loại, kiểu và size áo racekit</span>
+                      <span>
+                        Vui lòng chọn đủ loại, kiểu và size áo racekit
+                      </span>
                     </p>
                   </div>
                 )}
