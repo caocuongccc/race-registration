@@ -1814,7 +1814,7 @@ export default function RegistrationPage() {
             </CardContent>
           </Card>
           {/* ✅ NEW: Bank Info Card */}
-          {eventData.event.bankAccount && (
+          {/* {eventData.event.bankAccount && (
             <Card className="mb-6 border-2 border-yellow-300 bg-yellow-50">
               <CardHeader className="pb-3">
                 <CardTitle className="text-lg flex items-center gap-2 text-yellow-900">
@@ -1860,7 +1860,7 @@ export default function RegistrationPage() {
                 </div>
               </CardContent>
             </Card>
-          )}
+          )} */}
         </form>
       </div>
     </div>
