@@ -29,7 +29,7 @@ export async function GET() {
           orderBy: { sortOrder: "asc" },
         },
       },
-      orderBy: { date: "asc" },
+      orderBy: { date: "desc" },
     });
     //const events = [];
     return NextResponse.json({

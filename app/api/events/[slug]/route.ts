@@ -117,8 +117,15 @@ export async function GET(
         ...(() => {
           try {
             // Check if data looks encrypted (iv:authTag:data format)
-            const isEncrypted = event.bankAccount?.includes(":") && event.bankCode?.includes(":");
-            if (isEncrypted && event.bankAccount && event.bankCode && event.bankName && event.bankHolder) {
+            const isEncrypted =
+              event.bankAccount?.includes(":") && event.bankCode?.includes(":");
+            if (
+              isEncrypted &&
+              event.bankAccount &&
+              event.bankCode &&
+              event.bankName &&
+              event.bankHolder
+            ) {
               const dec = decryptBankAccount({
                 accountNumberEncrypted: event.bankAccount,
                 bankCodeEncrypted: event.bankCode,
@@ -140,7 +147,12 @@ export async function GET(
               bankCode: event.bankCode,
             };
           } catch {
-            return { bankName: null, bankAccount: null, bankHolder: null, bankCode: null };
+            return {
+              bankName: null,
+              bankAccount: null,
+              bankHolder: null,
+              bankCode: null,
+            };
           }
         })(),
 
