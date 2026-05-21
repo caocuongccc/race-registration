@@ -15,6 +15,8 @@ import {
   Clock,
   Eye,
   Filter,
+  Loader2,
+  Trash2,
 } from "lucide-react";
 import { ImportErrorViewer } from "@/components/ImportErrorViewer";
 
@@ -43,6 +45,7 @@ export default function ImportExcelPage() {
   const [batches, setBatches] = useState<ImportBatch[]>([]);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
+  const [payingBatchId, setPayingBatchId] = useState<string | null>(null);
 
   // ✅ NEW: Event filter
   const [selectedEvent, setSelectedEvent] = useState("all");
@@ -180,6 +183,8 @@ export default function ImportExcelPage() {
       return;
     }
 
+    setPayingBatchId(batchId);
+
     try {
       const res = await fetch(`/api/admin/import/${batchId}/pay-batch`, {
         method: "POST",
@@ -203,6 +208,36 @@ export default function ImportExcelPage() {
       }
     } catch (error) {
       toast.error("Không thể xác nhận thanh toán");
+    } finally {
+      setPayingBatchId(null);
+    }
+  };
+
+  const handleDeleteBatch = async (batchId: string) => {
+    if (
+      !confirm(
+        "Xóa batch này sẽ xóa các đăng ký chưa thanh toán và hoàn lại số áo/số VĐV. Bạn chắc chắn muốn xóa?",
+      )
+    ) {
+      return;
+    }
+
+    try {
+      const res = await fetch(`/api/admin/import/${batchId}`, {
+        method: "DELETE",
+      });
+      const result = await res.json();
+
+      if (!res.ok) {
+        throw new Error(result.error || "Không thể xóa batch");
+      }
+
+      toast.success(
+        `Đã xóa ${result.deletedRegistrations} đăng ký và hoàn ${result.restoredShirts} áo`,
+      );
+      loadBatches();
+    } catch (error: any) {
+      toast.error(error.message || "Không thể xóa batch");
     }
   };
 
@@ -245,6 +280,20 @@ export default function ImportExcelPage() {
 
   return (
     <div className="space-y-6">
+      {(uploading || payingBatchId) && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm">
+          <div className="rounded-lg bg-white px-8 py-6 shadow-xl text-center min-w-[260px]">
+            <Loader2 className="w-10 h-10 animate-spin text-blue-600 mx-auto mb-4" />
+            <div className="font-semibold text-gray-900">Đang thực hiện...</div>
+            <div className="text-sm text-gray-600 mt-1">
+              {uploading
+                ? "Đang import file Excel"
+                : "Đang xác nhận thanh toán batch"}
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Header */}
       <div>
         <h1 className="text-3xl font-bold text-gray-900">Import từ Excel</h1>
@@ -301,7 +350,7 @@ export default function ImportExcelPage() {
                 type="file"
                 accept=".xlsx,.xls"
                 onChange={handleFileUpload}
-                disabled={uploading}
+                disabled={uploading || !!payingBatchId}
                 className="hidden"
                 id="file-upload"
               />
@@ -309,12 +358,16 @@ export default function ImportExcelPage() {
               <label
                 htmlFor="file-upload"
                 className={`cursor-pointer ${
-                  uploading ? "opacity-50 cursor-not-allowed" : ""
+                  uploading || payingBatchId ? "opacity-50 cursor-not-allowed" : ""
                 }`}
               >
-                <FileSpreadsheet className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+                {uploading ? (
+                  <Loader2 className="w-16 h-16 text-blue-600 mx-auto mb-4 animate-spin" />
+                ) : (
+                  <FileSpreadsheet className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+                )}
                 <p className="text-lg font-medium text-gray-900 mb-2">
-                  {uploading ? "Đang xử lý..." : "Click để chọn file Excel"}
+                  {uploading ? "Đang thực hiện..." : "Click để chọn file Excel"}
                 </p>
                 <p className="text-sm text-gray-500">
                   Chỉ chấp nhận file .xlsx, .xls (tối đa 5MB)
@@ -490,12 +543,22 @@ export default function ImportExcelPage() {
                               <Button
                                 size="sm"
                                 onClick={() => handlePayBatch(batch.id)}
+                                disabled={!!payingBatchId || uploading}
                                 className="bg-green-600 hover:bg-green-700"
                               >
-                                💰 Thanh toán (
-                                {batch.pendingCount ||
-                                  batch.successCount - (batch.paidCount || 0)}
-                                )
+                                {payingBatchId === batch.id ? (
+                                  <>
+                                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                                    Đang thực hiện...
+                                  </>
+                                ) : (
+                                  <>
+                                    Thanh toán (
+                                    {batch.pendingCount ||
+                                      batch.successCount - (batch.paidCount || 0)}
+                                    )
+                                  </>
+                                )}
                               </Button>
                             )}
 
@@ -504,6 +567,18 @@ export default function ImportExcelPage() {
                               <span className="px-2 py-1 bg-green-100 text-green-700 text-xs font-medium rounded-full">
                                 ✅ Đã TT đủ
                               </span>
+                            )}
+
+                            {!isFullyPaid && (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => handleDeleteBatch(batch.id)}
+                                className="text-red-600 hover:bg-red-50"
+                                title="Xóa batch và hoàn kho áo"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </Button>
                             )}
                           </div>
                         </td>

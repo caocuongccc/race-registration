@@ -48,6 +48,8 @@ export async function POST(
 
     let successCount = 0;
     let emailSuccessCount = 0;
+    let emailSkippedCount = 0;
+    let emailFailedCount = 0;
     const errors: any[] = [];
     const bibNumbers: string[] = [];
 
@@ -81,7 +83,8 @@ export async function POST(
 
         // 3. ✅ Send individual email
         // QR will be generated inside sendRegistrationConfirmationEmail
-        if (registration.email) {
+        const recipientEmail = registration.email?.trim();
+        if (recipientEmail) {
           try {
             console.log(`   📧 Sending email...`);
 
@@ -95,21 +98,19 @@ export async function POST(
             });
 
             emailSuccessCount++;
-            console.log(`   ✅ Email sent to ${registration.email}`);
+            console.log(`   ✅ Email sent to ${recipientEmail}`);
           } catch (emailError: any) {
+            emailFailedCount++;
             console.error(`   ❌ Email failed: ${emailError.message}`);
             errors.push({
               registrationId: registration.id,
-              email: registration.email,
+              email: recipientEmail,
               error: `Email failed: ${emailError.message}`,
             });
           }
         } else {
-          console.warn(`   ⚠️ No email address`);
-          errors.push({
-            registrationId: registration.id,
-            error: "No email address",
-          });
+          emailSkippedCount++;
+          console.log(`   No email address, skipped email`);
         }
       } catch (error: any) {
         console.error(`   ❌ Processing failed: ${error.message}`);
@@ -142,7 +143,8 @@ export async function POST(
       totalRegistrations: batch.registrations.length,
       paidCount: successCount,
       emailsSent: emailSuccessCount,
-      emailsFailed: successCount - emailSuccessCount,
+      emailsSkipped: emailSkippedCount,
+      emailsFailed: emailFailedCount,
       bibRange:
         bibNumbers.length > 0
           ? `${bibNumbers[0]} - ${bibNumbers[bibNumbers.length - 1]}`
@@ -153,6 +155,7 @@ export async function POST(
     console.log(`   Total: ${summary.totalRegistrations}`);
     console.log(`   Paid: ${summary.paidCount}`);
     console.log(`   Emails sent: ${summary.emailsSent}`);
+    console.log(`   Emails skipped: ${summary.emailsSkipped}`);
     console.log(`   Emails failed: ${summary.emailsFailed}`);
 
     return NextResponse.json({

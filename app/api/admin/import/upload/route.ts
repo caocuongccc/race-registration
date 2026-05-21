@@ -93,6 +93,16 @@ function parseShirtType(typeStr: string): "SHORT_SLEEVE" | "TANK_TOP" | null {
   return null;
 }
 
+function isNoShirtOption(value: string) {
+  const normalized = normalizeText(value);
+  return (
+    normalized === "khong mua" ||
+    normalized === "khong lay" ||
+    normalized === "none" ||
+    normalized === "no"
+  );
+}
+
 export async function POST(req: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
@@ -178,10 +188,7 @@ export async function POST(req: NextRequest) {
         const distanceName = getString(row, ["Cự ly", "Cu ly"]);
 
         const missingFields = [
-          !email && "Email",
           !fullName && "Họ tên",
-          !dobValue && "Ngày sinh",
-          !genderValue && "Giới tính",
           !distanceName && "Cự ly",
         ].filter(Boolean);
 
@@ -191,13 +198,13 @@ export async function POST(req: NextRequest) {
           );
         }
 
-        const dob = parseDate(dobValue);
-        if (!dob) {
+        const dob = dobValue ? parseDate(dobValue) : new Date(1900, 0, 1);
+        if (!dob && dobValue) {
           throw new Error("Ngày sinh không hợp lệ, cần định dạng dd/mm/yyyy");
         }
 
-        const gender = parseGender(genderValue);
-        if (!gender) {
+        const gender = genderValue ? parseGender(genderValue) : "MALE";
+        if (!gender && genderValue) {
           throw new Error("Giới tính không hợp lệ, chọn Nam hoặc Nữ");
         }
 
@@ -213,12 +220,26 @@ export async function POST(req: NextRequest) {
         let shirtType: "SHORT_SLEEVE" | "TANK_TOP" | null = null;
         let shirtSize: any = null;
         let shirtFee = 0;
+        let finisherShirtCategory: "MALE" | "FEMALE" | "KID" | null = null;
+        let finisherShirtType: "SHORT_SLEEVE" | "TANK_TOP" | null = null;
+        let finisherShirtSize: any = null;
 
         const shirtCategoryValue = getString(row, ["Loại áo", "Loai ao"]);
         const shirtTypeValue = getString(row, ["Kiểu áo", "Kieu ao"]);
         const shirtSizeValue = getString(row, ["Size áo", "Size ao"]);
+        const racekitShirtBlank =
+          !shirtCategoryValue && !shirtTypeValue && !shirtSizeValue;
+        const racekitShirtOptedOut =
+          !isRacekitShirtIncluded &&
+          (racekitShirtBlank || isNoShirtOption(shirtCategoryValue));
 
-        if (shirtCategoryValue && shirtTypeValue && shirtSizeValue) {
+        if (racekitShirtOptedOut) {
+          shirtId = null;
+          shirtCategory = null;
+          shirtType = null;
+          shirtSize = null;
+          shirtFee = 0;
+        } else if (shirtCategoryValue && shirtTypeValue && shirtSizeValue) {
           shirtCategory = parseShirtCategory(shirtCategoryValue);
           shirtType = parseShirtType(shirtTypeValue);
           shirtSize = shirtSizeValue.toUpperCase().trim();
@@ -250,10 +271,57 @@ export async function POST(req: NextRequest) {
 
           shirtId = shirt.id;
           shirtFee = isRacekitShirtIncluded ? 0 : shirt.price;
+        } else if (event.hasShirt && isRacekitShirtIncluded) {
+          throw new Error(
+            "Event có áo finish nên phải điền đủ Loại áo, Kiểu áo và Size áo racekit",
+          );
         } else if (shirtCategoryValue || shirtTypeValue || shirtSizeValue) {
           throw new Error(
             "Nếu chọn áo, phải điền đủ Loại áo, Kiểu áo và Size áo",
           );
+        }
+
+        const finisherCategoryValue = getString(row, [
+          "Loại áo finish",
+          "Loai ao finish",
+        ]);
+        const finisherTypeValue = getString(row, [
+          "Kiểu áo finish",
+          "Kieu ao finish",
+        ]);
+        const finisherSizeValue = getString(row, [
+          "Size áo finish",
+          "Size ao finish",
+        ]);
+
+        if (distance.requiresFinisherShirt) {
+          if (!finisherCategoryValue || !finisherTypeValue || !finisherSizeValue) {
+            throw new Error(
+              "Cự ly này có áo finish, cần điền đủ Loại áo finish, Kiểu áo finish và Size áo finish",
+            );
+          }
+
+          finisherShirtCategory = parseShirtCategory(finisherCategoryValue);
+          finisherShirtType = parseShirtType(finisherTypeValue);
+          finisherShirtSize = finisherSizeValue.toUpperCase().trim();
+
+          if (!finisherShirtCategory || !finisherShirtType || !finisherShirtSize) {
+            throw new Error("Thông tin áo finish không hợp lệ");
+          }
+
+          const finisherShirt = event.shirts.find(
+            (item) =>
+              item.category === finisherShirtCategory &&
+              item.type === finisherShirtType &&
+              item.size === finisherShirtSize &&
+              item.isAvailable,
+          );
+
+          if (!finisherShirt) {
+            throw new Error(
+              `Không tìm thấy áo finish: ${finisherCategoryValue} ${finisherTypeValue} ${finisherSizeValue}`,
+            );
+          }
         }
 
         const raceFee = distance.price;
@@ -263,7 +331,7 @@ export async function POST(req: NextRequest) {
           idCard ||
           "";
 
-        await prisma.registration.create({
+        const registration = await prisma.registration.create({
           data: {
             eventId,
             distanceId: distance.id,
@@ -285,7 +353,9 @@ export async function POST(req: NextRequest) {
             shirtCategory,
             shirtType,
             shirtSize,
-            finisherShirtSize: null,
+            finisherShirtSize: distance.requiresFinisherShirt
+              ? finisherShirtSize
+              : null,
             raceFee,
             shirtFee,
             totalAmount,
@@ -293,6 +363,20 @@ export async function POST(req: NextRequest) {
             bibNumber: null,
           },
         });
+
+        if (
+          distance.requiresFinisherShirt &&
+          finisherShirtCategory &&
+          finisherShirtType
+        ) {
+          await prisma.$executeRaw`
+            UPDATE "registrations"
+            SET
+              "finisher_shirt_category" = ${finisherShirtCategory}::"ShirtCategory",
+              "finisher_shirt_type" = ${finisherShirtType}::"ShirtType"
+            WHERE "id" = ${registration.id}
+          `;
+        }
 
         await prisma.distance.update({
           where: { id: distance.id },

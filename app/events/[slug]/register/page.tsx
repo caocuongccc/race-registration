@@ -107,6 +107,7 @@ export default function RegistrationPage() {
   const [eventData, setEventData] = useState<EventData | null>(null);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  const [redirectingPayment, setRedirectingPayment] = useState(false);
   const [shirtImages, setShirtImages] = useState<any>({});
 
   const [selectedDistance, setSelectedDistance] = useState<any>(null);
@@ -241,6 +242,7 @@ export default function RegistrationPage() {
     (eventData?.event.showHealthDeclaration && !watchHealthDeclaration);
   const isSubmitDisabled =
     submitting ||
+    redirectingPayment ||
     !selectedDistance ||
     hasMissingRequiredInfo ||
     (selectedDistance.requiresFinisherShirt &&
@@ -431,6 +433,7 @@ export default function RegistrationPage() {
       return;
     }
     setSubmitting(true);
+    let keepLoadingAfterSubmit = false;
 
     try {
       // ✅ Build submission data - only include enabled fields
@@ -507,6 +510,8 @@ export default function RegistrationPage() {
       // NEW: REDIRECT TO SEPAY PAYMENT PAGE
       // ============================================
       if (result.paymentUrl) {
+        keepLoadingAfterSubmit = true;
+        setRedirectingPayment(true);
         toast.success("Đang chuyển đến trang thanh toán...");
 
         // Show loading message
@@ -518,13 +523,18 @@ export default function RegistrationPage() {
         }, 1500);
       } else {
         // Fallback: redirect to payment page if no SePay URL
+        keepLoadingAfterSubmit = true;
+        setRedirectingPayment(true);
         toast.success("Đăng ký thành công!");
         router.push(`/registrations/${result.registration.id}/payment`);
       }
     } catch (error: any) {
       toast.error(error.message || "Đã có lỗi xảy ra");
+      setRedirectingPayment(false);
     } finally {
-      setSubmitting(false);
+      if (!keepLoadingAfterSubmit) {
+        setSubmitting(false);
+      }
     }
   };
 
@@ -1743,11 +1753,13 @@ export default function RegistrationPage() {
                 type="submit"
                 size="lg"
                 className="w-full mt-6"
-                isLoading={submitting}
+                isLoading={submitting || redirectingPayment}
                 disabled={isSubmitDisabled}
               >
-                {submitting ? (
-                  "Đang xử lý..."
+                {redirectingPayment ? (
+                  "Đang chuyển sang màn hình thanh toán..."
+                ) : submitting ? (
+                  "Đang tạo đăng ký..."
                 ) : !selectedDistance ? (
                   // ⚠️ TEXT MỚI khi chưa chọn cự ly
                   <>

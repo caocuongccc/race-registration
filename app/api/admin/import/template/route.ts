@@ -6,7 +6,7 @@ import { deflateRawSync, inflateRawSync } from "zlib";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
-const IMPORT_COLUMNS = [
+const BASE_IMPORT_COLUMNS = [
   "Email",
   "Họ tên",
   "Tên BIB",
@@ -17,6 +17,12 @@ const IMPORT_COLUMNS = [
   "Loại áo",
   "Kiểu áo",
   "Size áo",
+];
+
+const FINISHER_IMPORT_COLUMNS = [
+  "Loại áo finish",
+  "Kiểu áo finish",
+  "Size áo finish",
 ];
 
 const categoryLabel: Record<string, string> = {
@@ -255,10 +261,20 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: "Event not found" }, { status: 404 });
     }
 
+    const hasFinisherDistance = event.distances.some(
+      (distance) => distance.requiresFinisherShirt,
+    );
+    const importColumns = hasFinisherDistance
+      ? [...BASE_IMPORT_COLUMNS, ...FINISHER_IMPORT_COLUMNS]
+      : BASE_IMPORT_COLUMNS;
     const distances = event.distances.map((distance) => distance.name);
     const shirtCategories = Array.from(
       new Set(event.shirts.map((shirt) => categoryLabel[shirt.category])),
     ).filter(Boolean);
+    const racekitCategoryOptions =
+      event.hasShirt && !hasFinisherDistance
+        ? ["Không mua", ...shirtCategories]
+        : shirtCategories;
     const shirtTypes = Array.from(
       new Set(event.shirts.map((shirt) => typeLabel[shirt.type])),
     ).filter(Boolean);
@@ -266,8 +282,7 @@ export async function GET(req: NextRequest) {
       new Set(event.shirts.map((shirt) => shirt.size)),
     ).filter(Boolean);
 
-    const sampleData = [
-      {
+    const sampleRow: Record<string, string> = {
         Email: "runner@example.com",
         "Họ tên": "Nguyễn Văn A",
         "Tên BIB": "VAN A",
@@ -275,14 +290,21 @@ export async function GET(req: NextRequest) {
         "CCCD/CMND/Hộ chiếu": "001234567890",
         "Giới tính": "Nam",
         "Cự ly": distances[0] || "",
-        "Loại áo": shirtCategories[0] || "",
+        "Loại áo": racekitCategoryOptions[0] || "",
         "Kiểu áo": shirtTypes[0] || "",
         "Size áo": shirtSizes[0] || "",
-      },
-    ];
+    };
+
+    if (hasFinisherDistance) {
+      sampleRow["Loại áo finish"] = shirtCategories[0] || "";
+      sampleRow["Kiểu áo finish"] = shirtTypes[0] || "";
+      sampleRow["Size áo finish"] = shirtSizes[0] || "";
+    }
+
+    const sampleData = [sampleRow];
 
     const wb = XLSX.utils.book_new();
-    const ws = XLSX.utils.json_to_sheet(sampleData, { header: IMPORT_COLUMNS });
+    const ws = XLSX.utils.json_to_sheet(sampleData, { header: importColumns });
 
     ws["!cols"] = [
       { wch: 28 },
@@ -295,20 +317,28 @@ export async function GET(req: NextRequest) {
       { wch: 12 },
       { wch: 14 },
       { wch: 12 },
+      ...(hasFinisherDistance
+        ? [{ wch: 16 }, { wch: 16 }, { wch: 14 }]
+        : []),
     ];
 
 
     XLSX.utils.book_append_sheet(wb, ws, "Danh sách VĐV");
 
     const guide = [
-      { Cot: "Email", "Bat buoc": "CO", "Ghi chu": "Email hop le. Dung lam thong tin lien he chinh." },
+      { Cot: "Email", "Bat buoc": "KHONG", "Ghi chu": "Neu de trong, batch van tao BIB va danh dau thanh toan nhung khong gui email." },
       { Cot: "Ho ten", "Bat buoc": "CO", "Ghi chu": "Ho ten day du." },
       { Cot: "Ten BIB", "Bat buoc": "KHONG", "Ghi chu": "Neu de trong, he thong tu lay Ho ten." },
-      { Cot: "Ngay sinh", "Bat buoc": "CO", "Ghi chu": "Dinh dang dd/mm/yyyy, vi du 15/08/1990." },
+      { Cot: "Ngay sinh", "Bat buoc": "KHONG", "Ghi chu": "Co the de trong. Neu nhap thi dung dinh dang dd/mm/yyyy." },
       { Cot: "CCCD/CMND/Ho chieu", "Bat buoc": "KHONG", "Ghi chu": "Co the de trong." },
-      { Cot: "Gioi tinh", "Bat buoc": "CO", "Ghi chu": "Nhap Nam hoac Nu. Xem sheet Danh muc de tranh nhap sai." },
+      { Cot: "Gioi tinh", "Bat buoc": "KHONG", "Ghi chu": "Co the de trong. Neu nhap thi chon Nam hoac Nu." },
       { Cot: "Cu ly", "Bat buoc": "CO", "Ghi chu": "Nhap dung ten cu ly trong sheet Danh muc." },
-      { Cot: "Loai ao / Kieu ao / Size ao", "Bat buoc": "KHONG", "Ghi chu": "Neu chon ao, dien du ca 3 cot. Xem sheet Danh muc de chon dung du lieu cua event." },
+      { Cot: "Loai ao / Kieu ao / Size ao", "Bat buoc": "KHONG", "Ghi chu": hasFinisherDistance ? "Event co ao finish nen khong co lua chon Khong mua. Dien du 3 cot ao racekit." : "Neu khong mua ao, co the chon Khong mua o cot Loai ao hoac de trong ca 3 cot ao. Neu chon ao, dien du ca 3 cot." },
+      ...(hasFinisherDistance
+        ? [
+            { Cot: "Loai ao finish / Kieu ao finish / Size ao finish", "Bat buoc": "TUY CU LY", "Ghi chu": "Chi bat buoc khi dong do chon cu ly co ao finish." },
+          ]
+        : []),
     ];
     const guideSheet = XLSX.utils.json_to_sheet(guide);
     guideSheet["!cols"] = [{ wch: 28 }, { wch: 14 }, { wch: 72 }];
@@ -316,7 +346,7 @@ export async function GET(req: NextRequest) {
 
     const maxCatalogRows = Math.max(
       distances.length,
-      shirtCategories.length,
+      racekitCategoryOptions.length,
       shirtTypes.length,
       shirtSizes.length,
       1,
@@ -324,12 +354,28 @@ export async function GET(req: NextRequest) {
     const catalogRows = Array.from({ length: maxCatalogRows }, (_, index) => [
       index === 0 ? "Nam" : index === 1 ? "Nữ" : "",
       distances[index] || "",
-      shirtCategories[index] || "",
+      racekitCategoryOptions[index] || "",
       shirtTypes[index] || "",
       shirtSizes[index] || "",
+      ...(hasFinisherDistance
+        ? [
+            shirtCategories[index] || "",
+            shirtTypes[index] || "",
+            shirtSizes[index] || "",
+          ]
+        : []),
     ]);
     const catalogSheet = XLSX.utils.aoa_to_sheet([
-      ["Giới tính", "Cự ly", "Loại áo", "Kiểu áo", "Size áo"],
+      [
+        "Giới tính",
+        "Cự ly",
+        "Loại áo",
+        "Kiểu áo",
+        "Size áo",
+        ...(hasFinisherDistance
+          ? ["Loại áo finish", "Kiểu áo finish", "Size áo finish"]
+          : []),
+      ],
       ...catalogRows,
     ]);
     catalogSheet["!cols"] = [
@@ -338,6 +384,9 @@ export async function GET(req: NextRequest) {
       { wch: 14 },
       { wch: 16 },
       { wch: 12 },
+      ...(hasFinisherDistance
+        ? [{ wch: 16 }, { wch: 16 }, { wch: 14 }]
+        : []),
     ];
     XLSX.utils.book_append_sheet(wb, catalogSheet, "Danh mục");
 
@@ -345,9 +394,16 @@ export async function GET(req: NextRequest) {
     const buffer = patchXlsxDropdowns(rawBuffer, [
       { column: "F", formula: catalogRange("A", 2) },
       { column: "G", formula: catalogRange("B", distances.length) },
-      { column: "H", formula: catalogRange("C", shirtCategories.length) },
+      { column: "H", formula: catalogRange("C", racekitCategoryOptions.length) },
       { column: "I", formula: catalogRange("D", shirtTypes.length) },
       { column: "J", formula: catalogRange("E", shirtSizes.length) },
+      ...(hasFinisherDistance
+        ? [
+            { column: "K", formula: catalogRange("F", shirtCategories.length) },
+            { column: "L", formula: catalogRange("G", shirtTypes.length) },
+            { column: "M", formula: catalogRange("H", shirtSizes.length) },
+          ]
+        : []),
     ]);
 
     return new NextResponse(new Uint8Array(buffer), {
