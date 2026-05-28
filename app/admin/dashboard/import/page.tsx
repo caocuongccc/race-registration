@@ -34,6 +34,13 @@ interface ImportBatch {
   };
   bibRangeStart: string | null;
   bibRangeEnd: string | null;
+  bibRangesByDistance?: Array<{
+    distanceId: string;
+    distanceName: string;
+    count: number;
+    start: string | null;
+    end: string | null;
+  }>;
   totalShirts: number;
   // ✅ NEW: Payment stats
   paidCount?: number;
@@ -496,7 +503,25 @@ export default function ImportExcelPage() {
 
                         {/* BIB Range */}
                         <td className="px-6 py-4 text-sm">
-                          {batch.bibRangeStart && batch.bibRangeEnd ? (
+                          {batch.bibRangesByDistance?.length ? (
+                            <div className="space-y-2 text-xs">
+                              {batch.bibRangesByDistance.map((range) => (
+                                <div
+                                  key={range.distanceId}
+                                  className="rounded border border-gray-200 bg-gray-50 px-2 py-1"
+                                >
+                                  <div className="font-medium text-gray-700">
+                                    {range.distanceName} ({range.count})
+                                  </div>
+                                  <div className="font-mono text-gray-900">
+                                    {range.start === range.end
+                                      ? range.start
+                                      : `${range.start} - ${range.end}`}
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          ) : batch.bibRangeStart && batch.bibRangeEnd ? (
                             <div className="font-mono text-xs">
                               <div>{batch.bibRangeStart}</div>
                               <div className="text-gray-400">↓</div>

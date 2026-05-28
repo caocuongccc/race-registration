@@ -8,6 +8,12 @@ import { prisma } from "@/lib/prisma";
 import { generateBibNumberHybrid } from "@/lib/bib-generator";
 import { sendRegistrationConfirmationEmail } from "@/lib/email-individual-service";
 
+function sortBibNumbers(bibNumbers: string[]) {
+  return [...bibNumbers].sort((a, b) =>
+    a.localeCompare(b, "vi", { numeric: true, sensitivity: "base" }),
+  );
+}
+
 export async function POST(
   req: NextRequest,
   context: { params: Promise<{ batchId: string }> },
@@ -52,6 +58,14 @@ export async function POST(
     let emailFailedCount = 0;
     const errors: any[] = [];
     const bibNumbers: string[] = [];
+    const bibNumbersByDistance: Record<
+      string,
+      {
+        distanceName: string;
+        sortOrder: number;
+        bibNumbers: string[];
+      }
+    > = {};
 
     // ✅ Process each registration
     for (const registration of batch.registrations) {
@@ -78,6 +92,14 @@ export async function POST(
         });
 
         bibNumbers.push(bibNumber);
+        if (!bibNumbersByDistance[registration.distanceId]) {
+          bibNumbersByDistance[registration.distanceId] = {
+            distanceName: registration.distance.name,
+            sortOrder: registration.distance.sortOrder,
+            bibNumbers: [],
+          };
+        }
+        bibNumbersByDistance[registration.distanceId].bibNumbers.push(bibNumber);
         successCount++;
         console.log(`   ✅ Updated to PAID`);
 
@@ -123,10 +145,10 @@ export async function POST(
     }
 
     // ✅ Update batch with BIB range
+    const sortedBibNumbers = sortBibNumbers(bibNumbers);
     if (bibNumbers.length > 0) {
-      bibNumbers.sort();
-      const bibRangeStart = bibNumbers[0];
-      const bibRangeEnd = bibNumbers[bibNumbers.length - 1];
+      const bibRangeStart = sortedBibNumbers[0];
+      const bibRangeEnd = sortedBibNumbers[sortedBibNumbers.length - 1];
 
       await prisma.importBatch.update({
         where: { id: batch.id },
@@ -139,6 +161,22 @@ export async function POST(
       console.log(`\n📊 BIB range: ${bibRangeStart} - ${bibRangeEnd}`);
     }
 
+    const bibRangesByDistance = Object.entries(bibNumbersByDistance)
+      .map(([distanceId, item]) => {
+        const sortedDistanceBibNumbers = sortBibNumbers(item.bibNumbers);
+        return {
+          distanceId,
+          distanceName: item.distanceName,
+          sortOrder: item.sortOrder,
+          count: sortedDistanceBibNumbers.length,
+          start: sortedDistanceBibNumbers[0] || null,
+          end:
+            sortedDistanceBibNumbers[sortedDistanceBibNumbers.length - 1] ||
+            null,
+        };
+      })
+      .sort((a, b) => a.sortOrder - b.sortOrder);
+
     const summary = {
       totalRegistrations: batch.registrations.length,
       paidCount: successCount,
@@ -147,8 +185,11 @@ export async function POST(
       emailsFailed: emailFailedCount,
       bibRange:
         bibNumbers.length > 0
-          ? `${bibNumbers[0]} - ${bibNumbers[bibNumbers.length - 1]}`
+          ? `${sortedBibNumbers[0]} - ${
+              sortedBibNumbers[sortedBibNumbers.length - 1]
+            }`
           : null,
+      bibRangesByDistance,
     };
 
     console.log(`\n✅ Batch payment complete:`);

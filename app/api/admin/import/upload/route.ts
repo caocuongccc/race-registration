@@ -229,6 +229,7 @@ export async function POST(req: NextRequest) {
         const shirtSizeValue = getString(row, ["Size áo", "Size ao"]);
         const racekitShirtBlank =
           !shirtCategoryValue && !shirtTypeValue && !shirtSizeValue;
+
         const racekitShirtOptedOut =
           !isRacekitShirtIncluded &&
           (racekitShirtBlank || isNoShirtOption(shirtCategoryValue));

@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -99,32 +99,13 @@ export default function RegistrationsPage() {
   const [quickConfirmMode, setQuickConfirmMode] = useState(false);
   const [confirming, setConfirming] = useState<string | null>(null);
 
-  // ✅ OPTIMIZATION 4: Track if initial load to prevent double fetch
-  const initialLoadRef = useRef(true);
-
   // ✅ Load on mount and when filters change
   useEffect(() => {
     loadEvents();
   }, []);
 
-  useEffect(() => {
-    loadRegistrations();
-  }, [
-    selectedEvent,
-    statusFilter,
-    distanceFilter,
-    sourceFilter,
-    pagination.currentPage,
-  ]);
-
   // ✅ OPTIMIZATION 6: Load registrations when filters change OR debounced search changes
   useEffect(() => {
-    // Skip on initial mount (will be loaded by selectedEvent change)
-    if (initialLoadRef.current) {
-      initialLoadRef.current = false;
-      return;
-    }
-
     loadRegistrations();
   }, [
     selectedEvent,
@@ -140,7 +121,13 @@ export default function RegistrationsPage() {
     if (pagination.currentPage !== 1) {
       setPagination((prev) => ({ ...prev, currentPage: 1 }));
     }
-  }, [selectedEvent, statusFilter, distanceFilter, sourceFilter]);
+  }, [
+    selectedEvent,
+    statusFilter,
+    distanceFilter,
+    sourceFilter,
+    debouncedSearch,
+  ]);
 
   // Load event list
   const loadEvents = async () => {
@@ -369,13 +356,13 @@ export default function RegistrationsPage() {
         <div className="flex gap-3">
           {/* Quick confirm */}
           {selectedEvent !== "all" && selectedEventData && (
-              <Button
-                variant={quickConfirmMode ? "primary" : "outline"}
-                onClick={() => setQuickConfirmMode(!quickConfirmMode)}
-              >
-                {quickConfirmMode ? "Đang xác nhận nhanh" : "⚡ Xác nhận nhanh"}
-              </Button>
-            )}
+            <Button
+              variant={quickConfirmMode ? "primary" : "outline"}
+              onClick={() => setQuickConfirmMode(!quickConfirmMode)}
+            >
+              {quickConfirmMode ? "Đang xác nhận nhanh" : "⚡ Xác nhận nhanh"}
+            </Button>
+          )}
 
           <Button variant="outline" onClick={handleExport}>
             <Download className="w-4 h-4 mr-2" /> Xuất Excel
@@ -574,30 +561,30 @@ export default function RegistrationsPage() {
                               </Button>
 
                               {r.paymentStatus === "PENDING" && (
-                                  <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    onClick={() => handleConfirmPayment(r.id)}
-                                    disabled={confirming === r.id}
-                                    className="text-green-600 hover:bg-green-50"
-                                  >
-                                    {confirming === r.id ? (
-                                      <Loader2 className="w-4 h-4 animate-spin" />
-                                    ) : (
-                                      <Check className="w-4 h-4" />
-                                    )}
-                                  </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => handleConfirmPayment(r.id)}
+                                  disabled={confirming === r.id}
+                                  className="text-green-600 hover:bg-green-50"
+                                >
+                                  {confirming === r.id ? (
+                                    <Loader2 className="w-4 h-4 animate-spin" />
+                                  ) : (
+                                    <Check className="w-4 h-4" />
+                                  )}
+                                </Button>
                               )}
 
                               {r.paymentStatus === "PENDING" && (
-                                  <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    onClick={() => handleRejectPayment(r.id)}
-                                    className="text-red-600 hover:bg-red-50"
-                                  >
-                                    <X className="w-4 h-4" />
-                                  </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => handleRejectPayment(r.id)}
+                                  className="text-red-600 hover:bg-red-50"
+                                >
+                                  <X className="w-4 h-4" />
+                                </Button>
                               )}
                             </div>
                           </td>

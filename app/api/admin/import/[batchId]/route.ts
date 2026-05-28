@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { Prisma } from "@prisma/client";
 
 function countById(items: Array<{ id: string | null }>) {
   return items.reduce<Record<string, number>>((acc, item) => {
@@ -65,48 +66,37 @@ export async function DELETE(
       })),
     );
 
-    await prisma.$transaction(async (tx) => {
-      for (const [distanceId, count] of Object.entries(distanceCounts)) {
-        const distance = await tx.distance.findUnique({
-          where: { id: distanceId },
-          select: { currentParticipants: true },
-        });
-        if (!distance) continue;
+    const operations: Prisma.PrismaPromise<unknown>[] = [];
 
-        await tx.distance.update({
-          where: { id: distanceId },
-          data: {
-            currentParticipants: Math.max(
-              0,
-              distance.currentParticipants - count,
-            ),
-          },
-        });
-      }
+    for (const [distanceId, count] of Object.entries(distanceCounts)) {
+      operations.push(prisma.$executeRaw`
+        UPDATE "distances"
+        SET "currentParticipants" = GREATEST("currentParticipants" - ${count}, 0)
+        WHERE "id" = ${distanceId}
+      `);
+    }
 
-      for (const [shirtId, count] of Object.entries(shirtCounts)) {
-        const shirt = await tx.eventShirt.findUnique({
-          where: { id: shirtId },
-          select: { soldQuantity: true },
-        });
-        if (!shirt) continue;
+    for (const [shirtId, count] of Object.entries(shirtCounts)) {
+      operations.push(prisma.$executeRaw`
+        UPDATE "event_shirts"
+        SET "soldQuantity" = GREATEST("soldQuantity" - ${count}, 0)
+        WHERE "id" = ${shirtId}
+      `);
+    }
 
-        await tx.eventShirt.update({
-          where: { id: shirtId },
-          data: {
-            soldQuantity: Math.max(0, shirt.soldQuantity - count),
-          },
-        });
-      }
-
-      await tx.registration.deleteMany({
+    operations.push(
+      prisma.registration.deleteMany({
         where: { importBatchId: batch.id },
-      });
+      }),
+    );
 
-      await tx.importBatch.delete({
+    operations.push(
+      prisma.importBatch.delete({
         where: { id: batch.id },
-      });
-    });
+      }),
+    );
+
+    await prisma.$transaction(operations);
 
     return NextResponse.json({
       success: true,

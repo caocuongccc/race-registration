@@ -271,8 +271,6 @@ export async function getUserAccessibleRegistrations(
   // Get data
   const skip = (page - 1) * limit;
   const totalCount = await prisma.registration.count({ where: whereClause });
-  console.log("Total accessible registrations:", totalCount);
-  console.log("Where clause:", whereClause);
   const registrations = await prisma.registration.findMany({
     where: whereClause,
     include: {
@@ -301,7 +299,6 @@ export async function getUserAccessibleRegistrations(
     registrationNumber:
       registrationNumberById.get(registration.id) ?? null,
   }));
-  console.log("Fetched registrations:", registrationsWithNumber);
   const totalPages = Math.ceil(totalCount / limit);
 
   return {

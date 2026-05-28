@@ -89,6 +89,17 @@ export async function GET(
     // ✅ NEW: Determine if this is private access
     const isPrivateAccess = !event.isPublished;
 
+    console.log("[api/events] distances", {
+      slug,
+      eventId: event.id,
+      eventName: event.name,
+      distances: event.distances.map((distance) => ({
+        id: distance.id,
+        name: distance.name,
+        requiresFinisherShirt: distance.requiresFinisherShirt,
+      })),
+    });
+
     // Build response with all features
     const response = {
       event: {

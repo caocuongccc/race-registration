@@ -19,6 +19,19 @@ function getAgeGroup(dob: Date): string {
   return "60+";
 }
 
+function getRegistrationSourceLabel(source: string | null): string {
+  switch (source) {
+    case "ONLINE":
+      return "Dang ky online";
+    case "EXCEL":
+      return "Import Excel";
+    case "MANUAL":
+      return "Tao thu cong";
+    default:
+      return source || "Khong ro";
+  }
+}
+
 export async function GET(req: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
@@ -98,6 +111,89 @@ export async function GET(req: NextRequest) {
 
     const wsSummary = XLSX.utils.aoa_to_sheet(summaryData);
     XLSX.utils.book_append_sheet(wb, wsSummary, "Tổng quan");
+
+    // ===================================
+    // SHEET: MONEY REPORT
+    // ===================================
+    const reportRows = registrations.map((r, index) => ({
+      STT: index + 1,
+      "Ho ten": r.fullName,
+      "So BIB": r.bibNumber || "",
+      "Nguon tao": getRegistrationSourceLabel(r.registrationSource),
+      "So tien": r.totalAmount,
+    }));
+
+    const sourceStats = registrations.reduce<
+      Record<string, { count: number; amount: number }>
+    >((acc, registration) => {
+      const source = getRegistrationSourceLabel(registration.registrationSource);
+      if (!acc[source]) {
+        acc[source] = { count: 0, amount: 0 };
+      }
+
+      acc[source].count += 1;
+      acc[source].amount += registration.totalAmount || 0;
+      return acc;
+    }, {});
+
+    const distanceStats = registrations.reduce<
+      Record<string, { count: number; amount: number }>
+    >((acc, registration) => {
+      const distanceName = registration.distance?.name || "Khong ro";
+      if (!acc[distanceName]) {
+        acc[distanceName] = { count: 0, amount: 0 };
+      }
+
+      acc[distanceName].count += 1;
+      acc[distanceName].amount += registration.totalAmount || 0;
+      return acc;
+    }, {});
+
+    const totalAmount = registrations.reduce(
+      (sum, registration) => sum + (registration.totalAmount || 0),
+      0,
+    );
+
+    const moneyReportData = [
+      ["BAO CAO DOANH THU"],
+      ["Su kien", event.name],
+      ["Tong so luong", registrations.length],
+      ["Tong so tien", totalAmount],
+      [],
+      ["TONG HOP THEO NGUON TAO"],
+      ["Nguon tao", "So luong", "So tien"],
+      ...Object.entries(sourceStats).map(([source, stats]) => [
+        source,
+        stats.count,
+        stats.amount,
+      ]),
+      ["Tong cong", registrations.length, totalAmount],
+      [],
+      ["TONG HOP THEO CU LY"],
+      ["Cu ly", "So luong", "So tien"],
+      ...Object.entries(distanceStats).map(([distanceName, stats]) => [
+        distanceName,
+        stats.count,
+        stats.amount,
+      ]),
+      ["Tong cong", registrations.length, totalAmount],
+      [],
+      ["CHI TIET"],
+    ];
+
+    const wsMoneyReport = XLSX.utils.aoa_to_sheet(moneyReportData);
+    XLSX.utils.sheet_add_json(wsMoneyReport, reportRows, {
+      origin: -1,
+      skipHeader: false,
+    });
+    wsMoneyReport["!cols"] = [
+      { wch: 10 },
+      { wch: 32 },
+      { wch: 16 },
+      { wch: 18 },
+      { wch: 16 },
+    ];
+    XLSX.utils.book_append_sheet(wb, wsMoneyReport, "Bao cao doanh thu");
 
     // ===================================
     // SHEETS 2+: BY DISTANCE (Theo cự ly)

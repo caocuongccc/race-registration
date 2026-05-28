@@ -4,6 +4,12 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
+function sortBibNumbers(bibNumbers: string[]) {
+  return [...bibNumbers].sort((a, b) =>
+    a.localeCompare(b, "vi", { numeric: true, sensitivity: "base" }),
+  );
+}
+
 export async function GET(req: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
@@ -34,6 +40,14 @@ export async function GET(req: NextRequest) {
           select: {
             id: true,
             paymentStatus: true,
+            bibNumber: true,
+            distance: {
+              select: {
+                id: true,
+                name: true,
+                sortOrder: true,
+              },
+            },
           },
         },
       },
@@ -53,6 +67,52 @@ export async function GET(req: NextRequest) {
       ).length;
       const paymentProgress =
         batch.successCount > 0 ? (paidCount / batch.successCount) * 100 : 0;
+      const bibRangesByDistance = Object.values(
+        batch.registrations.reduce<
+          Record<
+            string,
+            {
+              distanceId: string;
+              distanceName: string;
+              sortOrder: number;
+              bibNumbers: string[];
+            }
+          >
+        >((acc, registration) => {
+          if (
+            registration.paymentStatus !== "PAID" ||
+            !registration.bibNumber ||
+            !registration.distance
+          ) {
+            return acc;
+          }
+
+          const distanceId = registration.distance.id;
+          if (!acc[distanceId]) {
+            acc[distanceId] = {
+              distanceId,
+              distanceName: registration.distance.name,
+              sortOrder: registration.distance.sortOrder,
+              bibNumbers: [],
+            };
+          }
+
+          acc[distanceId].bibNumbers.push(registration.bibNumber);
+          return acc;
+        }, {}),
+      )
+        .map((item) => {
+          const sortedBibNumbers = sortBibNumbers(item.bibNumbers);
+          return {
+            distanceId: item.distanceId,
+            distanceName: item.distanceName,
+            sortOrder: item.sortOrder,
+            count: sortedBibNumbers.length,
+            start: sortedBibNumbers[0] || null,
+            end: sortedBibNumbers[sortedBibNumbers.length - 1] || null,
+          };
+        })
+        .sort((a, b) => a.sortOrder - b.sortOrder);
 
       // Remove registrations from response to keep it clean
       const { registrations, ...batchData } = batch;
@@ -62,6 +122,7 @@ export async function GET(req: NextRequest) {
         paidCount,
         pendingCount,
         paymentProgress,
+        bibRangesByDistance,
       };
     });
 

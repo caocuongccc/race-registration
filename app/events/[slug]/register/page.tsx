@@ -100,6 +100,15 @@ const shirtTypeLabels: Record<string, string> = {
   TANK_TOP: "Singlet",
 };
 
+function requiresFinisherShirt(distance: any) {
+  return (
+    distance?.requiresFinisherShirt === true ||
+    distance?.requires_finisher_shirt === true ||
+    distance?.requiresFinisherShirt === "true" ||
+    distance?.requires_finisher_shirt === "true"
+  );
+}
+
 export default function RegistrationPage() {
   const params = useParams();
   const router = useRouter();
@@ -110,7 +119,6 @@ export default function RegistrationPage() {
   const [redirectingPayment, setRedirectingPayment] = useState(false);
   const [shirtImages, setShirtImages] = useState<any>({});
 
-  const [selectedDistance, setSelectedDistance] = useState<any>(null);
   const [selectedShirt, setSelectedShirt] = useState<any>(null);
   const [availableSizes, setAvailableSizes] = useState<any[]>([]);
   const [selectedShirtPrice, setSelectedShirtPrice] = useState(0);
@@ -148,6 +156,18 @@ export default function RegistrationPage() {
           return;
         }
 
+        console.log("[registration] event distances", {
+          eventId: data.event?.id,
+          eventName: data.event?.name,
+          distances: data.distances?.map((distance: any) => ({
+            id: distance.id,
+            name: distance.name,
+            requiresFinisherShirt: distance.requiresFinisherShirt,
+            requires_finisher_shirt: distance.requires_finisher_shirt,
+            helperResult: requiresFinisherShirt(distance),
+          })),
+        });
+
         setEventData(data);
         setShirtImages(data.shirtImages || {});
       } catch (error) {
@@ -163,6 +183,7 @@ export default function RegistrationPage() {
   const watchShirtCategory = watch("shirtCategory");
   const watchShirtType = watch("shirtType");
   const watchShirtSize = watch("shirtSize"); // NEW: Watch size selection
+  const watchDistanceId = watch("distanceId");
   const watchFullName = watch("fullName");
   const watchEmail = watch("email");
   const watchPhone = watch("phone");
@@ -175,8 +196,27 @@ export default function RegistrationPage() {
   const watchFinisherShirtCategory = watch("finisherShirtCategory");
   const watchFinisherShirtType = watch("finisherShirtType");
   const watchFinisherShirtSize = watch("finisherShirtSize");
+  const selectedDistance =
+    eventData?.distances?.find((distance) => distance.id === watchDistanceId) ||
+    null;
+  const selectedDistanceRequiresFinisherShirt =
+    requiresFinisherShirt(selectedDistance);
+
+  useEffect(() => {
+    if (!selectedDistance) return;
+
+    console.log("[registration] selected distance", {
+      id: selectedDistance.id,
+      name: selectedDistance.name,
+      requiresFinisherShirt: selectedDistance.requiresFinisherShirt,
+      requires_finisher_shirt: selectedDistance.requires_finisher_shirt,
+      helperResult: selectedDistanceRequiresFinisherShirt,
+      watchDistanceId,
+    });
+  }, [selectedDistance, selectedDistanceRequiresFinisherShirt, watchDistanceId]);
+
   const isRacekitShirtIncluded =
-    eventData?.distances?.some((distance) => distance.requiresFinisherShirt) ??
+    eventData?.distances?.some((distance) => requiresFinisherShirt(distance)) ??
     false;
   const shouldShowShirtStock = !isRacekitShirtIncluded;
   const racekitShirtCategories = Array.from(
@@ -221,13 +261,13 @@ export default function RegistrationPage() {
     !racekitShirtOptedOut &&
     !watchShirtSize;
   const needsFinisherCategory =
-    selectedDistance?.requiresFinisherShirt && !watchFinisherShirtCategory;
+    selectedDistanceRequiresFinisherShirt && !watchFinisherShirtCategory;
   const needsFinisherType =
-    selectedDistance?.requiresFinisherShirt &&
+    selectedDistanceRequiresFinisherShirt &&
     watchFinisherShirtCategory &&
     !watchFinisherShirtType;
   const needsFinisherSize =
-    selectedDistance?.requiresFinisherShirt &&
+    selectedDistanceRequiresFinisherShirt &&
     watchFinisherShirtType &&
     !watchFinisherShirtSize;
   const hasMissingRequiredInfo =
@@ -245,7 +285,7 @@ export default function RegistrationPage() {
     redirectingPayment ||
     !selectedDistance ||
     hasMissingRequiredInfo ||
-    (selectedDistance.requiresFinisherShirt &&
+    (selectedDistanceRequiresFinisherShirt &&
       (!watchFinisherShirtCategory ||
         !watchFinisherShirtType ||
         !watchFinisherShirtSize)) ||
@@ -408,7 +448,7 @@ export default function RegistrationPage() {
     }
 
     if (
-      selectedDistance.requiresFinisherShirt &&
+      selectedDistanceRequiresFinisherShirt &&
       (!data.finisherShirtCategory ||
         !data.finisherShirtType ||
         !data.finisherShirtSize)
@@ -478,7 +518,7 @@ export default function RegistrationPage() {
         submissionData.healthDeclaration = data.healthDeclaration;
       }
 
-      if (selectedDistance.requiresFinisherShirt) {
+      if (selectedDistanceRequiresFinisherShirt) {
         submissionData.finisherShirtCategory = data.finisherShirtCategory;
         submissionData.finisherShirtType = data.finisherShirtType;
         submissionData.finisherShirtSize = data.finisherShirtSize;
@@ -671,11 +711,18 @@ export default function RegistrationPage() {
                         required: "Vui lòng chọn cự ly",
                       })}
                       onChange={() => {
-                        setSelectedDistance(distance);
                         setValue("distanceId", distance.id);
                         setValue("finisherShirtCategory", "");
                         setValue("finisherShirtType", "");
                         setValue("finisherShirtSize", "");
+                        console.log("[registration] distance clicked", {
+                          id: distance.id,
+                          name: distance.name,
+                          requiresFinisherShirt: distance.requiresFinisherShirt,
+                          requires_finisher_shirt:
+                            distance.requires_finisher_shirt,
+                          helperResult: requiresFinisherShirt(distance),
+                        });
                       }}
                       className="sr-only"
                     />
@@ -703,6 +750,11 @@ export default function RegistrationPage() {
                     <div className="text-2xl font-bold text-blue-600 mt-2">
                       {formatCurrency(distance.price)}
                     </div>
+                    {requiresFinisherShirt(distance) && (
+                      <div className="mt-3 inline-flex items-center rounded-full bg-blue-50 px-3 py-1 text-xs font-medium text-blue-700 border border-blue-200">
+                        Kèm áo finish
+                      </div>
+                    )}
                     {!distance.isAvailable && (
                       <div className="absolute top-2 right-2 bg-red-500 text-white text-xs px-2 py-1 rounded">
                         Hết chỗ
@@ -1459,7 +1511,7 @@ export default function RegistrationPage() {
             </Card>
           )}
 
-          {selectedDistance?.requiresFinisherShirt && (
+          {selectedDistanceRequiresFinisherShirt && (
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
@@ -1665,7 +1717,7 @@ export default function RegistrationPage() {
                 )}
 
                 {/* ✅ CODE MỚI - ĐÚNG: Check cả watchShirtSize */}
-                {selectedDistance?.requiresFinisherShirt &&
+                {selectedDistanceRequiresFinisherShirt &&
                   watchFinisherShirtCategory &&
                   watchFinisherShirtType &&
                   watchFinisherShirtSize && (
@@ -1804,7 +1856,7 @@ export default function RegistrationPage() {
                   </div>
                 )}
 
-              {selectedDistance?.requiresFinisherShirt &&
+              {selectedDistanceRequiresFinisherShirt &&
                 (!watchFinisherShirtCategory ||
                   !watchFinisherShirtType ||
                   !watchFinisherShirtSize) && (
