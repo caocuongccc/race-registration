@@ -156,18 +156,6 @@ export default function RegistrationPage() {
           return;
         }
 
-        console.log("[registration] event distances", {
-          eventId: data.event?.id,
-          eventName: data.event?.name,
-          distances: data.distances?.map((distance: any) => ({
-            id: distance.id,
-            name: distance.name,
-            requiresFinisherShirt: distance.requiresFinisherShirt,
-            requires_finisher_shirt: distance.requires_finisher_shirt,
-            helperResult: requiresFinisherShirt(distance),
-          })),
-        });
-
         setEventData(data);
         setShirtImages(data.shirtImages || {});
       } catch (error) {
@@ -201,19 +189,6 @@ export default function RegistrationPage() {
     null;
   const selectedDistanceRequiresFinisherShirt =
     requiresFinisherShirt(selectedDistance);
-
-  useEffect(() => {
-    if (!selectedDistance) return;
-
-    console.log("[registration] selected distance", {
-      id: selectedDistance.id,
-      name: selectedDistance.name,
-      requiresFinisherShirt: selectedDistance.requiresFinisherShirt,
-      requires_finisher_shirt: selectedDistance.requires_finisher_shirt,
-      helperResult: selectedDistanceRequiresFinisherShirt,
-      watchDistanceId,
-    });
-  }, [selectedDistance, selectedDistanceRequiresFinisherShirt, watchDistanceId]);
 
   const isRacekitShirtIncluded =
     eventData?.distances?.some((distance) => requiresFinisherShirt(distance)) ??
@@ -715,14 +690,6 @@ export default function RegistrationPage() {
                         setValue("finisherShirtCategory", "");
                         setValue("finisherShirtType", "");
                         setValue("finisherShirtSize", "");
-                        console.log("[registration] distance clicked", {
-                          id: distance.id,
-                          name: distance.name,
-                          requiresFinisherShirt: distance.requiresFinisherShirt,
-                          requires_finisher_shirt:
-                            distance.requires_finisher_shirt,
-                          helperResult: requiresFinisherShirt(distance),
-                        });
                       }}
                       className="sr-only"
                     />
