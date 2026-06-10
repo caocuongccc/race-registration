@@ -138,7 +138,9 @@ export async function POST(req: NextRequest) {
       (d) => d.requiresFinisherShirt,
     );
     const racekitShirtOptedOut =
-      !isRacekitShirtIncluded && shirtCategory === "NONE";
+      !event.requiresShirtPurchase &&
+      !isRacekitShirtIncluded &&
+      shirtCategory === "NONE";
 
     // Calculate fees
     const raceFee = distance.price;

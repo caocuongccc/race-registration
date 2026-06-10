@@ -10,7 +10,7 @@ async function main() {
   // ============================================
   // 1. CREATE ADMIN & ORGANIZER USERS
   // ============================================
-  const hashedPassword = await hash("Admin@123", 12);
+  const hashedPassword = await hash("", 12);
 
   const admin = await prisma.user.upsert({
     where: { email: "admin@giaichay.com" },
@@ -24,7 +24,7 @@ async function main() {
   });
 
   console.log("✅ Admin user update:", admin.email);
-  const hashedPassword1 = await hash("NguyenBaHai@123", 12);
+  const hashedPassword1 = await hash("", 12);
   const organizer = await prisma.user.upsert({
     where: { email: "organizer@giaichay.com" },
     update: { password: hashedPassword1 },

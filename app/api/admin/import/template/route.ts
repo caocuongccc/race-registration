@@ -272,7 +272,7 @@ export async function GET(req: NextRequest) {
       new Set(event.shirts.map((shirt) => categoryLabel[shirt.category])),
     ).filter(Boolean);
     const racekitCategoryOptions =
-      event.hasShirt && !hasFinisherDistance
+      event.hasShirt && !hasFinisherDistance && !event.requiresShirtPurchase
         ? ["Không mua", ...shirtCategories]
         : shirtCategories;
     const shirtTypes = Array.from(
@@ -333,7 +333,7 @@ export async function GET(req: NextRequest) {
       { Cot: "CCCD/CMND/Ho chieu", "Bat buoc": "KHONG", "Ghi chu": "Co the de trong." },
       { Cot: "Gioi tinh", "Bat buoc": "KHONG", "Ghi chu": "Co the de trong. Neu nhap thi chon Nam hoac Nu." },
       { Cot: "Cu ly", "Bat buoc": "CO", "Ghi chu": "Nhap dung ten cu ly trong sheet Danh muc." },
-      { Cot: "Loai ao / Kieu ao / Size ao", "Bat buoc": "KHONG", "Ghi chu": hasFinisherDistance ? "Event co ao finish nen khong co lua chon Khong mua. Dien du 3 cot ao racekit." : "Neu khong mua ao, co the chon Khong mua o cot Loai ao hoac de trong ca 3 cot ao. Neu chon ao, dien du ca 3 cot." },
+      { Cot: "Loai ao / Kieu ao / Size ao", "Bat buoc": event.requiresShirtPurchase ? "CO" : "KHONG", "Ghi chu": event.requiresShirtPurchase ? "Event bat buoc mua ao. Dien du 3 cot Loai ao, Kieu ao va Size ao." : hasFinisherDistance ? "Event co ao finish nen khong co lua chon Khong mua. Dien du 3 cot ao racekit." : "Neu khong mua ao, co the chon Khong mua o cot Loai ao hoac de trong ca 3 cot ao. Neu chon ao, dien du ca 3 cot." },
       ...(hasFinisherDistance
         ? [
             { Cot: "Loai ao finish / Kieu ao finish / Size ao finish", "Bat buoc": "TUY CU LY", "Ghi chu": "Chi bat buoc khi dong do chon cu ly co ao finish." },

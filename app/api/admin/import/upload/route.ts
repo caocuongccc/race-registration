@@ -231,6 +231,7 @@ export async function POST(req: NextRequest) {
           !shirtCategoryValue && !shirtTypeValue && !shirtSizeValue;
 
         const racekitShirtOptedOut =
+          !event.requiresShirtPurchase &&
           !isRacekitShirtIncluded &&
           (racekitShirtBlank || isNoShirtOption(shirtCategoryValue));
 
@@ -272,9 +273,12 @@ export async function POST(req: NextRequest) {
 
           shirtId = shirt.id;
           shirtFee = isRacekitShirtIncluded ? 0 : shirt.price;
-        } else if (event.hasShirt && isRacekitShirtIncluded) {
+        } else if (
+          event.hasShirt &&
+          (isRacekitShirtIncluded || event.requiresShirtPurchase)
+        ) {
           throw new Error(
-            "Event có áo finish nên phải điền đủ Loại áo, Kiểu áo và Size áo racekit",
+            "Event bắt buộc chọn áo nên phải điền đủ Loại áo, Kiểu áo và Size áo",
           );
         } else if (shirtCategoryValue || shirtTypeValue || shirtSizeValue) {
           throw new Error(

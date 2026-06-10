@@ -43,6 +43,7 @@ interface EventData {
     location: string;
     allowRegistration: boolean;
     hasShirt: boolean;
+    requiresShirtPurchase: boolean;
     bankName?: string;
     bankAccount?: string;
     bankHolder?: string;
@@ -223,7 +224,10 @@ export default function RegistrationPage() {
       )
       ?.sizes?.map((size: any) => size.size) || [];
 
-  const racekitShirtOptedOut = watchShirtCategory === "NONE";
+  const requiresShirtPurchase =
+    eventData?.event.requiresShirtPurchase === true;
+  const racekitShirtOptedOut =
+    !requiresShirtPurchase && watchShirtCategory === "NONE";
   const needsRacekitCategory = eventData?.event.hasShirt && !watchShirtCategory;
   const needsRacekitType =
     eventData?.event.hasShirt &&
@@ -432,9 +436,19 @@ export default function RegistrationPage() {
       return;
     }
 
-    const racekitOptedOut = data.shirtCategory === "NONE";
+    const racekitOptedOut =
+      !requiresShirtPurchase && data.shirtCategory === "NONE";
     if (eventData?.event.hasShirt && !data.shirtCategory) {
       toast.error("Vui lòng chọn loại áo racekit");
+      return;
+    }
+
+    if (
+      eventData?.event.hasShirt &&
+      requiresShirtPurchase &&
+      data.shirtCategory === "NONE"
+    ) {
+      toast.error("Sự kiện này bắt buộc chọn áo");
       return;
     }
 
@@ -1063,7 +1077,7 @@ export default function RegistrationPage() {
                     Loại áo
                   </label>
                   <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                    {!isRacekitShirtIncluded && (
+                    {!isRacekitShirtIncluded && !requiresShirtPurchase && (
                       <label className="relative">
                         <input
                           type="radio"

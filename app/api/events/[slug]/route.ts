@@ -101,6 +101,7 @@ export async function GET(
         logoUrl: event.logoUrl,
         bannerUrl: event.bannerUrl,
         hasShirt: event.hasShirt,
+        requiresShirtPurchase: event.requiresShirtPurchase,
         requireOnlinePayment: event.requireOnlinePayment,
         allowRegistration: event.allowRegistration,
 
