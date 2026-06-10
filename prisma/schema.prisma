@@ -66,6 +66,10 @@ model Event {
   showEmergencyContact  Boolean @default(true) @map("show_emergency_contact")
   showHealthDeclaration Boolean @default(true) @map("show_health_declaration")
   showBibName           Boolean @default(true) @map("show_bib_name")
+  requireWaiver         Boolean @default(false) @map("require_waiver")
+  waiverTitle           String? @map("waiver_title")
+  waiverContent         String? @db.Text @map("waiver_content")
+  waiverVersion         String? @map("waiver_version")
 
   createdById   String
   createdAt     DateTime       @default(now())
@@ -201,6 +205,9 @@ model Registration {
   emergencyContactName  String?
   emergencyContactPhone String?
   healthDeclaration     Boolean             @default(false)
+  waiverAccepted        Boolean             @default(false) @map("waiver_accepted")
+  waiverAcceptedAt      DateTime?           @map("waiver_accepted_at")
+  waiverVersion         String?             @map("waiver_version")
   bloodType             String?
   shirtCategory         ShirtCategory?
   shirtType             ShirtType?

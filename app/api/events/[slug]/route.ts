@@ -113,6 +113,10 @@ export async function GET(
         showEmergencyContact: event.showEmergencyContact,
         showHealthDeclaration: event.showHealthDeclaration,
         showBibName: event.showBibName,
+        requireWaiver: event.requireWaiver,
+        waiverTitle: event.waiverTitle,
+        waiverContent: event.waiverContent,
+        waiverVersion: event.waiverVersion,
 
         // ✅ Bank configuration: decrypt if encrypted, otherwise use plaintext fallback
         ...(() => {

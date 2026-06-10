@@ -32,6 +32,18 @@ interface BankOption {
   bin: string;
 }
 
+const DEFAULT_WAIVER_CONTENT = `Tôi xác nhận đã đọc, hiểu và tự nguyện đăng ký tham gia sự kiện.
+
+Tôi cam kết đủ điều kiện sức khỏe để tham gia cự ly đã đăng ký và tự chịu trách nhiệm về tình trạng sức khỏe cá nhân trước, trong và sau sự kiện.
+
+Tôi hiểu rằng các hoạt động thể thao ngoài trời có thể phát sinh rủi ro như chấn thương, tai nạn, chuột rút, kiệt sức, thay đổi thời tiết, điều kiện đường đua hoặc các tình huống ngoài kiểm soát hợp lý của Ban Tổ Chức.
+
+Tôi cam kết tuân thủ điều lệ, hướng dẫn an toàn, chỉ dẫn của Ban Tổ Chức, lực lượng y tế, cứu hộ và điều phối viên trong suốt thời gian tham gia. Tôi đồng ý dừng thi đấu khi được Ban Tổ Chức hoặc bộ phận y tế yêu cầu vì lý do an toàn.
+
+Tôi đồng ý miễn trừ trách nhiệm cho Ban Tổ Chức, nhà tài trợ, đối tác, tình nguyện viên và các đơn vị liên quan đối với các rủi ro phát sinh từ việc tôi tự nguyện tham gia, trừ trường hợp do lỗi cố ý hoặc vi phạm pháp luật của các bên liên quan.
+
+Tôi đồng ý cho Ban Tổ Chức sử dụng hình ảnh, video, tên và thông tin thành tích của tôi cho mục đích truyền thông sự kiện.`;
+
 export default function EditEventPage() {
   const params = useParams();
   const [id, setId] = useState<string | null>(null);
@@ -61,6 +73,11 @@ export default function EditEventPage() {
     status: "DRAFT",
     isPublished: false,
     hasShirt: false,
+    requiresShirtPurchase: false,
+    requireWaiver: false,
+    waiverTitle: "",
+    waiverContent: "",
+    waiverVersion: "",
     requireOnlinePayment: true,
     sendBibImmediately: true, // NEW
     allowRegistration: false, // NEW
@@ -352,6 +369,25 @@ export default function EditEventPage() {
                     </span>
                   </label>
 
+                  {formData.hasShirt && (
+                    <label className="flex items-center gap-2">
+                      <input
+                        type="checkbox"
+                        checked={formData.requiresShirtPurchase}
+                        onChange={(e) =>
+                          setFormData({
+                            ...formData,
+                            requiresShirtPurchase: e.target.checked,
+                          })
+                        }
+                        className="h-4 w-4 text-blue-600 rounded border-gray-300"
+                      />
+                      <span className="text-sm font-medium text-gray-700">
+                        Bắt buộc chọn/mua áo khi đăng ký
+                      </span>
+                    </label>
+                  )}
+
                   <label className="flex items-center gap-2">
                     <input
                       type="checkbox"
@@ -368,6 +404,77 @@ export default function EditEventPage() {
                       Công khai sự kiện
                     </span>
                   </label>
+                </div>
+
+                <div className="border-t pt-4 space-y-3">
+                  <label className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      checked={formData.requireWaiver}
+                      onChange={(e) =>
+                        setFormData({
+                          ...formData,
+                          requireWaiver: e.target.checked,
+                          waiverTitle:
+                            formData.waiverTitle ||
+                            "Miễn trừ trách nhiệm và điều khoản tham gia",
+                          waiverContent:
+                            formData.waiverContent || DEFAULT_WAIVER_CONTENT,
+                          waiverVersion: formData.waiverVersion || "v1",
+                        })
+                      }
+                      className="h-4 w-4 text-blue-600 rounded border-gray-300"
+                    />
+                    <span className="text-sm font-medium text-gray-700">
+                      Yêu cầu xác nhận miễn trừ trách nhiệm
+                    </span>
+                  </label>
+
+                  {formData.requireWaiver && (
+                    <div className="space-y-3">
+                      <div className="grid grid-cols-2 gap-4">
+                        <Input
+                          label="Tiêu đề miễn trừ"
+                          value={formData.waiverTitle || ""}
+                          onChange={(e) =>
+                            setFormData({
+                              ...formData,
+                              waiverTitle: e.target.value,
+                            })
+                          }
+                        />
+                        <Input
+                          label="Phiên bản"
+                          value={formData.waiverVersion || ""}
+                          onChange={(e) =>
+                            setFormData({
+                              ...formData,
+                              waiverVersion: e.target.value,
+                            })
+                          }
+                          placeholder="VD: htc-2026-v1"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Nội dung miễn trừ trách nhiệm
+                        </label>
+                        <textarea
+                          value={formData.waiverContent || ""}
+                          onChange={(e) =>
+                            setFormData({
+                              ...formData,
+                              waiverContent: e.target.value,
+                            })
+                          }
+                          rows={10}
+                          className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                          placeholder="Nhập nội dung miễn trừ trách nhiệm/điều khoản tham gia..."
+                        />
+                      </div>
+                    </div>
+                  )}
                 </div>
               </CardContent>
             </Card>

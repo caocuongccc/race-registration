@@ -31,6 +31,7 @@ export async function POST(req: NextRequest) {
       emergencyContactName,
       emergencyContactPhone,
       healthDeclaration,
+      waiverAccepted,
       bloodType,
       shirtCategory,
       shirtType,
@@ -81,6 +82,13 @@ export async function POST(req: NextRequest) {
       return NextResponse.json(
         { error: "Sự kiện này đã đóng đăng ký hoặc chưa mở đăng ký" },
         { status: 403 },
+      );
+    }
+
+    if (event.requireWaiver && !waiverAccepted) {
+      return NextResponse.json(
+        { error: "Vui lòng xác nhận miễn trừ trách nhiệm" },
+        { status: 400 },
       );
     }
 
@@ -202,6 +210,11 @@ export async function POST(req: NextRequest) {
         emergencyContactPhone: body.emergencyContactPhone || null,
 
         healthDeclaration: body.healthDeclaration || false,
+        waiverAccepted: event.requireWaiver ? true : false,
+        waiverAcceptedAt: event.requireWaiver ? new Date() : null,
+        waiverVersion: event.requireWaiver
+          ? event.waiverVersion || "default"
+          : null,
         bloodType: body.bloodType || null,
 
         shirtCategory: racekitShirtOptedOut ? null : body.shirtCategory || null,

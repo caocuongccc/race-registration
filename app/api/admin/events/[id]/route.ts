@@ -185,9 +185,14 @@ export async function PUT(
         status: body.status,
         isPublished: body.isPublished,
         hasShirt: body.hasShirt,
+        requiresShirtPurchase: body.requiresShirtPurchase,
         requireOnlinePayment: body.requireOnlinePayment,
         sendBibImmediately: body.sendBibImmediately,
         allowRegistration: body.allowRegistration,
+        requireWaiver: body.requireWaiver,
+        waiverTitle: body.waiverTitle,
+        waiverContent: body.waiverContent,
+        waiverVersion: body.waiverVersion,
 
         // Bank info (encrypted)
         ...bankData,

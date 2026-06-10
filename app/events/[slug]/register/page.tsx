@@ -57,6 +57,10 @@ interface EventData {
     showEmergencyContact: boolean;
     showHealthDeclaration: boolean;
     showBibName: boolean;
+    requireWaiver: boolean;
+    waiverTitle?: string | null;
+    waiverContent?: string | null;
+    waiverVersion?: string | null;
     bibNameNote?: string;
     _privateAccess?: boolean; // NEW: Flag for private access
   };
@@ -80,6 +84,7 @@ interface FormData {
   emergencyContactName: string;
   emergencyContactPhone: string;
   healthDeclaration: boolean;
+  waiverAccepted: boolean;
   bloodType: string;
   shirtId: string;
   shirtCategory: string;
@@ -182,6 +187,7 @@ export default function RegistrationPage() {
   const watchEmergencyContactName = watch("emergencyContactName");
   const watchEmergencyContactPhone = watch("emergencyContactPhone");
   const watchHealthDeclaration = watch("healthDeclaration");
+  const watchWaiverAccepted = watch("waiverAccepted");
   const watchFinisherShirtCategory = watch("finisherShirtCategory");
   const watchFinisherShirtType = watch("finisherShirtType");
   const watchFinisherShirtSize = watch("finisherShirtSize");
@@ -258,7 +264,8 @@ export default function RegistrationPage() {
     (eventData?.event.showIdCard && !watchIdCard) ||
     (eventData?.event.showEmergencyContact &&
       (!watchEmergencyContactName || !watchEmergencyContactPhone)) ||
-    (eventData?.event.showHealthDeclaration && !watchHealthDeclaration);
+    (eventData?.event.showHealthDeclaration && !watchHealthDeclaration) ||
+    (eventData?.event.requireWaiver && !watchWaiverAccepted);
   const isSubmitDisabled =
     submitting ||
     redirectingPayment ||
@@ -418,6 +425,11 @@ export default function RegistrationPage() {
       return;
     }
 
+    if (eventData?.event.requireWaiver && !data.waiverAccepted) {
+      toast.error("Vui lòng xác nhận miễn trừ trách nhiệm");
+      return;
+    }
+
     if (
       eventData?.event.showEmergencyContact &&
       (!data.emergencyContactName || !data.emergencyContactPhone)
@@ -505,6 +517,10 @@ export default function RegistrationPage() {
 
       if (eventData?.event.showHealthDeclaration) {
         submissionData.healthDeclaration = data.healthDeclaration;
+      }
+
+      if (eventData?.event.requireWaiver) {
+        submissionData.waiverAccepted = data.waiverAccepted;
       }
 
       if (selectedDistanceRequiresFinisherShirt) {
@@ -1019,6 +1035,50 @@ export default function RegistrationPage() {
                           </div>
                         </label>
                       </div>
+                    </CardContent>
+                  </Card>
+                )}
+                {eventData?.event.requireWaiver && (
+                  <Card className="mt-4 border-amber-200">
+                    <CardHeader>
+                      <CardTitle>
+                        {eventData.event.waiverTitle ||
+                          "Miễn trừ trách nhiệm và điều khoản tham gia"}
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      <div className="max-h-56 overflow-y-auto rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm leading-6 text-gray-800 whitespace-pre-line">
+                        {eventData.event.waiverContent ||
+                          `Tôi xác nhận đã đọc, hiểu và tự nguyện đăng ký tham gia sự kiện.
+
+Tôi cam kết đủ điều kiện sức khỏe để tham gia, tự chịu trách nhiệm về tình trạng sức khỏe cá nhân trước, trong và sau sự kiện.
+
+Tôi hiểu rằng hoạt động thể thao có thể phát sinh rủi ro như chấn thương, tai nạn, thay đổi thời tiết, điều kiện đường đua hoặc các tình huống ngoài kiểm soát hợp lý của Ban Tổ Chức.
+
+Tôi cam kết tuân thủ điều lệ, hướng dẫn an toàn, chỉ dẫn của Ban Tổ Chức và lực lượng điều phối trong suốt thời gian tham gia.
+
+Tôi đồng ý miễn trừ trách nhiệm cho Ban Tổ Chức, nhà tài trợ, đối tác và các đơn vị liên quan đối với các rủi ro phát sinh từ việc tôi tự nguyện tham gia, trừ trường hợp do lỗi cố ý hoặc vi phạm pháp luật của các bên liên quan.
+
+Tôi đồng ý cho Ban Tổ Chức sử dụng hình ảnh, video, tên và thông tin thành tích của tôi cho mục đích truyền thông sự kiện.`}
+                      </div>
+
+                      <label className="flex items-start gap-3 rounded-lg border border-amber-300 bg-white p-4 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          {...register("waiverAccepted", {
+                            required: eventData.event.requireWaiver,
+                          })}
+                          className="mt-1 h-4 w-4 text-amber-600 rounded border-gray-300 focus:ring-amber-500"
+                        />
+                        <span className="text-sm text-gray-800">
+                          Tôi đã đọc, hiểu và đồng ý với nội dung miễn trừ trách
+                          nhiệm/điều khoản tham gia
+                          {eventData.event.waiverVersion
+                            ? ` (${eventData.event.waiverVersion})`
+                            : ""}
+                          . <span className="text-red-500">*</span>
+                        </span>
+                      </label>
                     </CardContent>
                   </Card>
                 )}
