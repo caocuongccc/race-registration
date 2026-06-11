@@ -55,7 +55,6 @@ interface EventData {
     showCity: boolean;
     showBloodType: boolean;
     showEmergencyContact: boolean;
-    showHealthDeclaration: boolean;
     showBibName: boolean;
     requireWaiver: boolean;
     waiverTitle?: string | null;
@@ -83,7 +82,6 @@ interface FormData {
   city: string;
   emergencyContactName: string;
   emergencyContactPhone: string;
-  healthDeclaration: boolean;
   waiverAccepted: boolean;
   bloodType: string;
   shirtId: string;
@@ -186,7 +184,6 @@ export default function RegistrationPage() {
   const watchIdCard = watch("idCard");
   const watchEmergencyContactName = watch("emergencyContactName");
   const watchEmergencyContactPhone = watch("emergencyContactPhone");
-  const watchHealthDeclaration = watch("healthDeclaration");
   const watchWaiverAccepted = watch("waiverAccepted");
   const watchFinisherShirtCategory = watch("finisherShirtCategory");
   const watchFinisherShirtType = watch("finisherShirtType");
@@ -264,7 +261,6 @@ export default function RegistrationPage() {
     (eventData?.event.showIdCard && !watchIdCard) ||
     (eventData?.event.showEmergencyContact &&
       (!watchEmergencyContactName || !watchEmergencyContactPhone)) ||
-    (eventData?.event.showHealthDeclaration && !watchHealthDeclaration) ||
     (eventData?.event.requireWaiver && !watchWaiverAccepted);
   const isSubmitDisabled =
     submitting ||
@@ -420,11 +416,6 @@ export default function RegistrationPage() {
       return;
     }
 
-    if (eventData?.event.showHealthDeclaration && !data.healthDeclaration) {
-      toast.error("Vui lòng xác nhận cam kết sức khỏe");
-      return;
-    }
-
     if (eventData?.event.requireWaiver && !data.waiverAccepted) {
       toast.error("Vui lòng xác nhận miễn trừ trách nhiệm");
       return;
@@ -513,10 +504,6 @@ export default function RegistrationPage() {
       if (eventData?.event.showEmergencyContact) {
         submissionData.emergencyContactName = data.emergencyContactName;
         submissionData.emergencyContactPhone = data.emergencyContactPhone;
-      }
-
-      if (eventData?.event.showHealthDeclaration) {
-        submissionData.healthDeclaration = data.healthDeclaration;
       }
 
       if (eventData?.event.requireWaiver) {
@@ -984,60 +971,8 @@ export default function RegistrationPage() {
                 </div>
               )}
 
-              {/* Health Declaration */}
+              {/* Waiver */}
               <div className="border-t pt-4 mt-4">
-                {/* <label className="flex items-start gap-3">
-                  <input
-                    type="checkbox"
-                    {...register("healthDeclaration", {
-                      required: "Vui lòng xác nhận tình trạng sức khỏe",
-                    })}
-                    className="mt-1 h-4 w-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
-                  />
-                  <span className="text-sm text-gray-700">
-                    Tôi cam đoan sức khỏe tốt, không có bệnh lý tim mạch, huyết
-                    áp hoặc bất kỳ vấn đề sức khỏe nào có thể ảnh hưởng đến việc
-                    tham gia giải chạy. <span className="text-red-500">*</span>
-                  </span>
-                </label>
-                {errors.healthDeclaration && (
-                  <p className="mt-1 text-sm text-red-600">
-                    {errors.healthDeclaration.message}
-                  </p>
-                )} */}
-                {eventData?.event.showHealthDeclaration && (
-                  <Card>
-                    <CardHeader>
-                      <CardTitle>Cam kết sức khỏe</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                        <label className="flex items-start gap-3 cursor-pointer">
-                          <input
-                            type="checkbox"
-                            {...register("healthDeclaration", {
-                              required: eventData.event.showHealthDeclaration,
-                            })}
-                            className="mt-1"
-                          />
-                          <div className="flex-1">
-                            <p className="text-sm font-medium text-gray-900">
-                              Tôi cam kết rằng{" "}
-                              <span className="text-red-500">*</span>
-                            </p>
-                            <p className="text-xs text-gray-600 mt-1">
-                              • Tôi đủ sức khỏe để tham gia sự kiện chạy bộ này
-                              <br />
-                              • Tôi không mắc các bệnh lý tim mạch, hô hấp
-                              <br />• Tôi tự chịu trách nhiệm về sức khỏe của
-                              bản thân
-                            </p>
-                          </div>
-                        </label>
-                      </div>
-                    </CardContent>
-                  </Card>
-                )}
                 {eventData?.event.requireWaiver && (
                   <Card className="mt-4 border-amber-200">
                     <CardHeader>
