@@ -191,8 +191,22 @@ export default function OrderShirtPage() {
 
   // Order success screen
   if (orderCreated && orderResult) {
+    const requireOnlinePayment =
+      orderResult.requireOnlinePayment ?? event.requireOnlinePayment;
     const transferContent =
-      orderResult.order?.transferContent || orderResult.transferContent;
+      orderResult.order?.transferContent ||
+      orderResult.transferContent ||
+      (requireOnlinePayment
+        ? `DHAO${orderResult.order?.id || ""}`
+        : `AO ${phone.replace(/\D/g, "")} ${(
+            orderResult.order?.id || ""
+          ).slice(-6).toUpperCase()}`);
+    const bankInfo = orderResult.bankInfo || {
+      bankName: event.bankName,
+      accountNumber: event.bankAccount,
+      accountHolder: event.bankHolder,
+      bankCode: event.bankCode,
+    };
     return (
       <div className="min-h-screen bg-gray-50 py-12">
         <div className="max-w-3xl mx-auto px-4">
@@ -229,7 +243,9 @@ export default function OrderShirtPage() {
               {orderResult.qrPaymentUrl && (
                 <div className="text-center">
                   <h3 className="font-bold text-lg mb-4">
-                    💳 Quét mã QR để thanh toán
+                    {requireOnlinePayment
+                      ? "💳 Quét mã QR để thanh toán tự động"
+                      : "💳 Quét mã QR để chuyển khoản"}
                   </h3>
                   <Image
                     src={orderResult.qrPaymentUrl}
@@ -241,10 +257,20 @@ export default function OrderShirtPage() {
 
                   <div className="mt-4 bg-yellow-50 border border-yellow-200 rounded-lg p-4">
                     <p className="text-sm text-yellow-900">
-                      ⚠️ <strong>Nội dung chuyển khoản:</strong>{" "}
+                      ⚠️{" "}
+                      <strong>
+                        {requireOnlinePayment
+                          ? "Nội dung chuyển khoản bắt buộc:"
+                          : "Nội dung chuyển khoản đề nghị:"}
+                      </strong>{" "}
                       <span className="font-mono font-bold">
                         {transferContent}
                       </span>
+                    </p>
+                    <p className="text-xs text-yellow-800 mt-2">
+                      {requireOnlinePayment
+                        ? "Vui lòng giữ nguyên nội dung này để hệ thống tự động xác nhận thanh toán."
+                        : "Nội dung này giúp BTC đối chiếu đơn áo nhanh hơn khi xác nhận thủ công."}
                     </p>
                   </div>
                 </div>
@@ -253,17 +279,19 @@ export default function OrderShirtPage() {
               {/* Bank Transfer Info */}
               <div className="bg-gray-50 p-4 rounded-lg">
                 <h3 className="font-bold mb-2">
-                  🏦 Hoặc chuyển khoản thủ công:
+                  {requireOnlinePayment
+                    ? "🏦 Hoặc nhập thông tin chuyển khoản thủ công:"
+                    : "🏦 Thông tin chuyển khoản thủ công:"}
                 </h3>
                 <div className="space-y-1 text-sm">
                   <p>
-                    <strong>Ngân hàng:</strong> {event.bankName}
+                    <strong>Ngân hàng:</strong> {bankInfo.bankName}
                   </p>
                   <p>
-                    <strong>Số TK:</strong> {event.bankAccount}
+                    <strong>Số TK:</strong> {bankInfo.accountNumber}
                   </p>
                   <p>
-                    <strong>Chủ TK:</strong> {event.bankHolder}
+                    <strong>Chủ TK:</strong> {bankInfo.accountHolder}
                   </p>
                   <p>
                     <strong>Số tiền:</strong>{" "}
@@ -274,6 +302,11 @@ export default function OrderShirtPage() {
                     <span className="font-mono font-bold text-red-600">
                       {transferContent}
                     </span>
+                  </p>
+                  <p className="text-xs text-gray-500">
+                    {requireOnlinePayment
+                      ? "Không sửa nội dung CK nếu muốn hệ thống tự động gạch thanh toán."
+                      : "Sau khi chuyển khoản, BTC sẽ kiểm tra giao dịch và xác nhận đơn hàng."}
                   </p>
                 </div>
               </div>
@@ -305,8 +338,9 @@ export default function OrderShirtPage() {
                 </h3>
                 <ul className="text-sm text-red-800 space-y-1 list-disc pl-5">
                   <li>
-                    Sau khi chuyển khoản, đơn hàng sẽ được xác nhận trong vòng
-                    24h
+                    {requireOnlinePayment
+                      ? "Nếu chuyển đúng nội dung CK, hệ thống sẽ tự động xác nhận khi nhận được giao dịch"
+                      : "Sau khi chuyển khoản, đơn hàng sẽ được BTC xác nhận thủ công trong vòng 24h"}
                   </li>
                   <li>Bạn sẽ nhận email xác nhận khi thanh toán được duyệt</li>
                   <li>Chỉ nhận hàng khi đã được xác nhận thanh toán</li>

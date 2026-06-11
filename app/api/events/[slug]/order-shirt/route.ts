@@ -4,6 +4,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { generatePaymentQR } from "@/lib/imgbb";
+import { getEventBankAccount } from "@/lib/bank-account-service";
+import { buildShirtOrderTransferContent } from "@/lib/payment-content";
+
+function buildManualShirtOrderTransferContent(phone: string, orderId: string) {
+  const normalizedPhone = phone.replace(/\D/g, "") || "AO";
+  return `AO ${normalizedPhone} ${orderId.slice(-6).toUpperCase()}`;
+}
 
 export async function POST(
   req: NextRequest,
@@ -128,8 +135,17 @@ export async function POST(
 
     // Generate payment QR
     let qrPaymentUrl: string | null = null;
+    const eventBankAccount = await getEventBankAccount(event.id);
+    const transferContent = event.requireOnlinePayment
+      ? buildShirtOrderTransferContent(order.id, eventBankAccount?.bankCode)
+      : buildManualShirtOrderTransferContent(phone, order.id);
+
     try {
-      qrPaymentUrl = await generatePaymentQR(`SHIRT-${order.id}`, totalAmount);
+      qrPaymentUrl = await generatePaymentQR(
+        transferContent,
+        totalAmount,
+        eventBankAccount,
+      );
     } catch (qrError) {
       console.warn("⚠️ QR generation failed:", qrError);
     }
@@ -142,8 +158,19 @@ export async function POST(
       order: {
         id: order.id,
         totalAmount: order.totalAmount,
+        transferContent,
         qrPaymentUrl,
       },
+      requireOnlinePayment: event.requireOnlinePayment,
+      paymentMode: event.requireOnlinePayment ? "ONLINE" : "MANUAL",
+      bankInfo: eventBankAccount
+        ? {
+            bankName: eventBankAccount.bankName || eventBankAccount.bankCode,
+            accountNumber: eventBankAccount.accountNumber,
+            accountHolder: eventBankAccount.accountName,
+            bankCode: eventBankAccount.bankCode,
+          }
+        : null,
       message: "Đặt hàng thành công! Vui lòng thanh toán để hoàn tất.",
     });
   } catch (error) {

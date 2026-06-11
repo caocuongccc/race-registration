@@ -6,6 +6,14 @@ import { ShirtOrderPendingEmail } from "@/emails/shirt-order-pending";
 import { getEventBankAccount } from "@/lib/bank-account-service";
 import { buildShirtOrderTransferContent } from "@/lib/payment-content";
 
+function buildManualShirtOrderTransferContent(
+  phone: string | undefined,
+  orderId: string,
+): string {
+  const normalizedPhone = phone?.replace(/\D/g, "") || "AO";
+  return `AO ${normalizedPhone} ${orderId.slice(-6).toUpperCase()}`;
+}
+
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
@@ -115,10 +123,17 @@ export async function POST(req: NextRequest) {
     });
 
     const eventBankAccount = await getEventBankAccount(eventId);
-    const transferContent = buildShirtOrderTransferContent(
-      order.id,
-      eventBankAccount?.bankCode,
-    );
+    const transferContent = event.requireOnlinePayment
+      ? buildShirtOrderTransferContent(order.id, eventBankAccount?.bankCode)
+      : buildManualShirtOrderTransferContent(customerInfo?.phone, order.id);
+    const emailBankInfo = eventBankAccount
+      ? {
+          bankName: eventBankAccount.bankName || eventBankAccount.bankCode,
+          accountNumber: eventBankAccount.accountNumber,
+          accountHolder: eventBankAccount.accountName,
+          bankCode: eventBankAccount.bankCode,
+        }
+      : null;
     const qrPaymentUrl = await generatePaymentQR(
       transferContent,
       totalAmount,
@@ -147,6 +162,9 @@ export async function POST(req: NextRequest) {
             order: fullOrder,
             event: fullOrder.event,
             qrPaymentUrl,
+            bankInfo: emailBankInfo,
+            transferContent,
+            requireOnlinePayment: event.requireOnlinePayment,
           }),
           fromName: event.name || process.env.FROM_NAME,
           fromEmail: process.env.FROM_EMAIL,
@@ -179,6 +197,9 @@ export async function POST(req: NextRequest) {
         totalAmount: order.totalAmount,
         transferContent,
       },
+      requireOnlinePayment: event.requireOnlinePayment,
+      paymentMode: event.requireOnlinePayment ? "ONLINE" : "MANUAL",
+      bankInfo: emailBankInfo,
       qrPaymentUrl,
     });
   } catch (error) {

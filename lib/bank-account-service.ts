@@ -10,6 +10,12 @@ import {
   BankAccount,
 } from "./encryption";
 
+function isEncryptedBankValue(value?: string | null): boolean {
+  if (!value) return false;
+  const parts = value.split(":");
+  return parts.length === 3 && parts.every((part) => /^[0-9a-f]+$/i.test(part));
+}
+
 /**
  * Get decrypted bank account for event
  */
@@ -35,6 +41,18 @@ export async function getEventBankAccount(
     if (!event.bankAccount || !event.bankCode || !event.bankName) {
       // Fallback to env default
       return getDefaultBankAccount();
+    }
+
+    if (
+      !isEncryptedBankValue(event.bankAccount) ||
+      !isEncryptedBankValue(event.bankCode)
+    ) {
+      return {
+        accountNumber: event.bankAccount,
+        bankCode: event.bankCode,
+        accountName: event.bankHolder || "",
+        bankName: event.bankName || event.bankCode,
+      };
     }
 
     // Decrypt
@@ -81,11 +99,29 @@ export async function getRequiredEventBankAccount(
       return null;
     }
 
+    if (
+      !isEncryptedBankValue(event.bankAccount) ||
+      !isEncryptedBankValue(event.bankCode)
+    ) {
+      return {
+        accountNumber: event.bankAccount,
+        bankCode: event.bankCode,
+        accountName: event.bankHolder || "",
+        bankName: event.bankName || event.bankCode,
+      };
+    }
+
     return {
       accountNumber: decryptBankData(event.bankAccount),
       bankCode: decryptBankData(event.bankCode),
-      accountName: decryptBankData(event.bankHolder),
-      bankName: event.bankName ? decryptBankData(event.bankName) : "",
+      accountName:
+        event.bankHolder && isEncryptedBankValue(event.bankHolder)
+          ? decryptBankData(event.bankHolder)
+          : event.bankHolder || "",
+      bankName:
+        event.bankName && isEncryptedBankValue(event.bankName)
+          ? decryptBankData(event.bankName)
+          : event.bankName || "",
     };
   } catch (error) {
     console.error("❌ Error getting required event bank account:", error);

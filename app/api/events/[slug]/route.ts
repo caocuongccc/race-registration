@@ -3,7 +3,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { decryptBankAccount } from "@/lib/encryption";
+import { getEventBankAccount } from "@/lib/bank-account-service";
 
 export async function GET(
   req: NextRequest,
@@ -88,6 +88,7 @@ export async function GET(
 
     // ✅ NEW: Determine if this is private access
     const isPrivateAccess = !event.isPublished;
+    const bankAccountInfo = await getEventBankAccount(event.id);
 
     // Build response with all features
     const response = {
@@ -118,48 +119,10 @@ export async function GET(
         waiverContent: event.waiverContent,
         waiverVersion: event.waiverVersion,
 
-        // ✅ Bank configuration: decrypt if encrypted, otherwise use plaintext fallback
-        ...(() => {
-          try {
-            // Check if data looks encrypted (iv:authTag:data format)
-            const isEncrypted =
-              event.bankAccount?.includes(":") && event.bankCode?.includes(":");
-            if (
-              isEncrypted &&
-              event.bankAccount &&
-              event.bankCode &&
-              event.bankName &&
-              event.bankHolder
-            ) {
-              const dec = decryptBankAccount({
-                accountNumberEncrypted: event.bankAccount,
-                bankCodeEncrypted: event.bankCode,
-                accountNameEncrypted: event.bankHolder,
-                bankNameEncrypted: event.bankName,
-              });
-              return {
-                bankName: dec.bankName,
-                bankAccount: dec.accountNumber,
-                bankHolder: dec.accountName,
-                bankCode: dec.bankCode,
-              };
-            }
-            // Plaintext fallback (seed data)
-            return {
-              bankName: event.bankName,
-              bankAccount: event.bankAccount,
-              bankHolder: event.bankHolder,
-              bankCode: event.bankCode,
-            };
-          } catch {
-            return {
-              bankName: null,
-              bankAccount: null,
-              bankHolder: null,
-              bankCode: null,
-            };
-          }
-        })(),
+        bankName: bankAccountInfo?.bankName || null,
+        bankAccount: bankAccountInfo?.accountNumber || null,
+        bankHolder: bankAccountInfo?.accountName || null,
+        bankCode: bankAccountInfo?.bankCode || null,
 
         // ✅ NEW: Private access flag
         _privateAccess: isPrivateAccess,

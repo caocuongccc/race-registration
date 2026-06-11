@@ -14,12 +14,22 @@ interface ShirtOrderPendingEmailProps {
   order: any;
   event: any;
   qrPaymentUrl?: string;
+  bankInfo?: {
+    bankName: string;
+    accountNumber: string;
+    accountHolder: string;
+  } | null;
+  transferContent?: string;
+  requireOnlinePayment?: boolean;
 }
 
 export function ShirtOrderPendingEmail({
   order,
   event,
   qrPaymentUrl,
+  bankInfo,
+  transferContent,
+  requireOnlinePayment,
 }: ShirtOrderPendingEmailProps) {
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat("vi-VN", {
@@ -38,6 +48,13 @@ export function ShirtOrderPendingEmail({
   };
 
   const isStandalone = order.orderType === "STANDALONE";
+  const paymentContent =
+    transferContent || order.transferContent || order.shortCode || "";
+  const paymentBankInfo = bankInfo || {
+    bankName: "Chưa cấu hình",
+    accountNumber: "Chưa cấu hình",
+    accountHolder: "Chưa cấu hình",
+  };
 
   return (
     <Html>
@@ -61,7 +78,9 @@ export function ShirtOrderPendingEmail({
 
           <Text style={paragraph}>
             Xin chào{" "}
-            <strong>{order.registration?.fullName || "Quý khách"}</strong>,
+            <strong>
+              {order.fullName || order.registration?.fullName || "Quý khách"}
+            </strong>
           </Text>
 
           <Text style={paragraph}>
@@ -169,19 +188,19 @@ export function ShirtOrderPendingEmail({
                 <tr>
                   <td style={labelCell}>Ngân hàng:</td>
                   <td style={valueCell}>
-                    <strong>{event.bankName}</strong>
+                    <strong>{paymentBankInfo.bankName}</strong>
                   </td>
                 </tr>
                 <tr>
                   <td style={labelCell}>Số tài khoản:</td>
                   <td style={valueCell}>
-                    <strong>{event.bankAccount}</strong>
+                    <strong>{paymentBankInfo.accountNumber}</strong>
                   </td>
                 </tr>
                 <tr>
                   <td style={labelCell}>Chủ tài khoản:</td>
                   <td style={valueCell}>
-                    <strong>{event.bankHolder}</strong>
+                    <strong>{paymentBankInfo.accountHolder}</strong>
                   </td>
                 </tr>
                 <tr>
@@ -196,12 +215,17 @@ export function ShirtOrderPendingEmail({
                   <td style={labelCell}>Nội dung CK:</td>
                   <td style={valueCell}>
                     <strong style={{ color: "#dc2626" }}>
-                      {order.registration?.phone} {order.orderType}
+                      {paymentContent}
                     </strong>
                   </td>
                 </tr>
               </tbody>
             </table>
+            <Text style={paymentHint}>
+              {requireOnlinePayment
+                ? "Vui lòng giữ nguyên nội dung chuyển khoản để hệ thống tự động xác nhận thanh toán."
+                : "Nội dung chuyển khoản này giúp BTC đối chiếu đơn áo nhanh hơn khi xác nhận thủ công."}
+            </Text>
           </Section>
 
           {/* Important Notes */}
@@ -209,11 +233,15 @@ export function ShirtOrderPendingEmail({
             <Text style={noteTitle}>📌 LƯU Ý QUAN TRỌNG</Text>
             <ul style={noteList}>
               <li>
-                <strong>⚠️ Ghi CHÍNH XÁC nội dung chuyển khoản</strong> để hệ
-                thống tự động xác nhận
+                <strong>⚠️ Ghi CHÍNH XÁC nội dung chuyển khoản</strong>
+                {requireOnlinePayment
+                  ? " để hệ thống tự động xác nhận"
+                  : " để BTC đối chiếu giao dịch nhanh hơn"}
               </li>
               <li>
-                Sau khi chuyển khoản, đơn hàng sẽ được xác nhận trong vòng 24h
+                {requireOnlinePayment
+                  ? "Nếu chuyển đúng nội dung CK, hệ thống sẽ tự động xác nhận khi nhận được giao dịch"
+                  : "Sau khi chuyển khoản, đơn hàng sẽ được BTC xác nhận thủ công trong vòng 24h"}
               </li>
               <li>Bạn sẽ nhận email xác nhận khi thanh toán được duyệt</li>
               {event.racePackLocation && (
@@ -380,6 +408,13 @@ const paymentSubtitle = {
   fontWeight: "600" as const,
   color: "#78350f",
   margin: "16px 0 12px",
+};
+
+const paymentHint = {
+  fontSize: "13px",
+  lineHeight: "20px",
+  color: "#92400e",
+  margin: "12px 0 0",
 };
 
 const infoTitle = {
