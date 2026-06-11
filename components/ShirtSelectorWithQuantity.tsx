@@ -22,14 +22,27 @@ interface ShirtItem {
 }
 
 interface ShirtSelectorProps {
-  eventId: string;
+  eventId?: string;
   orderType: "WITH_BIB" | "STANDALONE";
+  shirts?: any[];
   onSelectionChange: (items: ShirtItem[]) => void;
 }
+
+const CATEGORY_LABELS: Record<string, string> = {
+  MALE: "Nam",
+  FEMALE: "Nữ",
+  KID: "Trẻ em",
+};
+
+const TYPE_LABELS: Record<string, string> = {
+  SHORT_SLEEVE: "Có tay",
+  TANK_TOP: "Singlet",
+};
 
 export function ShirtSelectorWithQuantity({
   eventId,
   orderType,
+  shirts: initialShirts,
   onSelectionChange,
 }: ShirtSelectorProps) {
   const [shirts, setShirts] = useState<any[]>([]);
@@ -38,8 +51,15 @@ export function ShirtSelectorWithQuantity({
   const [cart, setCart] = useState<Map<string, ShirtItem>>(new Map());
 
   useEffect(() => {
-    loadShirts();
-  }, [eventId]);
+    if (initialShirts) {
+      setShirts(initialShirts);
+      return;
+    }
+
+    if (eventId) {
+      loadShirts();
+    }
+  }, [eventId, initialShirts]);
 
   const loadShirts = async () => {
     const res = await fetch(`/api/events/${eventId}/shirts`);
@@ -47,12 +67,35 @@ export function ShirtSelectorWithQuantity({
     setShirts(data.shirts || []);
   };
 
-  const addToCart = (shirt: any) => {
-    const price =
-      orderType === "STANDALONE"
-        ? shirt.standalonePrice || shirt.price
-        : shirt.price;
+  const getUnitPrice = (shirt: any) =>
+    orderType === "STANDALONE"
+      ? shirt.standalonePrice ?? shirt.price
+      : shirt.price;
 
+  const availableForSale = shirts.filter(
+    (shirt) =>
+      shirt.isAvailable !== false && shirt.soldQuantity < shirt.stockQuantity,
+  );
+
+  const availableCategories = Array.from(
+    new Set(availableForSale.map((shirt) => shirt.category)),
+  );
+
+  const availableTypes = Array.from(
+    new Set(
+      availableForSale
+        .filter((shirt) => shirt.category === selectedCategory)
+        .map((shirt) => shirt.type),
+    ),
+  );
+
+  const minPrice = availableForSale.reduce<number | null>((min, shirt) => {
+    const price = getUnitPrice(shirt);
+    if (typeof price !== "number") return min;
+    return min === null ? price : Math.min(min, price);
+  }, null);
+
+  const addToCart = (shirt: any) => {
     const newCart = new Map(cart);
     const existing = newCart.get(shirt.id);
 
@@ -101,7 +144,7 @@ export function ShirtSelectorWithQuantity({
     cart.forEach((item) => {
       const price =
         orderType === "STANDALONE"
-          ? item.standalonePrice || item.price + 50000
+          ? item.standalonePrice ?? item.price
           : item.price;
       total += price * item.quantity;
     });
@@ -130,18 +173,20 @@ export function ShirtSelectorWithQuantity({
             ? "🎽 Chỉ mua áo (không đăng ký BIB)"
             : "👕 Mua áo kèm đăng ký"}
         </p>
-        <p className="text-sm text-gray-600 mt-1">
-          {orderType === "STANDALONE"
-            ? "Giá: Từ 130,000đ/áo (có thể mua nhiều áo)"
-            : "Giá: 130,000đ/áo khi đăng ký kèm BIB"}
-        </p>
+        {minPrice !== null && (
+          <p className="text-sm text-gray-600 mt-1">
+            {orderType === "STANDALONE"
+              ? `Giá: Từ ${formatCurrency(minPrice)}/áo (có thể mua nhiều áo, nhiều size)`
+              : `Giá: Từ ${formatCurrency(minPrice)}/áo khi đăng ký kèm BIB`}
+          </p>
+        )}
       </div>
 
       {/* Category Selection */}
       <div>
         <label className="block text-sm font-medium mb-2">Loại áo</label>
-        <div className="grid grid-cols-3 gap-3">
-          {["MALE", "FEMALE", "KID"].map((cat) => (
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+          {availableCategories.map((cat) => (
             <button
               key={cat}
               onClick={() => {
@@ -154,11 +199,7 @@ export function ShirtSelectorWithQuantity({
                   : "border-gray-200 hover:border-blue-300"
               }`}
             >
-              {cat === "MALE"
-                ? "👔 Nam"
-                : cat === "FEMALE"
-                  ? "👗 Nữ"
-                  : "👶 Trẻ em"}
+              {CATEGORY_LABELS[cat] || cat}
             </button>
           ))}
         </div>
@@ -169,7 +210,7 @@ export function ShirtSelectorWithQuantity({
         <div>
           <label className="block text-sm font-medium mb-2">Kiểu áo</label>
           <div className="grid grid-cols-2 gap-3">
-            {["SHORT_SLEEVE", "TANK_TOP"].map((type) => (
+            {availableTypes.map((type) => (
               <button
                 key={type}
                 onClick={() => setSelectedType(type)}
@@ -179,7 +220,7 @@ export function ShirtSelectorWithQuantity({
                     : "border-gray-200 hover:border-blue-300"
                 }`}
               >
-                {type === "SHORT_SLEEVE" ? "Có tay" : "3 lỗ"}
+                {TYPE_LABELS[type] || type}
               </button>
             ))}
           </div>
@@ -196,10 +237,7 @@ export function ShirtSelectorWithQuantity({
             {availableShirts.map((shirt) => {
               const cartItem = cart.get(shirt.id);
               const available = shirt.stockQuantity - shirt.soldQuantity;
-              const price =
-                orderType === "STANDALONE"
-                  ? shirt.standalonePrice || shirt.price
-                  : shirt.price;
+              const price = getUnitPrice(shirt);
 
               return (
                 <div
@@ -267,7 +305,7 @@ export function ShirtSelectorWithQuantity({
             {Array.from(cart.values()).map((item) => {
               const price =
                 orderType === "STANDALONE"
-                  ? item.standalonePrice || item.price + 50000
+                  ? item.standalonePrice ?? item.price
                   : item.price;
 
               return (
@@ -276,12 +314,9 @@ export function ShirtSelectorWithQuantity({
                   className="flex justify-between text-sm bg-white rounded-lg p-3"
                 >
                   <span>
-                    {item.category === "MALE"
-                      ? "Nam"
-                      : item.category === "FEMALE"
-                        ? "Nữ"
-                        : "Trẻ em"}{" "}
-                    - {item.size} × {item.quantity}
+                    {CATEGORY_LABELS[item.category] || item.category} -{" "}
+                    {TYPE_LABELS[item.type] || item.type} - {item.size} ×{" "}
+                    {item.quantity}
                   </span>
                   <span className="font-medium">
                     {formatCurrency(price * item.quantity)}

@@ -63,7 +63,7 @@ export async function POST(req: NextRequest) {
 
       const unitPrice =
         orderType === "STANDALONE"
-          ? shirt.standalonePrice || shirt.price
+          ? shirt.standalonePrice ?? shirt.price
           : shirt.price;
       const itemTotal = unitPrice * item.quantity;
       totalAmount += itemTotal;

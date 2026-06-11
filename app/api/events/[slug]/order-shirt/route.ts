@@ -67,13 +67,14 @@ export async function POST(
         );
       }
 
-      const itemTotal = (shirt.standalonePrice || shirt.price) * item.quantity;
+      const unitPrice = shirt.standalonePrice ?? shirt.price;
+      const itemTotal = unitPrice * item.quantity;
       totalAmount += itemTotal;
 
       validatedItems.push({
         shirtId: item.shirtId,
         quantity: item.quantity,
-        unitPrice: shirt.standalonePrice || shirt.price,
+        unitPrice,
         totalPrice: itemTotal,
       });
     }

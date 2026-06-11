@@ -13,6 +13,12 @@ import { ShoppingBag, ArrowLeft, Check, Link, ArrowRight } from "lucide-react";
 import Image from "next/image";
 import { ShirtImageCarousel } from "@/components/ShirtImageCarousel";
 
+const CATEGORY_LABELS: Record<string, string> = {
+  MALE: "Nam",
+  FEMALE: "Nữ",
+  KID: "Trẻ em",
+};
+
 interface ShirtItem {
   shirtId: string;
   category: string;
@@ -32,6 +38,7 @@ export default function OrderShirtPage() {
   const [orderCreated, setOrderCreated] = useState(false);
   const [orderResult, setOrderResult] = useState<any>(null);
   const [shirtImages, setShirtImages] = useState<any>({});
+  const [shirts, setShirts] = useState<any[]>([]);
 
   // Customer info
   const [fullName, setFullName] = useState("");
@@ -59,6 +66,10 @@ export default function OrderShirtPage() {
 
       setEvent(data.event);
       setShirtImages(data.shirtImages || {}); // ✅ ADD
+
+      const shirtsRes = await fetch(`/api/events/${data.event.id}/shirts`);
+      const shirtsData = await shirtsRes.json();
+      setShirts(shirtsData.shirts || []);
     } catch (error) {
       toast.error("Không thể tải thông tin sự kiện");
     } finally {
@@ -72,7 +83,7 @@ export default function OrderShirtPage() {
 
   const calculateTotal = () => {
     return selectedShirts.reduce((sum, item) => {
-      const price = item.standalonePrice || item.price;
+      const price = item.standalonePrice ?? item.price;
       return sum + price * item.quantity;
     }, 0);
   };
@@ -152,6 +163,31 @@ export default function OrderShirtPage() {
   if (!event) {
     return null;
   }
+
+  const availableShirts = shirts.filter(
+    (shirt) =>
+      shirt.isAvailable !== false && shirt.soldQuantity < shirt.stockQuantity,
+  );
+  const minStandalonePrice = availableShirts.reduce<number | null>(
+    (min, shirt) => {
+      const price = shirt.standalonePrice ?? shirt.price;
+      if (typeof price !== "number") return min;
+      return min === null ? price : Math.min(min, price);
+    },
+    null,
+  );
+  const availableCategoryLabels = Array.from(
+    new Set(availableShirts.map((shirt) => shirt.category)),
+  )
+    .map((category) => CATEGORY_LABELS[category] || category)
+    .join(", ");
+  const availableCategorySet = new Set(
+    availableShirts.map((shirt) => shirt.category),
+  );
+  const previewCategories = Object.keys(shirtImages).filter(
+    (category) =>
+      availableCategorySet.has(category) && shirtImages[category]?.length > 0,
+  );
 
   // Order success screen
   if (orderCreated && orderResult) {
@@ -346,7 +382,15 @@ export default function OrderShirtPage() {
               </h3>
               <ul className="text-sm text-purple-800 space-y-1">
                 <li>✓ Áo chất lượng cao, thiết kế độc quyền cho sự kiện</li>
-                <li>✓ Giá: Từ 130,000đ/áo (có thể mua nhiều áo, nhiều size)</li>
+                {minStandalonePrice !== null && (
+                  <li>
+                    ✓ Giá: Từ {formatCurrency(minStandalonePrice)}/áo (có thể
+                    mua nhiều áo, nhiều size)
+                  </li>
+                )}
+                {availableCategoryLabels && (
+                  <li>✓ Loại áo đang bán: {availableCategoryLabels}</li>
+                )}
                 <li>
                   ⚠️ Đây là áo MUA RIÊNG, KHÔNG bao gồm quyền tham gia thi đấu
                 </li>
@@ -370,28 +414,20 @@ export default function OrderShirtPage() {
           </div>
         </div>
         {/* ✅ ADD: Shirt Gallery Preview */}
-        {Object.keys(shirtImages).length > 0 && (
+        {previewCategories.length > 0 && (
           <Card className="mb-6">
             <CardHeader>
               <CardTitle>👕 Xem trước mẫu áo</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                {shirtImages.MALE?.length > 0 && (
+                {previewCategories.map((category) => (
                   <ShirtImageCarousel
-                    images={shirtImages.MALE}
-                    category="MALE"
+                    key={category}
+                    images={shirtImages[category]}
+                    category={category as "MALE" | "FEMALE" | "KID"}
                   />
-                )}
-                {shirtImages.FEMALE?.length > 0 && (
-                  <ShirtImageCarousel
-                    images={shirtImages.FEMALE}
-                    category="FEMALE"
-                  />
-                )}
-                {shirtImages.KID?.length > 0 && (
-                  <ShirtImageCarousel images={shirtImages.KID} category="KID" />
-                )}
+                ))}
               </div>
 
               <div className="mt-6 bg-blue-50 border border-blue-200 rounded-lg p-4">
@@ -410,7 +446,7 @@ export default function OrderShirtPage() {
           <CardContent className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <Input
-                label="Họ và tên *"
+                label="Họ và tên "
                 placeholder="Nguyễn Văn A"
                 value={fullName}
                 onChange={(e) => setFullName(e.target.value)}
@@ -418,7 +454,7 @@ export default function OrderShirtPage() {
               />
 
               <Input
-                label="Số điện thoại *"
+                label="Số điện thoại "
                 placeholder="0912345678"
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
@@ -427,7 +463,7 @@ export default function OrderShirtPage() {
             </div>
 
             <Input
-              label="Email *"
+              label="Email "
               type="email"
               placeholder="example@email.com"
               value={email}
@@ -455,6 +491,7 @@ export default function OrderShirtPage() {
             <ShirtSelectorWithQuantity
               eventId={event.id}
               orderType="STANDALONE"
+              shirts={shirts}
               onSelectionChange={handleShirtSelection}
             />
           </CardContent>
@@ -473,7 +510,7 @@ export default function OrderShirtPage() {
                   <div className="text-xs text-gray-500 mt-1">
                     {selectedShirts.reduce(
                       (sum, item) => sum + item.quantity,
-                      0
+                      0,
                     )}{" "}
                     sản phẩm
                   </div>
