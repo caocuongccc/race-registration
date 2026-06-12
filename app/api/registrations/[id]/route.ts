@@ -1,8 +1,14 @@
 // app/api/registrations/[id]/route.ts
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { getRequiredEventBankAccount } from "@/lib/bank-account-service";
-import { buildRegistrationTransferContent } from "@/lib/payment-content";
+import {
+  getEventBankAccount,
+  getRequiredEventBankAccount,
+} from "@/lib/bank-account-service";
+import {
+  buildManualRegistrationTransferContent,
+  buildRegistrationTransferContent,
+} from "@/lib/payment-content";
 
 export async function GET(
   req: NextRequest,
@@ -55,20 +61,26 @@ export async function GET(
       );
     }
 
-    const bankAccount = await getRequiredEventBankAccount(registration.eventId);
+    const bankAccount = registration.event.requireOnlinePayment
+      ? await getRequiredEventBankAccount(registration.eventId)
+      : await getEventBankAccount(registration.eventId);
     const isEncryptedValue = (value?: string | null) =>
       Boolean(value && value.split(":").length === 3);
     const registrationNumber = registration.registrationNumber ?? null;
-    const transferContent =
-      registration.shortCode ||
-      buildRegistrationTransferContent(
-        registration.phone,
-        registration.id,
-        bankAccount?.bankCode ||
-          (isEncryptedValue(registration.event.bankCode)
-            ? undefined
-            : registration.event.bankCode || undefined),
-      );
+    const transferContent = registration.event.requireOnlinePayment
+      ? registration.shortCode ||
+        buildRegistrationTransferContent(
+          registration.phone,
+          registration.id,
+          bankAccount?.bankCode ||
+            (isEncryptedValue(registration.event.bankCode)
+              ? undefined
+              : registration.event.bankCode || undefined),
+        )
+      : buildManualRegistrationTransferContent(
+          registration.phone,
+          registrationNumber,
+        );
     const event = {
       ...registration.event,
       bankName:

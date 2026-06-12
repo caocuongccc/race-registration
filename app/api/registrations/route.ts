@@ -6,7 +6,10 @@ import {
   sendRegistrationPendingEmailGmailFirst,
 } from "@/lib/email-service-gmail-first";
 import { createSepayPayment } from "@/lib/sepay-service";
-import { buildRegistrationTransferContent } from "@/lib/payment-content";
+import {
+  buildManualRegistrationTransferContent,
+  buildRegistrationTransferContent,
+} from "@/lib/payment-content";
 import { generatePaymentQR } from "@/lib/imgbb"; // Fallback QR generator
 import { getRequiredEventBankAccount } from "@/lib/bank-account-service";
 import { getEventBankAccount } from "@/lib/bank-account-service"; // ✅ Per-event bank account with decryption
@@ -287,11 +290,16 @@ export async function POST(req: NextRequest) {
       `;
     }
 
-    const shortCode = buildRegistrationTransferContent(
-      newRegistration.phone,
-      newRegistration.id,
-      eventBankAccount?.bankCode || process.env.SEPAY_BANK_CODE,
-    );
+    const shortCode = event.requireOnlinePayment
+      ? buildRegistrationTransferContent(
+          newRegistration.phone,
+          newRegistration.id,
+          eventBankAccount?.bankCode || process.env.SEPAY_BANK_CODE,
+        )
+      : buildManualRegistrationTransferContent(
+          newRegistration.phone,
+          registrationNumber,
+        );
     console.log("💬 Transfer content built:", {
       registrationId: newRegistration.id,
       bankCode: eventBankAccount?.bankCode || process.env.SEPAY_BANK_CODE,

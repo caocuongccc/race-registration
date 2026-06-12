@@ -10,6 +10,21 @@ export function buildRegistrationTransferContent(
   return `DH${registrationId}`;
 }
 
+export function buildManualRegistrationTransferContent(
+  phone: string,
+  registrationNumber?: number | string | null,
+): string {
+  const normalizedPhone = phone.replace(/\D/g, "") || phone.trim();
+  const normalizedRegistrationNumber =
+    registrationNumber === null || registrationNumber === undefined
+      ? ""
+      : String(registrationNumber).trim();
+
+  return normalizedRegistrationNumber
+    ? `DK${normalizedRegistrationNumber} ${normalizedPhone}`
+    : normalizedPhone;
+}
+
 export function buildShirtOrderTransferContent(
   shirtOrderId: string,
   bankCode?: string | null,
