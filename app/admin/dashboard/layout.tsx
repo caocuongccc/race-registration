@@ -20,6 +20,7 @@ import {
   Activity,
   QrCode,
   Wrench,
+  KeyRound,
 } from "lucide-react";
 import { useEffect, useState } from "react";
 
@@ -39,19 +40,34 @@ const navigationConfig = {
     { name: "Email", href: "/admin/dashboard/emails", icon: Mail },
     { name: "Email Logs", href: "/admin/dashboard/email-logs", icon: Mail },
     { name: "Gửi lại QR", href: "/admin/dashboard/resend-qr", icon: QrCode },
-    { name: "Sửa thông tin áo", href: "/admin/dashboard/fix-shirt-data", icon: Wrench },
+    {
+      name: "Sửa thông tin áo",
+      href: "/admin/dashboard/fix-shirt-data",
+      icon: Wrench,
+    },
     { name: "Webhook Logs", href: "/admin/dashboard/webhooks", icon: Activity },
     { name: "Upload Excel", href: "/admin/dashboard/import", icon: Upload },
+    {
+      name: "Đổi mật khẩu",
+      href: "/admin/dashboard/change-password",
+      icon: KeyRound,
+    },
   ],
   ORGANIZER: [
     { name: "Tổng quan", href: "/admin/dashboard", icon: LayoutDashboard },
+
     // { name: "Sự kiện của tôi", href: "/admin/dashboard/events", icon: Calendar, },
-    // { name: "Đăng ký", href: "/admin/dashboard/registrations", icon: Users },
-    // {
-    //   name: "Đơn hàng áo",
-    //   href: "/admin/dashboard/shirt-orders",
-    //   icon: ShoppingBag,
-    // },
+    { name: "Đăng ký", href: "/admin/dashboard/registrations", icon: Users },
+    {
+      name: "Đơn hàng áo",
+      href: "/admin/dashboard/shirt-orders",
+      icon: ShoppingBag,
+    },
+    {
+      name: "Đổi mật khẩu",
+      href: "/admin/dashboard/change-password",
+      icon: KeyRound,
+    },
     // { name: "Số BIB", href: "/admin/dashboard/bibs", icon: Award }, // NEW
     // { name: "Thống kê", href: "/admin/dashboard/statistics", icon: BarChart3 },
   ],

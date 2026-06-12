@@ -30,6 +30,7 @@ import {
   AlertCircle,
   Info,
   Link,
+  FileText,
   Search,
   SearchIcon,
 } from "lucide-react";
@@ -126,6 +127,8 @@ export default function RegistrationPage() {
   const [selectedShirt, setSelectedShirt] = useState<any>(null);
   const [availableSizes, setAvailableSizes] = useState<any[]>([]);
   const [selectedShirtPrice, setSelectedShirtPrice] = useState(0);
+  const [showWaiverTerms, setShowWaiverTerms] = useState(false);
+  const [hasViewedWaiverTerms, setHasViewedWaiverTerms] = useState(false);
   // Real-time validation states
   const [emailError, setEmailError] = useState<string>("");
   const [phoneError, setPhoneError] = useState<string>("");
@@ -974,15 +977,44 @@ export default function RegistrationPage() {
               {/* Waiver */}
               <div className="border-t pt-4 mt-4">
                 {eventData?.event.requireWaiver && (
-                  <Card className="mt-4 border-amber-200">
+                  <Card
+                    className={`mt-4 ${
+                      watchWaiverAccepted
+                        ? "border-green-200 bg-green-50/30"
+                        : "border-amber-300 bg-amber-50/40"
+                    }`}
+                  >
                     <CardHeader>
-                      <CardTitle>
-                        {eventData.event.waiverTitle ||
-                          "Miễn trừ trách nhiệm và điều khoản tham gia"}
+                      <CardTitle className="flex items-center gap-2">
+                        <FileText className="h-5 w-5 text-amber-600" />
+                        Miễn trừ trách nhiệm và cam kết sức khỏe
                       </CardTitle>
+                      {eventData.event.waiverTitle && (
+                        <p className="text-sm font-medium text-gray-700">
+                          {eventData.event.waiverTitle}
+                        </p>
+                      )}
                     </CardHeader>
                     <CardContent className="space-y-4">
-                      <div className="max-h-56 overflow-y-auto rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm leading-6 text-gray-800 whitespace-pre-line">
+                      <div className="flex flex-wrap gap-3">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            setHasViewedWaiverTerms(true);
+                            setShowWaiverTerms((prev) => !prev);
+                          }}
+                        >
+                          <FileText className="mr-2 h-4 w-4" />
+                          {showWaiverTerms
+                            ? "Ẩn điều khoản"
+                            : "Xem điều khoản"}
+                        </Button>
+                      </div>
+
+                      {showWaiverTerms && (
+                        <div className="max-h-64 overflow-y-auto rounded-lg border border-amber-200 bg-white p-4 text-sm leading-6 text-gray-800 whitespace-pre-line">
                         {eventData.event.waiverContent ||
                           `Tôi xác nhận đã đọc, hiểu và tự nguyện đăng ký tham gia sự kiện.
 
@@ -995,25 +1027,46 @@ Tôi cam kết tuân thủ điều lệ, hướng dẫn an toàn, chỉ dẫn c�
 Tôi đồng ý miễn trừ trách nhiệm cho Ban Tổ Chức, nhà tài trợ, đối tác và các đơn vị liên quan đối với các rủi ro phát sinh từ việc tôi tự nguyện tham gia, trừ trường hợp do lỗi cố ý hoặc vi phạm pháp luật của các bên liên quan.
 
 Tôi đồng ý cho Ban Tổ Chức sử dụng hình ảnh, video, tên và thông tin thành tích của tôi cho mục đích truyền thông sự kiện.`}
-                      </div>
+                        </div>
+                      )}
 
-                      <label className="flex items-start gap-3 rounded-lg border border-amber-300 bg-white p-4 cursor-pointer">
+                      <label
+                        className={`flex items-start gap-3 rounded-lg border p-4 cursor-pointer transition-colors ${
+                          watchWaiverAccepted
+                            ? "border-green-300 bg-white"
+                            : hasViewedWaiverTerms
+                              ? "border-amber-300 bg-white"
+                              : "border-gray-200 bg-gray-50 opacity-75"
+                        }`}
+                      >
                         <input
                           type="checkbox"
+                          disabled={!hasViewedWaiverTerms}
                           {...register("waiverAccepted", {
                             required: eventData.event.requireWaiver,
                           })}
-                          className="mt-1 h-4 w-4 text-amber-600 rounded border-gray-300 focus:ring-amber-500"
+                          className="mt-1 h-4 w-4 text-amber-600 rounded border-gray-300 focus:ring-amber-500 disabled:cursor-not-allowed disabled:opacity-60"
                         />
                         <span className="text-sm text-gray-800">
                           Tôi đã đọc, hiểu và đồng ý với nội dung miễn trừ trách
-                          nhiệm/điều khoản tham gia
+                          nhiệm, điều khoản tham gia và cam kết sức khỏe
                           {eventData.event.waiverVersion
                             ? ` (${eventData.event.waiverVersion})`
                             : ""}
                           . <span className="text-red-500">*</span>
                         </span>
                       </label>
+
+                      {!watchWaiverAccepted && (
+                        <div className="flex items-start gap-2 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+                          <AlertCircle className="mt-0.5 h-4 w-4 flex-shrink-0" />
+                          <span>
+                            {hasViewedWaiverTerms
+                              ? "Vui lòng tick xác nhận miễn trừ trách nhiệm trước khi tiếp tục thanh toán."
+                              : "Vui lòng bấm Xem điều khoản trước khi tick xác nhận miễn trừ trách nhiệm."}
+                          </span>
+                        </div>
+                      )}
                     </CardContent>
                   </Card>
                 )}

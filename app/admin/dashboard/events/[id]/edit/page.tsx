@@ -417,7 +417,7 @@ export default function EditEventPage() {
                           requireWaiver: e.target.checked,
                           waiverTitle:
                             formData.waiverTitle ||
-                            "Miễn trừ trách nhiệm và điều khoản tham gia",
+                            "Miễn trừ trách nhiệm và cam kết sức khỏe",
                           waiverContent:
                             formData.waiverContent || DEFAULT_WAIVER_CONTENT,
                           waiverVersion: formData.waiverVersion || "v1",
