@@ -541,6 +541,17 @@ export default function RegistrationPage() {
         throw new Error(result.error || "Đăng ký thất bại");
       }
 
+      if (
+        result.freeRegistration ||
+        result.registration?.paymentStatus === "PAID"
+      ) {
+        keepLoadingAfterSubmit = true;
+        setRedirectingPayment(true);
+        toast.success("Đăng ký thành công! Hệ thống đã cấp số BIB.");
+        router.push(`/registrations/${result.registration.id}/payment-success`);
+        return;
+      }
+
       // ============================================
       // NEW: REDIRECT TO SEPAY PAYMENT PAGE
       // ============================================

@@ -1,12 +1,17 @@
 // app/api/registrations/route.ts - CORRECT SEPAY FLOW
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { sendRegistrationPendingEmailGmailFirst } from "@/lib/email-service-gmail-first";
+import {
+  sendPaymentConfirmationEmailGmailFirst,
+  sendRegistrationPendingEmailGmailFirst,
+} from "@/lib/email-service-gmail-first";
 import { createSepayPayment } from "@/lib/sepay-service";
 import { buildRegistrationTransferContent } from "@/lib/payment-content";
 import { generatePaymentQR } from "@/lib/imgbb"; // Fallback QR generator
 import { getRequiredEventBankAccount } from "@/lib/bank-account-service";
 import { getEventBankAccount } from "@/lib/bank-account-service"; // ✅ Per-event bank account with decryption
+import { generateBibNumberHybrid } from "@/lib/bib-generator";
+import { generateIndividualQR } from "@/lib/qr-individual";
 
 const FINISHER_SHIRT_SIZES = ["XS", "S", "M", "L", "XL", "XXL", "XXXL"];
 const FINISHER_SHIRT_CATEGORIES = ["MALE", "FEMALE", "KID"];
@@ -175,11 +180,14 @@ export async function POST(req: NextRequest) {
     }
 
     const totalAmount = raceFee + shirtFee;
-    const bankAccountInfo = event.requireOnlinePayment
-      ? await getRequiredEventBankAccount(eventId)
-      : await getEventBankAccount(eventId);
+    const isFreeRegistration = totalAmount <= 0;
+    const bankAccountInfo = isFreeRegistration
+      ? null
+      : event.requireOnlinePayment
+        ? await getRequiredEventBankAccount(eventId)
+        : await getEventBankAccount(eventId);
 
-    if (event.requireOnlinePayment && !bankAccountInfo) {
+    if (!isFreeRegistration && event.requireOnlinePayment && !bankAccountInfo) {
       return NextResponse.json(
         {
           error:
@@ -329,6 +337,109 @@ export async function POST(req: NextRequest) {
     };
 
     console.log(`✅ Registration created: ${registration.id}`);
+
+    if (isFreeRegistration) {
+      console.log("🎫 Free registration detected. Marking as PAID and generating BIB...");
+
+      const bibNumber = await generateBibNumberHybrid(
+        registration.id,
+        registration.distanceId,
+        registration.distanceGoalId,
+      );
+
+      let qrCode = "";
+      try {
+        qrCode = await generateIndividualQR(
+          registration.id,
+          bibNumber,
+          bibNumber,
+          registration.fullName,
+          registration.gender,
+          registration.dob,
+          registration.phone,
+          registration.shirtCategory,
+          registration.shirtType,
+          registration.shirtSize,
+        );
+      } catch (qrError: any) {
+        console.error("⚠️ Free registration QR generation failed:", qrError);
+      }
+
+      const paidRegistration = await prisma.$transaction(async (tx) => {
+        const updated = await tx.registration.update({
+          where: { id: registration.id },
+          data: {
+            paymentStatus: "PAID",
+            paymentDate: new Date(),
+            bibNumber,
+            notes: "Tự động xác nhận vì tổng tiền đăng ký bằng 0",
+          },
+          include: {
+            distance: true,
+            shirt: true,
+            event: true,
+          },
+        });
+
+        await tx.payment.create({
+          data: {
+            registrationId: registration.id,
+            amount: 0,
+            status: "PAID",
+            paymentMethod: "free_registration",
+          },
+        });
+
+        return updated;
+      });
+
+      try {
+        await sendPaymentConfirmationEmailGmailFirst({
+          registration: {
+            ...paidRegistration,
+          },
+          event: {
+            ...event,
+            sendBibImmediately: true,
+          },
+          qrCode,
+        });
+      } catch (emailError: any) {
+        console.error("⚠️ Free registration confirmation email failed:", emailError);
+
+        await prisma.emailLog.create({
+          data: {
+            registrationId: registration.id,
+            emailType: "PAYMENT_CONFIRMED",
+            subject: `Đăng ký thành công - Số BIB ${bibNumber}`,
+            status: "FAILED",
+            errorMessage: emailError.message || "Unknown error",
+            recipientEmail: registration.email,
+            emailProvider: "GMAIL_FIRST",
+            bibNumber,
+          },
+        });
+      }
+
+      return NextResponse.json({
+        success: true,
+        freeRegistration: true,
+        requireOnlinePayment: false,
+        registration: {
+          id: paidRegistration.id,
+          registrationNumber,
+          fullName: paidRegistration.fullName,
+          email: paidRegistration.email,
+          totalAmount: paidRegistration.totalAmount,
+          paymentStatus: paidRegistration.paymentStatus,
+          bibNumber: paidRegistration.bibNumber,
+          shortCode,
+          qrPaymentUrl: null,
+          paymentInfo: null,
+        },
+        message: "Đăng ký thành công! Hệ thống đã cấp số BIB cho bạn.",
+      });
+    }
 
     // ============================================
     // CHECK requireOnlinePayment
