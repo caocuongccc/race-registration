@@ -48,6 +48,9 @@ export default function HomePage() {
   const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
   const [eventImages, setEventImages] = useState<any[]>([]);
   const [loadingImages, setLoadingImages] = useState(false);
+  const [eventImageRatios, setEventImageRatios] = useState<
+    Record<string, number>
+  >({});
 
   useEffect(() => {
     loadEvents();
@@ -101,6 +104,15 @@ export default function HomePage() {
     setSelectedEvent(null);
     setEventImages([]);
     router.push("/", { scroll: false });
+  };
+
+  const getEventImagePosition = (eventId: string) => {
+    const ratio = eventImageRatios[eventId];
+
+    if (!ratio) return "center";
+    if (ratio < 1.75) return "center top";
+
+    return "center";
   };
 
   if (loading) {
@@ -211,7 +223,7 @@ export default function HomePage() {
                   className="hover:shadow-xl transition-all duration-300 overflow-hidden group flex flex-col h-full min-h-[520px]"
                 >
                   {/* Cover Image */}
-                  <div className="relative h-48 overflow-hidden bg-gradient-to-br from-blue-500 to-indigo-600">
+                  <div className="relative h-52 lg:h-48 overflow-hidden bg-gradient-to-br from-blue-500 to-indigo-600">
                     {event.coverImageUrl || event.bannerUrl ? (
                       <>
                         <img
@@ -222,6 +234,17 @@ export default function HomePage() {
                           style={{
                             imageRendering: "auto",
                             objectFit: "cover",
+                            objectPosition: getEventImagePosition(event.id),
+                          }}
+                          onLoad={(e) => {
+                            const img = e.currentTarget;
+                            const ratio = img.naturalWidth / img.naturalHeight;
+
+                            setEventImageRatios((prev) =>
+                              prev[event.id] === ratio
+                                ? prev
+                                : { ...prev, [event.id]: ratio },
+                            );
                           }}
                           onError={(e) => {
                             e.currentTarget.style.display = "none";
@@ -334,8 +357,14 @@ export default function HomePage() {
                       </Button>
 
                       {event.allowRegistration ? (
-                        <Link href={`/events/${event.slug}/register`} className="min-w-0">
-                          <Button className="w-full h-8 text-xs whitespace-nowrap" size="sm">
+                        <Link
+                          href={`/events/${event.slug}/register`}
+                          className="min-w-0"
+                        >
+                          <Button
+                            className="w-full h-8 text-xs whitespace-nowrap"
+                            size="sm"
+                          >
                             Đăng ký
                             <ArrowRight className="w-4 h-4 ml-1" />
                           </Button>
