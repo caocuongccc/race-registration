@@ -98,7 +98,7 @@ export default function EventDetailPage() {
     <div className="min-h-screen bg-gray-50">
       {/* Hero Section with Cover Image */}
       <section
-        className="relative h-96 bg-cover bg-center"
+        className="relative min-h-[420px] bg-cover bg-center md:h-96 md:min-h-0"
         style={{
           backgroundImage: event.coverImageUrl
             ? `url(${event.coverImageUrl})`
@@ -106,11 +106,11 @@ export default function EventDetailPage() {
         }}
       >
         <div className="absolute inset-0 bg-black bg-opacity-40" />
-        <div className="relative max-w-7xl mx-auto px-4 h-full flex flex-col justify-end pb-12">
+        <div className="relative max-w-7xl mx-auto px-4 min-h-[420px] md:h-full md:min-h-0 flex flex-col justify-end pb-8 pt-20 md:pb-12 md:pt-0">
           <Button
             variant="outline"
             onClick={() => router.push("/")}
-            className="absolute top-6 left-6 bg-white"
+            className="absolute top-5 left-4 md:top-6 md:left-6 bg-white"
           >
             <ArrowLeft className="w-4 h-4 mr-2" />
             Quay lại
@@ -124,25 +124,27 @@ export default function EventDetailPage() {
             />
           )}
 
-          <h1 className="text-4xl md:text-5xl font-bold text-white mb-2">
+          <h1 className="text-3xl md:text-5xl font-bold text-white mb-2 leading-tight">
             {event.name}
           </h1>
-          <p className="text-xl text-white opacity-90">{event.description}</p>
+          <p className="text-base md:text-xl text-white/90 max-w-3xl leading-relaxed overflow-hidden [display:-webkit-box] [-webkit-line-clamp:4] [-webkit-box-orient:vertical] md:[-webkit-line-clamp:3]">
+            {event.description}
+          </p>
         </div>
       </section>
 
       {/* Quick Info Bar */}
-      <section className="bg-white border-b shadow-sm sticky top-0 z-10">
+      <section className="bg-white border-b shadow-sm lg:sticky lg:top-0 z-10">
         <div className="max-w-7xl mx-auto px-4 py-4">
-          <div className="flex items-center justify-between flex-wrap gap-4">
-            <div className="flex items-center gap-6">
+          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-3 lg:flex lg:items-center gap-3 lg:gap-6">
               <div className="flex items-center gap-2">
                 <Calendar className="w-5 h-5 text-blue-600" />
                 <span className="font-medium">{formatDate(event.date)}</span>
               </div>
               <div className="flex items-center gap-2">
-                <MapPin className="w-5 h-5 text-blue-600" />
-                <span>{event.location}</span>
+                <MapPin className="w-5 h-5 flex-shrink-0 text-blue-600" />
+                <span className="line-clamp-2">{event.location}</span>
               </div>
               <div className="flex items-center gap-2">
                 <Users className="w-5 h-5 text-blue-600" />
@@ -151,8 +153,11 @@ export default function EventDetailPage() {
 
             {/* CẬP NHẬT: Conditional Register Button */}
             {event.allowRegistration ? (
-              <Link href={`/events/${event.slug}/register`}>
-                <Button size="lg">
+              <Link
+                href={`/events/${event.slug}/register`}
+                className="w-full sm:w-auto"
+              >
+                <Button size="lg" className="w-full sm:w-auto">
                   Đăng ký ngay
                   <ArrowRight className="w-5 h-5 ml-2" />
                 </Button>
@@ -174,10 +179,13 @@ export default function EventDetailPage() {
 
             {/* ✅ NEW: Shirt Purchase Button (if available) */}
             {event.hasShirt && (
-              <Link href={`/events/${event.slug}/order-shirt`}>
+              <Link
+                href={`/events/${event.slug}/order-shirt`}
+                className="w-full sm:w-auto"
+              >
                 <Button
                   variant="outline"
-                  className="w-full bg-purple-50 border-purple-200 text-purple-700 hover:bg-purple-100 hover:border-purple-300"
+                  className="w-full sm:w-auto bg-purple-50 border-purple-200 text-purple-700 hover:bg-purple-100 hover:border-purple-300"
                   size="lg"
                 >
                   <ShoppingBag className="w-4 h-4 mr-2" />
@@ -263,7 +271,9 @@ export default function EventDetailPage() {
                       className="border-2 border-gray-200 rounded-lg p-4 hover:border-blue-600 transition-colors"
                     >
                       <div className="flex items-center justify-between mb-2">
-                        <h3 className="text-xl font-bold">{distance.name}</h3>
+                        <h3 className="text-xl font-bold text-gray-900">
+                          {distance.name}
+                        </h3>
                         <span className="text-2xl font-bold text-blue-600">
                           {formatCurrency(distance.price)}
                         </span>
@@ -297,7 +307,7 @@ export default function EventDetailPage() {
                   <CardContent className="space-y-6">
                     {shirtImages.MALE.length > 0 && (
                       <div>
-                        <h3 className="font-semibold text-lg mb-3">
+                        <h3 className="font-semibold text-lg mb-3 text-gray-900">
                           👔 Áo Nam
                         </h3>
                         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -318,7 +328,9 @@ export default function EventDetailPage() {
 
                     {shirtImages.FEMALE.length > 0 && (
                       <div>
-                        <h3 className="font-semibold text-lg mb-3">👗 Áo Nữ</h3>
+                        <h3 className="font-semibold text-lg mb-3 text-gray-900">
+                          👗 Áo Nữ
+                        </h3>
                         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                           {shirtImages.FEMALE.map((image, idx) => (
                             <img
@@ -337,7 +349,7 @@ export default function EventDetailPage() {
 
                     {shirtImages.KID.length > 0 && (
                       <div>
-                        <h3 className="font-semibold text-lg mb-3">
+                        <h3 className="font-semibold text-lg mb-3 text-gray-900">
                           👶 Áo Trẻ Em
                         </h3>
                         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -376,8 +388,8 @@ export default function EventDetailPage() {
                 <CardContent className="space-y-3">
                   <div className="flex items-start gap-3">
                     <MapPin className="w-5 h-5 text-blue-600 mt-1" />
-                    <div>
-                      <div className="font-medium">Địa điểm</div>
+                      <div>
+                        <div className="font-medium text-gray-900">Địa điểm</div>
                       <div className="text-gray-600">
                         {event.racePackLocation}
                       </div>
@@ -387,7 +399,7 @@ export default function EventDetailPage() {
                     <div className="flex items-start gap-3">
                       <Calendar className="w-5 h-5 text-blue-600 mt-1" />
                       <div>
-                        <div className="font-medium">Thời gian</div>
+                        <div className="font-medium text-gray-900">Thời gian</div>
                         <div className="text-gray-600">
                           {event.racePackTime}
                         </div>
@@ -402,7 +414,7 @@ export default function EventDetailPage() {
           {/* Sidebar */}
           <div className="space-y-6">
             {/* Registration CTA */}
-            <Card className="sticky top-24">
+            <Card className="lg:sticky lg:top-24">
               <CardContent className="pt-6 space-y-4">
                 <div className="text-center">
                   <div className="text-sm text-gray-600 mb-2">Giá từ</div>
