@@ -208,6 +208,10 @@ export default function RegistrationPage() {
   const selectedDistanceClonesFinisherShirt =
     selectedDistanceRequiresFinisherShirt &&
     clonesRaceShirtToFinisher(selectedDistance);
+  const distancePriceNote =
+    eventData?.event.slug === "hoa-chau-city-trail-2026"
+      ? "Giá hiển thị đã được giảm 15% so với giá Early Bird của giải."
+      : "";
 
   const isRacekitShirtIncluded =
     eventData?.distances?.some((distance) => requiresFinisherShirt(distance)) ??
@@ -720,13 +724,20 @@ export default function RegistrationPage() {
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
           {/* Step 1: Chọn cự ly */}
           <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Award className="w-6 h-6" />
+            <CardHeader className="pb-3">
+              <CardTitle className="flex items-center gap-2 text-xl">
+                <Award className="w-5 h-5" />
                 Bước 1: Chọn Cự Ly
               </CardTitle>
             </CardHeader>
             <CardContent>
+              {distancePriceNote && (
+                <div className="mb-3 flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
+                  <Info className="mt-0.5 h-4 w-4 flex-shrink-0 text-amber-600" />
+                  <span>{distancePriceNote}</span>
+                </div>
+              )}
+
               {/* ⚠️ CẢNH BÁO MỚI - Hiện khi chưa chọn cự ly */}
               {/* {!selectedDistance && (
                 <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-4 rounded">
@@ -745,11 +756,11 @@ export default function RegistrationPage() {
                 </div>
               )} */}
 
-              <div className="grid md:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
                 {eventData.distances.map((distance) => (
                   <label
                     key={distance.id}
-                    className={`relative flex flex-col p-4 border-2 rounded-lg cursor-pointer transition-all ${
+                    className={`relative flex min-h-[104px] flex-col justify-between rounded-lg border-2 p-3 cursor-pointer transition-all ${
                       selectedDistance?.id === distance.id
                         ? "border-blue-600 bg-blue-50 ring-2 ring-blue-200"
                         : "border-gray-200 hover:border-blue-300"
@@ -788,14 +799,16 @@ export default function RegistrationPage() {
                       </div>
                     )}
 
-                    <div className="text-lg font-bold text-gray-900">
-                      {distance.name}
-                    </div>
-                    <div className="text-2xl font-bold text-blue-600 mt-2">
-                      {formatCurrency(distance.price)}
+                    <div>
+                      <div className="text-base font-bold text-gray-900">
+                        {distance.name}
+                      </div>
+                      <div className="mt-1 text-xl font-bold text-blue-600">
+                        {formatCurrency(distance.price)}
+                      </div>
                     </div>
                     {requiresFinisherShirt(distance) && (
-                      <div className="mt-3 inline-flex items-center rounded-full bg-blue-50 px-3 py-1 text-xs font-medium text-blue-700 border border-blue-200">
+                      <div className="mt-2 inline-flex w-fit items-center rounded-full border border-blue-200 bg-blue-50 px-2.5 py-0.5 text-xs font-medium text-blue-700">
                         Kèm áo finish
                       </div>
                     )}

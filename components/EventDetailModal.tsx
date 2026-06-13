@@ -312,7 +312,7 @@ export function EventDetailModal({
                   </div>
                 ) : (
                   <div className="text-center py-10 text-gray-500">
-                    Không có ảnh
+                    Hình ảnh đang được cập nhật
                   </div>
                 )}
               </div>
@@ -338,7 +338,7 @@ export function EventDetailModal({
                   </div>
                 ) : (
                   <div className="text-center py-12 text-gray-500">
-                    Không có áo đấu
+                    Hình ảnh áo đang được cập nhật
                   </div>
                 )}
               </div>
