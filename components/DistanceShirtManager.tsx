@@ -18,6 +18,7 @@ interface Distance {
   currentParticipants: number;
   isAvailable: boolean;
   requiresFinisherShirt: boolean;
+  cloneRaceShirtToFinisher: boolean;
   sortOrder: number;
   isNew?: boolean;
 }
@@ -84,6 +85,7 @@ export default function DistanceShirtManager({ eventId }: { eventId: string }) {
         currentParticipants: 0,
         isAvailable: true,
         requiresFinisherShirt: false,
+        cloneRaceShirtToFinisher: false,
         sortOrder: distances.length,
         isNew: true,
       },
@@ -272,7 +274,7 @@ export default function DistanceShirtManager({ eventId }: { eventId: string }) {
               {distances.map((distance) => (
                 <div
                   key={distance.id}
-                  className="grid grid-cols-7 gap-4 p-4 bg-gray-50 rounded-lg"
+                  className="grid grid-cols-8 gap-4 p-4 bg-gray-50 rounded-lg"
                 >
                   <Input
                     label="Tên cự ly"
@@ -347,15 +349,42 @@ export default function DistanceShirtManager({ eventId }: { eventId: string }) {
                         type="checkbox"
                         checked={distance.requiresFinisherShirt}
                         onChange={(e) =>
-                          updateDistance(
-                            distance.id,
-                            "requiresFinisherShirt",
-                            e.target.checked,
+                          setDistances(
+                            distances.map((d) =>
+                              d.id === distance.id
+                                ? {
+                                    ...d,
+                                    requiresFinisherShirt: e.target.checked,
+                                    cloneRaceShirtToFinisher: e.target.checked
+                                      ? d.cloneRaceShirtToFinisher
+                                      : false,
+                                  }
+                                : d,
+                            ),
                           )
                         }
                         className="h-4 w-4 text-blue-600 rounded"
                       />
                       <span className="text-sm">Ao finish</span>
+                    </label>
+                  </div>
+
+                  <div className="flex items-end">
+                    <label className="flex items-center gap-2">
+                      <input
+                        type="checkbox"
+                        checked={distance.cloneRaceShirtToFinisher}
+                        disabled={!distance.requiresFinisherShirt}
+                        onChange={(e) =>
+                          updateDistance(
+                            distance.id,
+                            "cloneRaceShirtToFinisher",
+                            e.target.checked,
+                          )
+                        }
+                        className="h-4 w-4 text-blue-600 rounded disabled:opacity-50"
+                      />
+                      <span className="text-sm">Clone ao</span>
                     </label>
                   </div>
 

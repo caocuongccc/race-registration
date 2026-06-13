@@ -32,15 +32,17 @@ export function PaymentReceivedNoBibEmail({
       day: "2-digit",
       month: "2-digit",
       year: "numeric",
+      timeZone: "Asia/Ho_Chi_Minh",
     }).format(new Date(date));
   };
+  const isServiceOnly = event.registrationServiceOnly === true;
   const shirtCategoryText =
     registration.shirtCategory === "MALE"
       ? "Nam"
       : registration.shirtCategory === "FEMALE"
-        ? "Ná»¯"
+        ? "Nữ"
         : registration.shirtCategory === "KID"
-          ? "Tráº» em"
+          ? "Trẻ em"
           : registration.shirtCategory || "";
   const shirtTypeText =
     registration.shirtType === "SHORT_SLEEVE"
@@ -52,9 +54,9 @@ export function PaymentReceivedNoBibEmail({
     registration.finisherShirtCategory === "MALE"
       ? "Nam"
       : registration.finisherShirtCategory === "FEMALE"
-        ? "Ná»¯"
+        ? "Nữ"
         : registration.finisherShirtCategory === "KID"
-          ? "Tráº» em"
+          ? "Trẻ em"
           : registration.finisherShirtCategory || "";
   const finisherShirtTypeText =
     registration.finisherShirtType === "SHORT_SLEEVE"
@@ -78,12 +80,12 @@ export function PaymentReceivedNoBibEmail({
           )}
 
           <Section style={successBadge}>
-            <Text style={successIcon}>✅</Text>
-            <Text style={successTitle}>ĐÃ NHẬN THANH TOÁN!</Text>
+            <Text style={successIcon}>✓</Text>
+            <Text style={successTitle}>THANH TOÁN THÀNH CÔNG!</Text>
           </Section>
 
           <Text style={paragraph}>
-            Xin chÃ o <strong>{registration.fullName}</strong>,
+            Xin chào <strong>{registration.fullName}</strong>,
           </Text>
 
           <Text style={paragraph}>
@@ -91,7 +93,7 @@ export function PaymentReceivedNoBibEmail({
             <strong>{event.name}</strong>.
           </Text>
 
-          {/* âœ… NEW: Event Info Card */}
+          {/* Event Info Card */}
           <Section style={eventInfoBox}>
             <Text style={eventInfoTitle}>📅 THÔNG TIN SỰ KIỆN</Text>
 
@@ -166,6 +168,7 @@ export function PaymentReceivedNoBibEmail({
             </table>
           </Section>
 
+          {!isServiceOnly && (
           <Section style={bibPendingBox}>
             <Text style={bibPendingTitle}>📋 THÔNG BÁO VỀ SỐ BIB</Text>
             <Text style={bibPendingText}>
@@ -179,6 +182,18 @@ export function PaymentReceivedNoBibEmail({
               Vui lòng theo dõi email để nhận thông tin số BIB của mình.
             </Text>
           </Section>
+          )}
+
+          {isServiceOnly && (
+            <Section style={bibPendingBox}>
+              <Text style={bibPendingTitle}>THÔNG TIN ĐĂNG KÝ ĐÃ ĐƯỢC GHI NHẬN</Text>
+              <Text style={bibPendingText}>
+                Hệ thống đã xác nhận thanh toán thành công. Ban tổ chức sẽ sử
+                dụng thông tin đăng ký và thông tin áo của bạn để xử lý các
+                bước tiếp theo.
+              </Text>
+            </Section>
+          )}
 
           {/* ✅ NEW: Race Pack Info */}
           {event.racePackLocation && (
@@ -207,8 +222,9 @@ export function PaymentReceivedNoBibEmail({
                     <td style={iconCell}>🎒</td>
                     <td style={labelCell}>Mang theo:</td>
                     <td style={valueCell}>
-                      CCCD/CMND (bản chính) + Mã QR check-in (trong email thông
-                      báo số BIB)
+                      {isServiceOnly
+                        ? "CCCD/CMND (bản chính) và thông tin đăng ký"
+                        : "CCCD/CMND (bản chính) + Mã QR check-in (trong email thông báo số BIB)"}
                     </td>
                   </tr>
                 </tbody>
@@ -216,9 +232,10 @@ export function PaymentReceivedNoBibEmail({
 
               <Section style={racePackNote}>
                 <Text style={racePackNoteText}>
-                  💡 <strong>Lưu ý:</strong> Bạn cần có số BIB mới được nhận
-                  race pack. Vui lòng chờ email thông báo số BIB trước khi đến
-                  nhận.
+                  💡 <strong>Lưu ý:</strong>{" "}
+                  {isServiceOnly
+                    ? "Ban tổ chức sẽ thông báo thông tin nhận race pack/BIB riêng nếu có."
+                    : "Bạn cần có số BIB mới được nhận race pack. Vui lòng chờ email thông báo số BIB trước khi đến nhận."}
                 </Text>
               </Section>
             </Section>
@@ -230,10 +247,12 @@ export function PaymentReceivedNoBibEmail({
               <li>
                 <strong>✓ Đã xác nhận thanh toán thành công</strong>
               </li>
-              <li>
-                <strong>⏳ Đang chờ công bố số BIB</strong> - Bạn sẽ nhận email
-                thông báo số BIB trong thời gian tới
-              </li>
+              {!isServiceOnly && (
+                <li>
+                  <strong>⏳ Đang chờ công bố số BIB</strong> - Bạn sẽ nhận email
+                  thông báo số BIB trong thời gian tới
+                </li>
+              )}
               {event.racePackLocation && (
                 <li>
                   <strong>📦 Nhận race pack:</strong> {event.racePackLocation}
@@ -253,9 +272,11 @@ export function PaymentReceivedNoBibEmail({
                   - Nhận cập nhật số BIB và thông tin mới nhất
                 </li>
               )}
-              <li>
-                Khi nhận được số BIB, bạn sẽ có thể tải mã QR check-in từ email
-              </li>
+              {!isServiceOnly && (
+                <li>
+                  Khi nhận được số BIB, bạn sẽ có thể tải mã QR check-in từ email
+                </li>
+              )}
               <li>
                 Nếu có thắc mắc, vui lòng liên hệ hotline:{" "}
                 {event.hotline || "Xem thông tin bên dưới"}

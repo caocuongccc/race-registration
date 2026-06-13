@@ -7,6 +7,7 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { generateBibNumberHybrid } from "@/lib/bib-generator";
 import { sendRegistrationConfirmationEmail } from "@/lib/email-individual-service";
+import { sendPaymentConfirmationEmailGmailFirst } from "@/lib/email-service-gmail-first";
 
 function sortBibNumbers(bibNumbers: string[]) {
   return [...bibNumbers].sort((a, b) =>
@@ -72,6 +73,46 @@ export async function POST(
       try {
         console.log(`\n🔄 Processing: ${registration.fullName}`);
 
+        if (batch.event.registrationServiceOnly) {
+          await prisma.registration.update({
+            where: { id: registration.id },
+            data: {
+              paymentStatus: "PAID",
+              paymentDate: new Date(),
+            },
+          });
+
+          successCount++;
+
+          const recipientEmail = registration.email?.trim();
+          if (recipientEmail) {
+            try {
+              await sendPaymentConfirmationEmailGmailFirst({
+                registration: {
+                  ...registration,
+                  paymentStatus: "PAID",
+                  paymentDate: new Date(),
+                },
+                event: {
+                  ...batch.event,
+                  sendBibImmediately: false,
+                },
+              });
+              emailSuccessCount++;
+            } catch (emailError: any) {
+              emailFailedCount++;
+              errors.push({
+                registrationId: registration.id,
+                email: recipientEmail,
+                error: `Email failed: ${emailError.message}`,
+              });
+            }
+          } else {
+            emailSkippedCount++;
+          }
+
+          continue;
+        }
         // 1. Generate BIB
         const bibNumber = await generateBibNumberHybrid(
           registration.id,

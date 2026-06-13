@@ -12,7 +12,7 @@ import { getEventBankAccount } from "@/lib/bank-account-service"; // ✅ Decrypt
  */
 async function sendPaymentConfirmationInBackground(
   registrationId: string,
-  bibNumber: string,
+  bibNumber: string | null,
 ) {
   let recipientEmail = "unknown";
   try {
@@ -32,7 +32,7 @@ async function sendPaymentConfirmationInBackground(
 
     // ✅ Gen QR inline (Buffer) – không upload lên ImgBB
     let qrCode: string | undefined;
-    if (registration.bibNumber) {
+    if (registration.bibNumber && !registration.event.registrationServiceOnly) {
       try {
         const qrBuffer = await generateCheckinQRBuffer(
           registration.id,
@@ -215,6 +215,39 @@ async function processPaymentConfirmation(
           `Payment amount ${amount} is less than required ${registration.totalAmount}`,
         );
       }
+    }
+
+    if (registration.event.registrationServiceOnly) {
+      await prisma.$transaction([
+        prisma.registration.update({
+          where: { id: registrationId },
+          data: {
+            paymentStatus: "PAID",
+            paymentDate: new Date(),
+          },
+        }),
+        prisma.payment.create({
+          data: {
+            registrationId: registrationId,
+            transactionId: transactionId,
+            amount: amount,
+            status: "PAID",
+            paymentMethod: "sepay_transfer",
+            webhookData: webhookData,
+          },
+        }),
+      ]);
+
+      after(async () => {
+        await sendPaymentConfirmationInBackground(registrationId, null);
+      });
+
+      return {
+        success: true,
+        bibNumber: null,
+        registrationId: registrationId,
+        eventId: registration.eventId,
+      };
     }
 
     // Generate BIB number

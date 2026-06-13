@@ -49,5 +49,6 @@ prisma/seed.ts
 prisma/*
 !prisma/
 !prisma/schema.prisma
-!prisma/migrations/
-!prisma/migrations/**
+prisma/seed-hoa-chau-city-trail-2026.ts
+prisma/migrations/
+prisma/migrations/**

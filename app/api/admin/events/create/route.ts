@@ -53,6 +53,7 @@ export async function POST(req: NextRequest) {
         allowStandaloneShirtSale: body.allowStandaloneShirtSale ?? true,
         requireOnlinePayment: body.requireOnlinePayment,
         sendBibImmediately: body.sendBibImmediately,
+        registrationServiceOnly: body.registrationServiceOnly === true,
         bankName: bankData?.bankNameEncrypted || null,
         bankAccount: bankData?.accountNumberEncrypted || null,
         bankHolder: bankData?.accountNameEncrypted || null,
@@ -84,8 +85,8 @@ export async function POST(req: NextRequest) {
         bodyReminder: "Nhắc nhở về giải {{eventName}}",
         attachQrPayment: true,
         attachQrCheckin: true,
-        bodyPaymentReceivedNoBib: "Chúng tôi đã nhận được thanh toán của bạn.",
-        subjectPaymentReceivedNoBib: "Xác nhận thanh toán - {{eventName}}",
+        bodyPaymentReceivedNoBib: "Thanh toán thành công. Thông tin đăng ký của bạn đã được ghi nhận.",
+        subjectPaymentReceivedNoBib: "Thanh toán thành công - {{eventName}}",
         bodyBibAnnouncement:
           "Số BIB của bạn là {{bibNumber}}. Hẹn gặp bạn tại sự kiện!",
         subjectBibAnnouncement: "Số BIB của bạn cho {{eventName}}",

@@ -120,7 +120,10 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    if (distance.requiresFinisherShirt) {
+    const shouldCloneFinisherShirt =
+      distance.requiresFinisherShirt && distance.cloneRaceShirtToFinisher;
+
+    if (distance.requiresFinisherShirt && !shouldCloneFinisherShirt) {
       if (!finisherShirtCategory || !finisherShirtType || !finisherShirtSize) {
         return NextResponse.json(
           { error: "Vui long chon loai, kieu va size ao finish cho cu ly nay" },
@@ -165,6 +168,23 @@ export async function POST(req: NextRequest) {
     if (event.hasShirt && !racekitShirtOptedOut && !shirtId) {
       return NextResponse.json(
         { error: "Vui lòng chọn size áo racekit" },
+        { status: 400 },
+      );
+    }
+
+    if (
+      shouldCloneFinisherShirt &&
+      (racekitShirtOptedOut ||
+        !shirtId ||
+        !body.shirtCategory ||
+        !body.shirtType ||
+        !body.shirtSize)
+    ) {
+      return NextResponse.json(
+        {
+          error:
+            "Cự ly này yêu cầu clone áo racekit sang áo finish. Vui lòng chọn áo racekit.",
+        },
         { status: 400 },
       );
     }
@@ -232,7 +252,9 @@ export async function POST(req: NextRequest) {
         shirtType: racekitShirtOptedOut ? null : body.shirtType || null,
         shirtSize: racekitShirtOptedOut ? null : body.shirtSize || null,
         finisherShirtSize: distance.requiresFinisherShirt
-          ? body.finisherShirtSize
+          ? shouldCloneFinisherShirt
+            ? body.shirtSize
+            : body.finisherShirtSize
           : null,
 
         raceFee: raceFee,
@@ -280,12 +302,22 @@ export async function POST(req: NextRequest) {
       LIMIT 1
     `;
     const registrationNumber = registrationNumberRows[0]?.registration_number;
+    const finalFinisherShirtCategory = distance.requiresFinisherShirt
+      ? shouldCloneFinisherShirt
+        ? body.shirtCategory
+        : body.finisherShirtCategory
+      : null;
+    const finalFinisherShirtType = distance.requiresFinisherShirt
+      ? shouldCloneFinisherShirt
+        ? body.shirtType
+        : body.finisherShirtType
+      : null;
     if (distance.requiresFinisherShirt) {
       await prisma.$executeRaw`
         UPDATE "registrations"
         SET
-          "finisher_shirt_category" = ${body.finisherShirtCategory}::"ShirtCategory",
-          "finisher_shirt_type" = ${body.finisherShirtType}::"ShirtType"
+          "finisher_shirt_category" = ${finalFinisherShirtCategory}::"ShirtCategory",
+          "finisher_shirt_type" = ${finalFinisherShirtType}::"ShirtType"
         WHERE "id" = ${newRegistration.id}
       `;
     }
@@ -337,16 +369,79 @@ export async function POST(req: NextRequest) {
       registrationNumber,
       shortCode,
       finisherShirtCategory: distance.requiresFinisherShirt
-        ? body.finisherShirtCategory
+        ? finalFinisherShirtCategory
         : null,
       finisherShirtType: distance.requiresFinisherShirt
-        ? body.finisherShirtType
+        ? finalFinisherShirtType
         : null,
     };
 
     console.log(`✅ Registration created: ${registration.id}`);
 
     if (isFreeRegistration) {
+      if (event.registrationServiceOnly) {
+        const paidRegistration = await prisma.$transaction(async (tx) => {
+          const updated = await tx.registration.update({
+            where: { id: registration.id },
+            data: {
+              paymentStatus: "PAID",
+              paymentDate: new Date(),
+              notes: "Tự động xác nhận vì tổng tiền đăng ký bằng 0",
+            },
+            include: {
+              distance: true,
+              shirt: true,
+              event: true,
+            },
+          });
+
+          await tx.payment.create({
+            data: {
+              registrationId: registration.id,
+              amount: 0,
+              status: "PAID",
+              paymentMethod: "free_registration",
+            },
+          });
+
+          return updated;
+        });
+
+        try {
+          await sendPaymentConfirmationEmailGmailFirst({
+            registration: paidRegistration,
+            event: {
+              ...event,
+              sendBibImmediately: false,
+            },
+          });
+        } catch (emailError: any) {
+          console.error(
+            "⚠️ Free service-only confirmation email failed:",
+            emailError,
+          );
+        }
+
+        return NextResponse.json({
+          success: true,
+          freeRegistration: true,
+          requireOnlinePayment: false,
+          registration: {
+            id: paidRegistration.id,
+            registrationNumber,
+            fullName: paidRegistration.fullName,
+            email: paidRegistration.email,
+            totalAmount: paidRegistration.totalAmount,
+            paymentStatus: paidRegistration.paymentStatus,
+            bibNumber: null,
+            shortCode,
+            qrPaymentUrl: null,
+            paymentInfo: null,
+          },
+          message: "Đăng ký thành công! Hệ thống đã xác nhận thanh toán.",
+        });
+      }
+
       console.log("🎫 Free registration detected. Marking as PAID and generating BIB...");
 
       const bibNumber = await generateBibNumberHybrid(

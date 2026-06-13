@@ -114,6 +114,15 @@ function requiresFinisherShirt(distance: any) {
   );
 }
 
+function clonesRaceShirtToFinisher(distance: any) {
+  return (
+    distance?.cloneRaceShirtToFinisher === true ||
+    distance?.clone_race_shirt_to_finisher === true ||
+    distance?.cloneRaceShirtToFinisher === "true" ||
+    distance?.clone_race_shirt_to_finisher === "true"
+  );
+}
+
 export default function RegistrationPage() {
   const params = useParams();
   const router = useRouter();
@@ -196,6 +205,9 @@ export default function RegistrationPage() {
     null;
   const selectedDistanceRequiresFinisherShirt =
     requiresFinisherShirt(selectedDistance);
+  const selectedDistanceClonesFinisherShirt =
+    selectedDistanceRequiresFinisherShirt &&
+    clonesRaceShirtToFinisher(selectedDistance);
 
   const isRacekitShirtIncluded =
     eventData?.distances?.some((distance) => requiresFinisherShirt(distance)) ??
@@ -246,13 +258,17 @@ export default function RegistrationPage() {
     !racekitShirtOptedOut &&
     !watchShirtSize;
   const needsFinisherCategory =
-    selectedDistanceRequiresFinisherShirt && !watchFinisherShirtCategory;
+    selectedDistanceRequiresFinisherShirt &&
+    !selectedDistanceClonesFinisherShirt &&
+    !watchFinisherShirtCategory;
   const needsFinisherType =
     selectedDistanceRequiresFinisherShirt &&
+    !selectedDistanceClonesFinisherShirt &&
     watchFinisherShirtCategory &&
     !watchFinisherShirtType;
   const needsFinisherSize =
     selectedDistanceRequiresFinisherShirt &&
+    !selectedDistanceClonesFinisherShirt &&
     watchFinisherShirtType &&
     !watchFinisherShirtSize;
   const hasMissingRequiredInfo =
@@ -271,6 +287,7 @@ export default function RegistrationPage() {
     !selectedDistance ||
     hasMissingRequiredInfo ||
     (selectedDistanceRequiresFinisherShirt &&
+      !selectedDistanceClonesFinisherShirt &&
       (!watchFinisherShirtCategory ||
         !watchFinisherShirtType ||
         !watchFinisherShirtSize)) ||
@@ -393,6 +410,28 @@ export default function RegistrationPage() {
     }
   }, [watchShirtSize, availableSizes, setValue]);
 
+  useEffect(() => {
+    if (!selectedDistanceRequiresFinisherShirt) {
+      setValue("finisherShirtCategory", "");
+      setValue("finisherShirtType", "");
+      setValue("finisherShirtSize", "");
+      return;
+    }
+
+    if (!selectedDistanceClonesFinisherShirt) return;
+
+    setValue("finisherShirtCategory", watchShirtCategory || "");
+    setValue("finisherShirtType", watchShirtType || "");
+    setValue("finisherShirtSize", watchShirtSize || "");
+  }, [
+    selectedDistanceRequiresFinisherShirt,
+    selectedDistanceClonesFinisherShirt,
+    watchShirtCategory,
+    watchShirtType,
+    watchShirtSize,
+    setValue,
+  ]);
+
   const calculateTotal = () => {
     let total = selectedDistance?.price || 0;
 
@@ -434,6 +473,7 @@ export default function RegistrationPage() {
 
     if (
       selectedDistanceRequiresFinisherShirt &&
+      !selectedDistanceClonesFinisherShirt &&
       (!data.finisherShirtCategory ||
         !data.finisherShirtType ||
         !data.finisherShirtSize)
@@ -514,9 +554,15 @@ export default function RegistrationPage() {
       }
 
       if (selectedDistanceRequiresFinisherShirt) {
-        submissionData.finisherShirtCategory = data.finisherShirtCategory;
-        submissionData.finisherShirtType = data.finisherShirtType;
-        submissionData.finisherShirtSize = data.finisherShirtSize;
+        submissionData.finisherShirtCategory = selectedDistanceClonesFinisherShirt
+          ? data.shirtCategory
+          : data.finisherShirtCategory;
+        submissionData.finisherShirtType = selectedDistanceClonesFinisherShirt
+          ? data.shirtType
+          : data.finisherShirtType;
+        submissionData.finisherShirtSize = selectedDistanceClonesFinisherShirt
+          ? data.shirtSize
+          : data.finisherShirtSize;
       }
 
       // Shirt data
@@ -1560,11 +1606,40 @@ Tôi đồng ý cho Ban Tổ Chức sử dụng hình ảnh, video, tên và th�
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-5">
+                {selectedDistanceClonesFinisherShirt && (
+                  <div className="rounded-xl border-2 border-green-300 bg-green-50 p-4">
+                    <p className="text-sm font-semibold text-green-900 mb-2">
+                      Áo finish được lấy theo áo racekit
+                    </p>
+                    {watchShirtCategory && watchShirtType && watchShirtSize ? (
+                      <div className="flex flex-wrap gap-2 text-sm">
+                        <span className="inline-flex items-center rounded-full border border-green-300 bg-white px-3 py-1 font-medium text-green-800">
+                          {shirtCategoryLabels[watchShirtCategory] ||
+                            watchShirtCategory}
+                        </span>
+                        <span className="inline-flex items-center rounded-full border border-green-300 bg-white px-3 py-1 font-medium text-green-800">
+                          {shirtTypeLabels[watchShirtType] || watchShirtType}
+                        </span>
+                        <span className="inline-flex items-center rounded-full border border-green-300 bg-white px-3 py-1 font-medium text-green-800">
+                          Size {watchShirtSize}
+                        </span>
+                      </div>
+                    ) : (
+                      <p className="text-sm text-green-800">
+                        Vui lòng chọn áo racekit trước. Size áo finish sẽ tự động
+                        dùng cùng thông tin áo racekit.
+                      </p>
+                    )}
+                  </div>
+                )}
                 <p className="text-sm text-blue-700 bg-blue-50 border border-blue-200 rounded-lg p-3">
-                  Cự ly {selectedDistance.name} có thêm áo finish miễn phí. Vui
-                  lòng chọn loại, kiểu và size áo finish để BTC chuẩn bị đúng.
+                  Cự ly {selectedDistance.name} có thêm áo finish miễn phí.{" "}
+                  {selectedDistanceClonesFinisherShirt
+                    ? "Thông tin áo finish sẽ được lấy theo áo racekit bạn đã chọn."
+                    : "Vui lòng chọn loại, kiểu và size áo finish để BTC chuẩn bị đúng."}
                 </p>
 
+                {!selectedDistanceClonesFinisherShirt && (
                 <div className={stepBoxClass(needsFinisherCategory)}>
                   <label className="block text-sm font-medium mb-3">
                     Loại áo finish
@@ -1592,7 +1667,9 @@ Tôi đồng ý cho Ban Tổ Chức sử dụng hình ảnh, video, tên và th�
                   </div>
                 </div>
 
-                {watchFinisherShirtCategory && (
+                )}
+
+                {!selectedDistanceClonesFinisherShirt && watchFinisherShirtCategory && (
                   <div className={stepBoxClass(needsFinisherType)}>
                     <label className="block text-sm font-medium mb-3">
                       Kiểu áo finish
@@ -1619,7 +1696,7 @@ Tôi đồng ý cho Ban Tổ Chức sử dụng hình ảnh, video, tên và th�
                   </div>
                 )}
 
-                {watchFinisherShirtType && (
+                {!selectedDistanceClonesFinisherShirt && watchFinisherShirtType && (
                   <div className={stepBoxClass(needsFinisherSize)}>
                     <label className="block text-sm font-medium mb-3">
                       Size áo finish
@@ -1897,6 +1974,7 @@ Tôi đồng ý cho Ban Tổ Chức sử dụng hình ảnh, video, tên và th�
                 )}
 
               {selectedDistanceRequiresFinisherShirt &&
+                !selectedDistanceClonesFinisherShirt &&
                 (!watchFinisherShirtCategory ||
                   !watchFinisherShirtType ||
                   !watchFinisherShirtSize) && (

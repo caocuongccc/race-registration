@@ -25,39 +25,40 @@ model User {
 }
 
 model Event {
-  id                   String      @id @default(cuid())
-  name                 String
-  slug                 String      @unique
-  description          String?
-  date                 DateTime
-  location             String
-  address              String?
-  city                 String?
-  status               EventStatus @default(DRAFT)
-  isPublished          Boolean     @default(false)
-  allowRegistration    Boolean     @default(false)
-  racePackLocation     String?
-  racePackTime         String?
-  racePackSchedule     String?
-  raceDaySchedule      String?
-  parkingInfo          String?
-  checkinProcedure     String?
-  hotline              String?
-  emailSupport         String?
-  facebookUrl          String?
-  websiteUrl           String?
-  logoUrl              String?
-  bannerUrl            String?
-  coverImageUrl        String?
-  hasShirt             Boolean     @default(false)
-  requiresShirtPurchase Boolean    @default(false) @map("requires_shirt_purchase")
-  allowStandaloneShirtSale Boolean @default(true) @map("allow_standalone_shirt_sale")
-  requireOnlinePayment Boolean     @default(true)
-  sendBibImmediately   Boolean     @default(true)
-  bankName             String?     @db.Text
-  bankAccount          String?     @db.Text
-  bankHolder           String?     @db.Text
-  bankCode             String?     @db.Text
+  id                       String      @id @default(cuid())
+  name                     String
+  slug                     String      @unique
+  description              String?
+  date                     DateTime
+  location                 String
+  address                  String?
+  city                     String?
+  status                   EventStatus @default(DRAFT)
+  isPublished              Boolean     @default(false)
+  allowRegistration        Boolean     @default(false)
+  racePackLocation         String?
+  racePackTime             String?
+  racePackSchedule         String?
+  raceDaySchedule          String?
+  parkingInfo              String?
+  checkinProcedure         String?
+  hotline                  String?
+  emailSupport             String?
+  facebookUrl              String?
+  websiteUrl               String?
+  logoUrl                  String?
+  bannerUrl                String?
+  coverImageUrl            String?
+  hasShirt                 Boolean     @default(false)
+  requiresShirtPurchase    Boolean     @default(false) @map("requires_shirt_purchase")
+  allowStandaloneShirtSale Boolean     @default(true) @map("allow_standalone_shirt_sale")
+  requireOnlinePayment     Boolean     @default(true)
+  sendBibImmediately       Boolean     @default(true)
+  registrationServiceOnly  Boolean     @default(false) @map("registration_service_only")
+  bankName                 String?     @db.Text
+  bankAccount              String?     @db.Text
+  bankHolder               String?     @db.Text
+  bankCode                 String?     @db.Text
 
   // ✅ NEW: Form field visibility configuration
   showIdCard            Boolean @default(true) @map("show_id_card")
@@ -69,7 +70,7 @@ model Event {
   showBibName           Boolean @default(true) @map("show_bib_name")
   requireWaiver         Boolean @default(false) @map("require_waiver")
   waiverTitle           String? @map("waiver_title")
-  waiverContent         String? @db.Text @map("waiver_content")
+  waiverContent         String? @map("waiver_content") @db.Text
   waiverVersion         String? @map("waiver_version")
 
   createdById   String
@@ -84,6 +85,7 @@ model Event {
   importBatches ImportBatch[]
   registrations Registration[]
   shirtOrders   ShirtOrder[]
+
   @@map("events")
 }
 
@@ -105,22 +107,23 @@ model EventImage {
 }
 
 model Distance {
-  id                  String         @id @default(cuid())
-  eventId             String
-  name                String
-  price               Int
-  bibPrefix           String
-  maxParticipants     Int?
-  currentParticipants Int            @default(0)
-  isAvailable         Boolean        @default(true)
-  sortOrder           Int            @default(0)
-  createdAt           DateTime       @default(now())
-  updatedAt           DateTime       @updatedAt
-  hasGoals            Boolean        @default(false)
-  requiresFinisherShirt Boolean      @default(false) @map("requires_finisher_shirt")
-  distanceGoals       DistanceGoal[]
-  event               Event          @relation(fields: [eventId], references: [id], onDelete: Cascade)
-  registrations       Registration[]
+  id                       String         @id @default(cuid())
+  eventId                  String
+  name                     String
+  price                    Int
+  bibPrefix                String
+  maxParticipants          Int?
+  currentParticipants      Int            @default(0)
+  isAvailable              Boolean        @default(true)
+  sortOrder                Int            @default(0)
+  createdAt                DateTime       @default(now())
+  updatedAt                DateTime       @updatedAt
+  hasGoals                 Boolean        @default(false)
+  requiresFinisherShirt    Boolean        @default(false) @map("requires_finisher_shirt")
+  cloneRaceShirtToFinisher Boolean        @default(false) @map("clone_race_shirt_to_finisher")
+  distanceGoals            DistanceGoal[]
+  event                    Event          @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  registrations            Registration[]
 
   @@unique([eventId, name])
   @@map("distances")
@@ -250,30 +253,31 @@ model Registration {
   user                  User?               @relation(fields: [userId], references: [id])
   shirtOrders           ShirtOrder[]
   collectedBy           User?               @relation("RacePackCollector", fields: [racePackCollectedBy], references: [id])
+
+  @@unique([eventId, bibNumber])
   @@index([importBatchId])
   @@index([eventId, paymentStatus])
   @@index([distanceId])
   @@index([distanceGoalId])
   @@index([email])
   @@index([importBatchId, paymentStatus])
-  @@unique([eventId, bibNumber])
   @@map("registrations")
 }
 
 model Payment {
-  id             String        @id @default(cuid())
+  id             String         @id @default(cuid())
   registrationId String?
   shirtOrderId   String?
   purpose        PaymentPurpose @default(REGISTRATION)
-  transactionId  String?       @unique
+  transactionId  String?        @unique
   amount         Int
-  status         PaymentStatus @default(PENDING)
+  status         PaymentStatus  @default(PENDING)
   paymentMethod  String?
   webhookData    Json?
-  createdAt      DateTime      @default(now())
-  updatedAt      DateTime      @updatedAt
-  registration   Registration? @relation(fields: [registrationId], references: [id])
-  shirtOrder     ShirtOrder?   @relation(fields: [shirtOrderId], references: [id])
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+  registration   Registration?  @relation(fields: [registrationId], references: [id])
+  shirtOrder     ShirtOrder?    @relation(fields: [shirtOrderId], references: [id])
 
   @@index([registrationId])
   @@index([shirtOrderId])
@@ -375,12 +379,13 @@ model ShirtOrder {
   items          ShirtOrderItem[]
   event          Event            @relation(fields: [eventId], references: [id])
   registration   Registration?    @relation(fields: [registrationId], references: [id])
-// ✅ NEW FIELDS:
-  fullName       String?   // Tên người mua
-  phone          String?   // SĐT liên hệ  
-  address        String?   // Địa chỉ giao hàng
-  city           String?   // Tỉnh/TP
-  notes          String?   // Ghi chú
+  // ✅ NEW FIELDS:
+  fullName       String? // Tên người mua
+  phone          String? // SĐT liên hệ  
+  address        String? // Địa chỉ giao hàng
+  city           String? // Tỉnh/TP
+  notes          String? // Ghi chú
+
   @@index([email])
   @@index([phone])
   @@index([fullName])

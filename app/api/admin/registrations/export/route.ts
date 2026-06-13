@@ -32,6 +32,19 @@ function getRegistrationSourceLabel(source: string | null): string {
   }
 }
 
+function formatShirt(
+  category?: string | null,
+  type?: string | null,
+  size?: string | null,
+): string {
+  if (!size) return "Không";
+
+  const categoryName =
+    category === "MALE" ? "Nam" : category === "FEMALE" ? "Nữ" : "Trẻ em";
+  const typeName = type === "SHORT_SLEEVE" ? "Có tay" : "3 lỗ";
+  return `${categoryName} - ${typeName} - ${size}`;
+}
+
 export async function GET(req: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
@@ -222,17 +235,12 @@ export async function GET(req: NextRequest) {
         "Mã ĐK": registrationNumberById.get(r.id) || "",
         "CCCD/CMND": r.idCard,
         "Địa chỉ": r.address || "",
-        Áo: r.shirtSize
-          ? `${
-              r.shirtCategory === "MALE"
-                ? "Nam"
-                : r.shirtCategory === "FEMALE"
-                  ? "Nữ"
-                  : "Trẻ em"
-            } - ${
-              r.shirtType === "SHORT_SLEEVE" ? "Có tay" : "3 lỗ"
-            } - ${r.shirtSize}`
-          : "Không",
+        "Áo racekit": formatShirt(r.shirtCategory, r.shirtType, r.shirtSize),
+        "Áo finish": formatShirt(
+          r.finisherShirtCategory,
+          r.finisherShirtType,
+          r.finisherShirtSize,
+        ),
         "Phí đăng ký": r.raceFee,
         "Phí áo": r.shirtFee,
         "Tổng tiền": r.totalAmount,
@@ -388,6 +396,32 @@ export async function GET(req: NextRequest) {
       const wsShirts = XLSX.utils.aoa_to_sheet(shirtData);
       wsShirts["!cols"] = [{ wch: 20 }, { wch: 15 }, { wch: 15 }];
       XLSX.utils.book_append_sheet(wb, wsShirts, "Thống kê áo");
+    }
+
+    const finisherShirtsWithSize = registrations.filter(
+      (r) => r.finisherShirtSize,
+    );
+
+    if (finisherShirtsWithSize.length > 0) {
+      const finishStats = new Map<string, number>();
+      finisherShirtsWithSize.forEach((r) => {
+        const label = formatShirt(
+          r.finisherShirtCategory,
+          r.finisherShirtType,
+          r.finisherShirtSize,
+        );
+        finishStats.set(label, (finishStats.get(label) || 0) + 1);
+      });
+
+      const finishRows = Array.from(finishStats.entries()).map(
+        ([shirt, count]) => ({
+          "Áo finish": shirt,
+          "Số lượng": count,
+        }),
+      );
+      const wsFinishShirts = XLSX.utils.json_to_sheet(finishRows);
+      wsFinishShirts["!cols"] = [{ wch: 32 }, { wch: 12 }];
+      XLSX.utils.book_append_sheet(wb, wsFinishShirts, "Thống kê áo finish");
     }
 
     // ===================================

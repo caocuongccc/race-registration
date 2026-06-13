@@ -84,6 +84,7 @@ export async function POST(
               : null,
             isAvailable: distance.isAvailable !== false,
             requiresFinisherShirt: distance.requiresFinisherShirt === true,
+            cloneRaceShirtToFinisher: distance.cloneRaceShirtToFinisher === true,
             sortOrder: index,
           };
 

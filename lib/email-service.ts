@@ -109,7 +109,10 @@ export async function sendPaymentConfirmationEmail(data: {
   const fromEmail = emailConfig?.fromEmail || process.env.FROM_EMAIL;
 
   // Check if we should send BIB immediately
-  const sendBibNow = event.sendBibImmediately ?? true;
+  const sendBibNow =
+    event.registrationServiceOnly === true
+      ? false
+      : (event.sendBibImmediately ?? true);
 
   let emailReact;
   let subject;
@@ -138,7 +141,7 @@ export async function sendPaymentConfirmationEmail(data: {
     emailReact = PaymentReceivedNoBibEmail({ registration, event });
     subject =
       emailConfig?.subjectPaymentReceivedNoBib ||
-      `Đã nhận thanh toán - ${event.name}`;
+      `Thanh toán thành công - ${event.name}`;
   }
 
   // Send email with auto-fallback

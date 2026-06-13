@@ -300,35 +300,50 @@ export async function POST(req: NextRequest) {
         ]);
 
         if (distance.requiresFinisherShirt) {
-          if (!finisherCategoryValue || !finisherTypeValue || !finisherSizeValue) {
+          const finisherBlank =
+            !finisherCategoryValue && !finisherTypeValue && !finisherSizeValue;
+          const finisherPartial =
+            !finisherBlank &&
+            (!finisherCategoryValue || !finisherTypeValue || !finisherSizeValue);
+
+          if (finisherBlank) {
+            if (!shirtCategory || !shirtType || !shirtSize) {
+              throw new Error(
+                "Cu ly nay co ao finish. File khong co du 3 cot ao finish nen can du ao racekit de clone.",
+              );
+            }
+
+            finisherShirtCategory = shirtCategory;
+            finisherShirtType = shirtType;
+            finisherShirtSize = shirtSize;
+          } else if (finisherPartial) {
             throw new Error(
-              "Cự ly này có áo finish, cần điền đủ Loại áo finish, Kiểu áo finish và Size áo finish",
+              "Neu nhap ao finish, phai dien du Loai ao finish, Kieu ao finish va Size ao finish",
             );
-          }
+          } else {
+            finisherShirtCategory = parseShirtCategory(finisherCategoryValue);
+            finisherShirtType = parseShirtType(finisherTypeValue);
+            finisherShirtSize = finisherSizeValue.toUpperCase().trim();
 
-          finisherShirtCategory = parseShirtCategory(finisherCategoryValue);
-          finisherShirtType = parseShirtType(finisherTypeValue);
-          finisherShirtSize = finisherSizeValue.toUpperCase().trim();
+            if (!finisherShirtCategory || !finisherShirtType || !finisherShirtSize) {
+              throw new Error("Thong tin ao finish khong hop le");
+            }
 
-          if (!finisherShirtCategory || !finisherShirtType || !finisherShirtSize) {
-            throw new Error("Thông tin áo finish không hợp lệ");
-          }
-
-          const finisherShirt = event.shirts.find(
-            (item) =>
-              item.category === finisherShirtCategory &&
-              item.type === finisherShirtType &&
-              item.size === finisherShirtSize &&
-              item.isAvailable,
-          );
-
-          if (!finisherShirt) {
-            throw new Error(
-              `Không tìm thấy áo finish: ${finisherCategoryValue} ${finisherTypeValue} ${finisherSizeValue}`,
+            const finisherShirt = event.shirts.find(
+              (item) =>
+                item.category === finisherShirtCategory &&
+                item.type === finisherShirtType &&
+                item.size === finisherShirtSize &&
+                item.isAvailable,
             );
+
+            if (!finisherShirt) {
+              throw new Error(
+                `Khong tim thay ao finish: ${finisherCategoryValue} ${finisherTypeValue} ${finisherSizeValue}`,
+              );
+            }
           }
         }
-
         const raceFee = distance.price;
         const totalAmount = raceFee + shirtFee;
         const phone =

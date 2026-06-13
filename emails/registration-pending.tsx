@@ -40,8 +40,10 @@ export function RegistrationPendingEmail({
       day: "2-digit",
       month: "2-digit",
       year: "numeric",
+      timeZone: "Asia/Ho_Chi_Minh",
     }).format(new Date(date));
   };
+  const isServiceOnly = event.registrationServiceOnly === true;
 
   const trackingUrl = `${process.env.NEXTAUTH_URL || "https://dangkygiaichay.vercel.app"}/registrations/${registration.id}/payment`;
   const transferContent = registration.shortCode || `DH${registration.id}`;
@@ -49,9 +51,9 @@ export function RegistrationPendingEmail({
     registration.shirtCategory === "MALE"
       ? "Nam"
       : registration.shirtCategory === "FEMALE"
-        ? "Ná»¯"
+        ? "Nữ"
         : registration.shirtCategory === "KID"
-          ? "Tráº» em"
+          ? "Trẻ em"
           : registration.shirtCategory || "";
   const shirtTypeText =
     registration.shirtType === "SHORT_SLEEVE"
@@ -63,9 +65,9 @@ export function RegistrationPendingEmail({
     registration.finisherShirtCategory === "MALE"
       ? "Nam"
       : registration.finisherShirtCategory === "FEMALE"
-        ? "Ná»¯"
+        ? "Nữ"
         : registration.finisherShirtCategory === "KID"
-          ? "Tráº» em"
+          ? "Trẻ em"
           : registration.finisherShirtCategory || "";
   const finisherShirtTypeText =
     registration.finisherShirtType === "SHORT_SLEEVE"
@@ -88,10 +90,10 @@ export function RegistrationPendingEmail({
             />
           )}
 
-          <Text style={heading}>Xác nhận đăng ký thành công! ðŸŽ‰</Text>
+          <Text style={heading}>Xác nhận đăng ký thành công!</Text>
 
           <Text style={paragraph}>
-            Xin chÃ o <strong>{registration.fullName}</strong>,
+            Xin chào <strong>{registration.fullName}</strong>,
           </Text>
 
           <Text style={paragraph}>
@@ -329,7 +331,9 @@ export function RegistrationPendingEmail({
               📋 Xem Thông Tin Đăng Ký
             </a>
             <Text style={trackingNote}>
-              Lưu lại link này để theo dõi trạng thái thanh toán và số BIB
+              {isServiceOnly
+                ? "Lưu lại link này để theo dõi trạng thái thanh toán"
+                : "Lưu lại link này để theo dõi trạng thái thanh toán và số BIB"}
             </Text>
           </Section>
 
@@ -340,7 +344,11 @@ export function RegistrationPendingEmail({
               <li>
                 <strong>Hoàn tất thanh toán</strong> để đăng ký được xác nhận
               </li>
-              <li>Sau khi thanh toán, bạn sẽ nhận email xác nhận kèm số BIB</li>
+              <li>
+                {isServiceOnly
+                  ? "Sau khi thanh toán, bạn sẽ nhận email xác nhận thanh toán thành công"
+                  : "Sau khi thanh toán, bạn sẽ nhận email xác nhận kèm số BIB"}
+              </li>
               {event.racePackLocation && (
                 <li>
                   <strong>Nhận race pack:</strong> {event.racePackLocation}

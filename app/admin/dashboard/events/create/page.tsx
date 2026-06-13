@@ -50,6 +50,7 @@ export default function CreateEventPage() {
     allowStandaloneShirtSale: true,
     requireOnlinePayment: true,
     sendBibImmediately: true,
+    registrationServiceOnly: false,
     allowRegistration: false,
 
     // Bank info
@@ -420,6 +421,33 @@ export default function CreateEventPage() {
                           ⚠️ <strong>TẮT:</strong> Admin phải xác nhận thủ công
                         </>
                       )}
+                    </span>
+                  </div>
+                </label>
+              </div>
+
+              {/* SERVICE-ONLY MODE */}
+              <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                <label className="flex items-start gap-3">
+                  <input
+                    type="checkbox"
+                    checked={formData.registrationServiceOnly}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        registrationServiceOnly: e.target.checked,
+                      })
+                    }
+                    className="mt-1 h-5 w-5 text-green-600 rounded border-gray-300"
+                  />
+                  <div>
+                    <span className="text-sm font-semibold text-gray-900 block mb-1">
+                      Chỉ thuê hệ thống đăng ký
+                    </span>
+                    <span className="text-sm text-gray-600">
+                      Vẫn sinh QR chuyển khoản và chờ thanh toán như hiện tại.
+                      Sau khi thanh toán, hệ thống chỉ gửi xác nhận đã thanh toán
+                      và không cấp BIB/QR check-in.
                     </span>
                   </div>
                 </label>

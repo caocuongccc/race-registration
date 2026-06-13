@@ -135,7 +135,10 @@ export async function sendPaymentConfirmationEmailGmailFirst(data: {
   const fromName = emailConfig?.fromName || process.env.FROM_NAME;
   const fromEmail = emailConfig?.fromEmail || process.env.FROM_EMAIL;
 
-  const sendBibNow = event.sendBibImmediately ?? true;
+  const sendBibNow =
+    event.registrationServiceOnly === true
+      ? false
+      : (event.sendBibImmediately ?? true);
 
   let emailReact;
   let subject;
@@ -162,7 +165,7 @@ export async function sendPaymentConfirmationEmailGmailFirst(data: {
     emailReact = PaymentReceivedNoBibEmail({ registration, event });
     subject =
       emailConfig?.subjectPaymentReceivedNoBib ||
-      `Đã nhận thanh toán - ${event.name}`;
+      `Thanh toán thành công - ${event.name}`;
   }
 
   // ✅ Send with QR as CID attachment

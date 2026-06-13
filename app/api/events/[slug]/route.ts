@@ -105,6 +105,7 @@ export async function GET(
         requiresShirtPurchase: event.requiresShirtPurchase,
         allowStandaloneShirtSale: event.allowStandaloneShirtSale,
         requireOnlinePayment: event.requireOnlinePayment,
+        registrationServiceOnly: event.registrationServiceOnly,
         allowRegistration: event.allowRegistration,
 
         // ✅ NEW: Form field visibility configuration
@@ -136,6 +137,7 @@ export async function GET(
         maxParticipants: d.maxParticipants,
         currentParticipants: d.currentParticipants,
         requiresFinisherShirt: d.requiresFinisherShirt,
+        cloneRaceShirtToFinisher: d.cloneRaceShirtToFinisher,
         isAvailable:
           d.isAvailable &&
           (!d.maxParticipants || d.currentParticipants < d.maxParticipants),

@@ -37,6 +37,7 @@ export async function GET(
             bankHolder: true,
             bankCode: true,
             requireOnlinePayment: true,
+            registrationServiceOnly: true,
             hotline: true,
             emailSupport: true,
             racePackLocation: true,
@@ -126,6 +127,9 @@ export async function GET(
         shirtCategory: registration.shirtCategory,
         shirtType: registration.shirtType,
         shirtSize: registration.shirtSize,
+        finisherShirtCategory: registration.finisherShirtCategory,
+        finisherShirtType: registration.finisherShirtType,
+        finisherShirtSize: registration.finisherShirtSize,
 
         registrationDate: registration.registrationDate,
         paymentDate: registration.paymentDate,

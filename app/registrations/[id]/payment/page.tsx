@@ -33,10 +33,14 @@ interface RegistrationData {
     bankName: string;
     bankAccount: string;
     bankHolder: string;
+    registrationServiceOnly?: boolean;
   };
   shirtCategory?: string;
   shirtType?: string;
   shirtSize?: string;
+  finisherShirtCategory?: string;
+  finisherShirtType?: string;
+  finisherShirtSize?: string;
 }
 
 export default function PaymentPage() {
@@ -148,6 +152,7 @@ export default function PaymentPage() {
   const isPaid = registration.paymentStatus === "PAID";
   const isPending = registration.paymentStatus === "PENDING";
   const isFailed = registration.paymentStatus === "FAILED";
+  const isServiceOnly = registration.event.registrationServiceOnly === true;
   const transferContent = registration.shortCode || `DH${registration.id}`;
 
   return (
@@ -252,6 +257,23 @@ export default function PaymentPage() {
                       ? "Có tay"
                       : "3 lỗ"}{" "}
                     - Size {registration.shirtSize}
+                  </span>
+                </div>
+              )}
+              {registration.finisherShirtSize && (
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Ao finish:</span>
+                  <span className="font-medium">
+                    {registration.finisherShirtCategory === "MALE"
+                      ? "Nam"
+                      : registration.finisherShirtCategory === "FEMALE"
+                        ? "Nu"
+                        : "Tre em"}{" "}
+                    -{" "}
+                    {registration.finisherShirtType === "SHORT_SLEEVE"
+                      ? "Co tay"
+                      : "3 lo"}{" "}
+                    - Size {registration.finisherShirtSize}
                   </span>
                 </div>
               )}
@@ -377,7 +399,10 @@ export default function PaymentPage() {
 
               <p className="text-xs text-gray-500 text-center">
                 Sau khi chuyển khoản, hệ thống sẽ tự động xác nhận trong vòng
-                5-10 phút. Bạn sẽ nhận email xác nhận kèm số BIB.
+                5-10 phút.{" "}
+                {isServiceOnly
+                  ? "Bạn sẽ nhận email xác nhận thanh toán thành công."
+                  : "Bạn sẽ nhận email xác nhận kèm số BIB."}
               </p>
             </CardContent>
           </Card>

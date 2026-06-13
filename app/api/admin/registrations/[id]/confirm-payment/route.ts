@@ -118,6 +118,54 @@ export async function POST(
     );
     console.log("📝 registration.distanceId:", registration.distanceId);
 
+    if (registration.event.registrationServiceOnly) {
+      const updatedRegistration = await prisma.$transaction(
+        async (tx: Prisma.TransactionClient) => {
+          const updated = await tx.registration.update({
+            where: { id: registrationId },
+            data: {
+              paymentStatus: "PAID",
+              paymentDate: new Date(),
+              notes: notes || "Xac nhan thu cong boi admin",
+            },
+            include: {
+              distance: true,
+              event: true,
+              shirt: true,
+            },
+          });
+
+          await tx.payment.create({
+            data: {
+              registrationId: registrationId,
+              amount: registration.totalAmount,
+              status: "PAID",
+              paymentMethod: "manual_confirmation",
+            },
+          });
+
+          return updated;
+        },
+      );
+
+      try {
+        await sendPaymentConfirmationEmailGmailFirst({
+          registration: updatedRegistration,
+          event: {
+            ...registration.event,
+            sendBibImmediately: false,
+          },
+        });
+      } catch (emailError: any) {
+        console.error("Failed to send service-only confirmation email:", emailError);
+      }
+
+      return NextResponse.json({
+        success: true,
+        bibNumber: null,
+        registration: updatedRegistration,
+      });
+    }
     // Generate BIB number
     const bibNumber = await generateBibNumberHybrid(
       registrationId,
