@@ -47,6 +47,15 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Event not found" }, { status: 404 });
     }
 
+    if (orderType === "STANDALONE") {
+      if (!event.hasShirt || !event.allowStandaloneShirtSale) {
+        return NextResponse.json(
+          { error: "Sự kiện hiện không mở bán áo riêng" },
+          { status: 403 },
+        );
+      }
+    }
+
     let totalAmount = 0;
     const orderItems = [];
 

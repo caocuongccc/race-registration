@@ -64,6 +64,12 @@ export default function OrderShirtPage() {
         return;
       }
 
+      if (!data.event.hasShirt || !data.event.allowStandaloneShirtSale) {
+        toast.error("Sự kiện hiện không mở bán áo riêng");
+        router.push(`/events/${params.slug}`);
+        return;
+      }
+
       setEvent(data.event);
       setShirtImages(data.shirtImages || {}); // ✅ ADD
 

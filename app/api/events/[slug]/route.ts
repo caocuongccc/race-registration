@@ -103,6 +103,7 @@ export async function GET(
         bannerUrl: event.bannerUrl,
         hasShirt: event.hasShirt,
         requiresShirtPurchase: event.requiresShirtPurchase,
+        allowStandaloneShirtSale: event.allowStandaloneShirtSale,
         requireOnlinePayment: event.requireOnlinePayment,
         allowRegistration: event.allowRegistration,
 

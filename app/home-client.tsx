@@ -30,6 +30,7 @@ interface Event {
   bannerUrl?: string;
   coverImageUrl?: string;
   hasShirt: boolean;
+  allowStandaloneShirtSale: boolean;
   allowRegistration: boolean;
   status: string;
   distances: Array<{

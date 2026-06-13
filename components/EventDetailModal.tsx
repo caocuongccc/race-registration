@@ -252,7 +252,7 @@ export function EventDetailModal({
                         </div>
                       )}
                       {/* ✅ NEW: Shirt Purchase Button */}
-                      {event.hasShirt && (
+                      {event.hasShirt && event.allowStandaloneShirtSale && (
                         <div>
                           <Link href={`/events/${event.slug}/order-shirt`}>
                             <Button

@@ -51,6 +51,7 @@ model Event {
   coverImageUrl        String?
   hasShirt             Boolean     @default(false)
   requiresShirtPurchase Boolean    @default(false) @map("requires_shirt_purchase")
+  allowStandaloneShirtSale Boolean @default(true) @map("allow_standalone_shirt_sale")
   requireOnlinePayment Boolean     @default(true)
   sendBibImmediately   Boolean     @default(true)
   bankName             String?     @db.Text

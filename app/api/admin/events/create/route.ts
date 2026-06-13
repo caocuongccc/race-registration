@@ -50,6 +50,7 @@ export async function POST(req: NextRequest) {
         isPublished: body.isPublished,
         allowRegistration: body.allowRegistration,
         hasShirt: body.hasShirt,
+        allowStandaloneShirtSale: body.allowStandaloneShirtSale ?? true,
         requireOnlinePayment: body.requireOnlinePayment,
         sendBibImmediately: body.sendBibImmediately,
         bankName: bankData?.bankNameEncrypted || null,

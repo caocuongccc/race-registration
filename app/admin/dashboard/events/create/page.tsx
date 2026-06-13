@@ -47,6 +47,7 @@ export default function CreateEventPage() {
     status: "DRAFT",
     isPublished: false,
     hasShirt: true,
+    allowStandaloneShirtSale: true,
     requireOnlinePayment: true,
     sendBibImmediately: true,
     allowRegistration: false,
@@ -296,7 +297,13 @@ export default function CreateEventPage() {
                       type="checkbox"
                       checked={formData.hasShirt}
                       onChange={(e) =>
-                        setFormData({ ...formData, hasShirt: e.target.checked })
+                        setFormData({
+                          ...formData,
+                          hasShirt: e.target.checked,
+                          allowStandaloneShirtSale: e.target.checked
+                            ? formData.allowStandaloneShirtSale
+                            : false,
+                        })
                       }
                       className="h-4 w-4 text-blue-600 rounded border-gray-300"
                     />
@@ -304,6 +311,25 @@ export default function CreateEventPage() {
                       Có bán áo kỷ niệm
                     </span>
                   </label>
+
+                  {formData.hasShirt && (
+                    <label className="flex items-center gap-2">
+                      <input
+                        type="checkbox"
+                        checked={formData.allowStandaloneShirtSale}
+                        onChange={(e) =>
+                          setFormData({
+                            ...formData,
+                            allowStandaloneShirtSale: e.target.checked,
+                          })
+                        }
+                        className="h-4 w-4 text-blue-600 rounded border-gray-300"
+                      />
+                      <span className="text-sm font-medium text-gray-700">
+                        Cho phép mua áo riêng (không BIB)
+                      </span>
+                    </label>
+                  )}
 
                   <label className="flex items-center gap-2">
                     <input

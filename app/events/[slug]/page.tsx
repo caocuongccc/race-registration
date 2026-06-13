@@ -178,7 +178,7 @@ export default function EventDetailPage() {
             )}
 
             {/* ✅ NEW: Shirt Purchase Button (if available) */}
-            {event.hasShirt && (
+            {event.hasShirt && event.allowStandaloneShirtSale && (
               <Link
                 href={`/events/${event.slug}/order-shirt`}
                 className="w-full sm:w-auto"

@@ -186,6 +186,7 @@ export async function PUT(
         isPublished: body.isPublished,
         hasShirt: body.hasShirt,
         requiresShirtPurchase: body.requiresShirtPurchase,
+        allowStandaloneShirtSale: body.allowStandaloneShirtSale,
         requireOnlinePayment: body.requireOnlinePayment,
         sendBibImmediately: body.sendBibImmediately,
         allowRegistration: body.allowRegistration,

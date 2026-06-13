@@ -49,6 +49,13 @@ export async function POST(
       );
     }
 
+    if (!event.hasShirt || !event.allowStandaloneShirtSale) {
+      return NextResponse.json(
+        { error: "Sự kiện hiện không mở bán áo riêng" },
+        { status: 403 },
+      );
+    }
+
     // Validate shirts and calculate total
     let totalAmount = 0;
     const validatedItems: any[] = [];

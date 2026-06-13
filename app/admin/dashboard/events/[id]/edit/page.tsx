@@ -74,6 +74,7 @@ export default function EditEventPage() {
     isPublished: false,
     hasShirt: false,
     requiresShirtPurchase: false,
+    allowStandaloneShirtSale: true,
     requireWaiver: false,
     waiverTitle: "",
     waiverContent: "",
@@ -360,7 +361,16 @@ export default function EditEventPage() {
                       type="checkbox"
                       checked={formData.hasShirt}
                       onChange={(e) =>
-                        setFormData({ ...formData, hasShirt: e.target.checked })
+                        setFormData({
+                          ...formData,
+                          hasShirt: e.target.checked,
+                          requiresShirtPurchase: e.target.checked
+                            ? formData.requiresShirtPurchase
+                            : false,
+                          allowStandaloneShirtSale: e.target.checked
+                            ? formData.allowStandaloneShirtSale
+                            : false,
+                        })
                       }
                       className="h-4 w-4 text-blue-600 rounded border-gray-300"
                     />
@@ -370,22 +380,41 @@ export default function EditEventPage() {
                   </label>
 
                   {formData.hasShirt && (
-                    <label className="flex items-center gap-2">
-                      <input
-                        type="checkbox"
-                        checked={formData.requiresShirtPurchase}
-                        onChange={(e) =>
-                          setFormData({
-                            ...formData,
-                            requiresShirtPurchase: e.target.checked,
-                          })
-                        }
-                        className="h-4 w-4 text-blue-600 rounded border-gray-300"
-                      />
-                      <span className="text-sm font-medium text-gray-700">
-                        Bắt buộc chọn/mua áo khi đăng ký
-                      </span>
-                    </label>
+                    <>
+                      <label className="flex items-center gap-2">
+                        <input
+                          type="checkbox"
+                          checked={formData.requiresShirtPurchase}
+                          onChange={(e) =>
+                            setFormData({
+                              ...formData,
+                              requiresShirtPurchase: e.target.checked,
+                            })
+                          }
+                          className="h-4 w-4 text-blue-600 rounded border-gray-300"
+                        />
+                        <span className="text-sm font-medium text-gray-700">
+                          Bắt buộc chọn/mua áo khi đăng ký
+                        </span>
+                      </label>
+
+                      <label className="flex items-center gap-2">
+                        <input
+                          type="checkbox"
+                          checked={formData.allowStandaloneShirtSale}
+                          onChange={(e) =>
+                            setFormData({
+                              ...formData,
+                              allowStandaloneShirtSale: e.target.checked,
+                            })
+                          }
+                          className="h-4 w-4 text-blue-600 rounded border-gray-300"
+                        />
+                        <span className="text-sm font-medium text-gray-700">
+                          Cho phép mua áo riêng (không BIB)
+                        </span>
+                      </label>
+                    </>
                   )}
 
                   <label className="flex items-center gap-2">
