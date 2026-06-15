@@ -108,18 +108,24 @@ export async function requireEventPermission(
 export async function getUserAccessibleEvents(
   userId: string,
   userRole?: string,
+  options: { includeCounts?: boolean } = {},
 ) {
+  const includeCounts = options.includeCounts ?? true;
   const eventSelect = {
     id: true,
     name: true,
     date: true,
     status: true,
-    _count: {
-      select: {
-        registrations: true,
-        distances: true,
-      },
-    },
+    ...(includeCounts
+      ? {
+          _count: {
+            select: {
+              registrations: true,
+              distances: true,
+            },
+          },
+        }
+      : {}),
   };
 
   // ✅ ADMIN sees ALL events regardless of creator
@@ -200,7 +206,11 @@ export async function getUserAccessibleRegistrations(
   } = filters;
 
   // Get accessible event IDs
-  const accessibleEvents = await getUserAccessibleEvents(userId, filters.userRole);
+  const accessibleEvents = await getUserAccessibleEvents(
+    userId,
+    filters.userRole,
+    { includeCounts: false },
+  );
   const eventIds = accessibleEvents.map((e) => e.id);
 
   if (eventIds.length === 0) {

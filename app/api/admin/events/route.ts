@@ -5,12 +5,16 @@ import {
   getUserAccessibleEvents,
 } from "@/lib/event-permissions";
 
-export async function GET() {
+export async function GET(req: NextRequest) {
   try {
     const user = await getUserSession();
+    const { searchParams } = new URL(req.url);
+    const minimal = searchParams.get("minimal") === "true";
 
     // ✅ Get all events user has access to (created + assigned)
-    const events = await getUserAccessibleEvents(user.id, user.role);
+    const events = await getUserAccessibleEvents(user.id, user.role, {
+      includeCounts: !minimal,
+    });
 
     return NextResponse.json({ events });
   } catch (error) {

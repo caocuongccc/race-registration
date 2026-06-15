@@ -182,6 +182,7 @@ export async function POST(
       qrCode = await generateIndividualQR(
         registrationId,
         bibNumber,
+        bibNumber,
         registration.fullName,
         registration.gender,
         registration.dob,
@@ -236,11 +237,9 @@ export async function POST(
       console.log("📧 Sending confirmation email...");
 
       await sendPaymentConfirmationEmailGmailFirst({
-        registration: {
-          ...updatedRegistration,
-          qrCode, // ✅ Pass QR inline (not from DB)
-        },
+        registration: updatedRegistration,
         event: registration.event,
+        qrCode,
       });
 
       console.log("✅ Email sent successfully");

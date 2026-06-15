@@ -204,13 +204,14 @@ export function PaymentConfirmedEmail({
           </div>
 
           {/* QR Code */}
+          {registration.qrCheckinUrl && (
           <div style={qrBox}>
             <Text style={qrTitle}>📱 QR Check-in</Text>
             <Text style={qrDesc}>Xuất trình QR này khi nhận race pack</Text>
 
             <div style={{ textAlign: "center", margin: "16px 0" }}>
               <Img
-                src={registration.qrCheckinUrl || "cid:qrcheckin"}
+                src={registration.qrCheckinUrl}
                 alt={`QR Code - BIB ${registration.bibNumber}`}
                 width="260"
                 height="260"
@@ -226,6 +227,7 @@ export function PaymentConfirmedEmail({
 
             <div style={qrHint}>💡 Lưu email này hoặc chụp QR</div>
           </div>
+          )}
 
           {/* Race Pack */}
           {event.racePackLocation && (

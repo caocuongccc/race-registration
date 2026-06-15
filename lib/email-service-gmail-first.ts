@@ -127,6 +127,16 @@ export async function sendPaymentConfirmationEmailGmailFirst(data: {
   qrCode?: string; // ✅ base64 data URL – ưu tiên dùng khi gen inline
 }): Promise<void> {
   const { registration, event, qrCode } = data;
+  const effectiveQrCode =
+    qrCode || registration.qrCode || registration.qrCheckinUrl || undefined;
+  const qrImageSrc =
+    effectiveQrCode && effectiveQrCode.startsWith("data:image/png;base64,")
+      ? "cid:qrcheckin"
+      : effectiveQrCode;
+  const registrationForEmail = {
+    ...registration,
+    qrCheckinUrl: qrImageSrc,
+  };
 
   const emailConfig = await prisma.emailConfig.findUnique({
     where: { eventId: event.id },
@@ -150,7 +160,7 @@ export async function sendPaymentConfirmationEmailGmailFirst(data: {
     // ✅ Pass registration without qrCode in data
     // QR will be sent as CID attachment
     emailReact = PaymentConfirmedEmail({
-      registration,
+      registration: registrationForEmail,
       event,
     });
 
@@ -162,7 +172,10 @@ export async function sendPaymentConfirmationEmailGmailFirst(data: {
   } else {
     const { PaymentReceivedNoBibEmail } =
       await import("@/emails/payment-received-no-bib");
-    emailReact = PaymentReceivedNoBibEmail({ registration, event });
+    emailReact = PaymentReceivedNoBibEmail({
+      registration: registrationForEmail,
+      event,
+    });
     subject =
       emailConfig?.subjectPaymentReceivedNoBib ||
       `Thanh toán thành công - ${event.name}`;
@@ -177,7 +190,11 @@ export async function sendPaymentConfirmationEmailGmailFirst(data: {
       fromName,
       fromEmail,
       // ✅ Ưu tiên qrCode truyền vào (gen inline), fallback về qrCheckinUrl trong DB
-      qrCode: qrCode || registration.qrCheckinUrl || undefined,
+      qrCode:
+        effectiveQrCode &&
+        effectiveQrCode.startsWith("data:image/png;base64,")
+          ? effectiveQrCode
+          : undefined,
     },
     emailConfig?.id,
   );

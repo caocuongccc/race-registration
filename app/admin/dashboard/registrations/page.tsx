@@ -77,14 +77,14 @@ export default function RegistrationsPage() {
     hasNextPage: false,
     hasPreviousPage: false,
   });
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [sendingEmails, setSendingEmails] = useState(false);
 
   // ✅ OPTIMIZATION 2: Separate search state from filter state
   const [searchInput, setSearchInput] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [distanceFilter, setDistanceFilter] = useState("all");
-  const [selectedEvent, setSelectedEvent] = useState("all");
+  const [selectedEvent, setSelectedEvent] = useState("");
   const [sourceFilter, setSourceFilter] = useState("all");
 
   // ✅ OPTIMIZATION 3: Debounce search - only trigger API after 800ms of no typing
@@ -98,6 +98,20 @@ export default function RegistrationsPage() {
   const [selectedEventData, setSelectedEventData] = useState<any | null>(null);
   const [quickConfirmMode, setQuickConfirmMode] = useState(false);
   const [confirming, setConfirming] = useState<string | null>(null);
+
+  const resetRegistrationList = useCallback(() => {
+    setRegistrations([]);
+    setFilteredRegistrations([]);
+    setPagination((prev) => ({
+      ...prev,
+      currentPage: 1,
+      totalPages: 1,
+      totalItems: 0,
+      hasNextPage: false,
+      hasPreviousPage: false,
+    }));
+    setLoading(false);
+  }, []);
 
   // ✅ Load on mount and when filters change
   useEffect(() => {
@@ -132,7 +146,7 @@ export default function RegistrationsPage() {
   // Load event list
   const loadEvents = async () => {
     try {
-      const res = await fetch("/api/admin/events");
+      const res = await fetch("/api/admin/events?minimal=true");
       const data = await res.json();
       setEvents(data.events || []);
     } catch (err) {
@@ -147,7 +161,7 @@ export default function RegistrationsPage() {
       limit: pagination.itemsPerPage.toString(),
     });
 
-    if (selectedEvent !== "all") params.append("eventId", selectedEvent);
+    if (selectedEvent) params.append("eventId", selectedEvent);
     if (statusFilter !== "all") params.append("status", statusFilter);
     if (distanceFilter !== "all") params.append("distance", distanceFilter);
     if (sourceFilter !== "all") params.append("source", sourceFilter);
@@ -166,6 +180,13 @@ export default function RegistrationsPage() {
 
   // Load registrations for selected event
   const loadRegistrations = useCallback(async () => {
+    if (!selectedEvent) {
+      setSelectedEventData(null);
+      setQuickConfirmMode(false);
+      resetRegistrationList();
+      return;
+    }
+
     setLoading(true);
     try {
       const res = await fetch(`/api/admin/registrations?${apiParams}`);
@@ -175,25 +196,15 @@ export default function RegistrationsPage() {
       setFilteredRegistrations(data.registrations || []);
       setPagination(data.pagination);
 
-      // Load selected event info if needed
-      if (selectedEvent !== "all") {
-        try {
-          const eventRes = await fetch(`/api/admin/events/${selectedEvent}`);
-          const eventData = await eventRes.json();
-          setSelectedEventData(eventData.event);
-        } catch (err) {
-          console.error("Failed to load event details:", err);
-          setSelectedEventData(null);
-        }
-      } else {
-        setSelectedEventData(null);
-      }
+      setSelectedEventData(
+        events.find((event) => event.id === selectedEvent) || null,
+      );
     } catch (error) {
       toast.error("Không thể tải danh sách đăng ký");
     } finally {
       setLoading(false);
     }
-  }, [apiParams, selectedEvent]);
+  }, [apiParams, selectedEvent, resetRegistrationList, events]);
 
   const handlePageChange = useCallback((page: number) => {
     setPagination((prev) => ({ ...prev, currentPage: page }));
@@ -202,6 +213,11 @@ export default function RegistrationsPage() {
 
   // ✅ OPTIMIZATION 9: Memoize export function
   const handleExport = useCallback(async () => {
+    if (!selectedEvent) {
+      toast.error("Vui lòng chọn sự kiện trước khi xuất file");
+      return;
+    }
+
     try {
       const res = await fetch(
         `/api/admin/registrations/export?eventId=${selectedEvent}`,
@@ -355,7 +371,7 @@ export default function RegistrationsPage() {
 
         <div className="flex gap-3">
           {/* Quick confirm */}
-          {selectedEvent !== "all" && selectedEventData && (
+          {selectedEvent && selectedEventData && (
             <Button
               variant={quickConfirmMode ? "primary" : "outline"}
               onClick={() => setQuickConfirmMode(!quickConfirmMode)}
@@ -364,7 +380,7 @@ export default function RegistrationsPage() {
             </Button>
           )}
 
-          <Button variant="outline" onClick={handleExport}>
+          <Button variant="outline" onClick={handleExport} disabled={!selectedEvent}>
             <Download className="w-4 h-4 mr-2" /> Xuất Excel
           </Button>
         </div>
@@ -378,7 +394,7 @@ export default function RegistrationsPage() {
               value={selectedEvent}
               onChange={(e) => setSelectedEvent(e.target.value)}
             >
-              <option value="all">Tất cả sự kiện</option>
+              <option value="">-- Chọn sự kiện --</option>
               {events.map((ev) => (
                 <option key={ev.id} value={ev.id}>
                   {ev.name}
@@ -396,6 +412,7 @@ export default function RegistrationsPage() {
                 }
                 value={searchInput}
                 onChange={(e) => setSearchInput(e.target.value)}
+                disabled={!selectedEvent}
                 className={`pl-10 ${
                   quickConfirmMode ? "border-blue-500 ring-2 ring-blue-100" : ""
                 }`}
@@ -408,6 +425,7 @@ export default function RegistrationsPage() {
             <Select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
+              disabled={!selectedEvent}
             >
               <option value="all">Tất cả trạng thái</option>
               <option value="PAID">Đã thanh toán</option>
@@ -417,6 +435,7 @@ export default function RegistrationsPage() {
             <Select
               value={distanceFilter}
               onChange={(e) => setDistanceFilter(e.target.value)}
+              disabled={!selectedEvent}
             >
               <option value="all">Tất cả cự ly</option>
               {uniqueDistances.map((d) => (
@@ -429,6 +448,7 @@ export default function RegistrationsPage() {
               value={sourceFilter}
               onChange={(e) => setSourceFilter(e.target.value)}
               label="Import Batch"
+              disabled={!selectedEvent}
             >
               <option value="all">Tất cả nguồn</option>
               <option value="ONLINE">Đăng ký online</option>
@@ -596,7 +616,9 @@ export default function RegistrationsPage() {
 
                 {registrations.length === 0 && !loading && (
                   <div className="text-center py-12 text-gray-500">
-                    Không có kết quả phù hợp
+                    {selectedEvent
+                      ? "Không có kết quả phù hợp"
+                      : "Vui lòng chọn sự kiện để tải danh sách đăng ký"}
                   </div>
                 )}
               </div>

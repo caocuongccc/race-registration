@@ -175,6 +175,7 @@ export default function AdminLayout({
                 <Link
                   key={item.name}
                   href={item.href}
+                  prefetch={false}
                   onClick={() => {
                     if (isMobile) setIsSidebarOpen(false);
                   }}
