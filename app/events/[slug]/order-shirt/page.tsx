@@ -199,20 +199,30 @@ export default function OrderShirtPage() {
   if (orderCreated && orderResult) {
     const requireOnlinePayment =
       orderResult.requireOnlinePayment ?? event.requireOnlinePayment;
-    const transferContent =
-      orderResult.order?.transferContent ||
-      orderResult.transferContent ||
-      (requireOnlinePayment
-        ? `DHAO${orderResult.order?.id || ""}`
-        : `AO ${phone.replace(/\D/g, "")} ${(
-            orderResult.order?.id || ""
-          ).slice(-6).toUpperCase()}`);
     const bankInfo = orderResult.bankInfo || {
       bankName: event.bankName,
       accountNumber: event.bankAccount,
       accountHolder: event.bankHolder,
       bankCode: event.bankCode,
     };
+    const normalizedBankCode = String(bankInfo.bankCode || "")
+      .replace(/[\s_-]/g, "")
+      .toUpperCase();
+    const isVietinBank =
+      normalizedBankCode === "VIETINBANK" ||
+      normalizedBankCode === "ICB" ||
+      normalizedBankCode === "CTG" ||
+      normalizedBankCode === "970415";
+    const transferContent =
+      orderResult.order?.transferContent ||
+      orderResult.transferContent ||
+      (requireOnlinePayment
+        ? isVietinBank
+          ? `SEVQR AO${orderResult.order?.id || ""}`
+          : `DHAO${orderResult.order?.id || ""}`
+        : `AO ${phone.replace(/\D/g, "")} ${(
+            orderResult.order?.id || ""
+          ).slice(-6).toUpperCase()}`);
     return (
       <div className="min-h-screen bg-gray-50 py-12">
         <div className="max-w-3xl mx-auto px-4">

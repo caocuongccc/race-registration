@@ -4,7 +4,7 @@ export function buildRegistrationTransferContent(
   bankCode?: string | null,
 ): string {
   if (isVietinBank(bankCode)) {
-    return `SEVQRDH${registrationId}`;
+    return `SEVQR DH${registrationId}`;
   }
 
   return `DH${registrationId}`;
@@ -30,7 +30,7 @@ export function buildShirtOrderTransferContent(
   bankCode?: string | null,
 ): string {
   if (isVietinBank(bankCode)) {
-    return `SEVQRAO${shirtOrderId}`;
+    return `SEVQR AO${shirtOrderId}`;
   }
 
   return `DHAO${shirtOrderId}`;
@@ -52,7 +52,7 @@ export function extractRegistrationIdFromTransferContent(
 ): string | null {
   if (!content) return null;
 
-  const legacyMatch = content.match(/(?:DH|ORDER)\s*([\w-]+)/i);
+  const legacyMatch = content.match(/(?:SEVQR\s*)?(?:DH|ORDER)\s*([\w-]+)/i);
   if (legacyMatch) return legacyMatch[1];
 
   const cuidMatch = content.match(/\b(c[a-z0-9]{20,})\b/i);
@@ -68,7 +68,7 @@ export function extractShirtOrderIdFromTransferContent(
   if (!content) return null;
 
   const shirtOrderMatch = content.match(
-    /\b(?:SEVQRAO|DHAO|SHIRTORDER|SHIRT|AO)\s*-?\s*([\w-]+)/i,
+    /\b(?:SEVQR\s*)?(?:AO|DHAO|SEVQRAO|SHIRTORDER|SHIRT)\s*-?\s*([\w-]+)/i,
   );
 
   return shirtOrderMatch?.[1] ?? null;

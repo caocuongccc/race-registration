@@ -286,11 +286,13 @@ export async function POST(req: NextRequest) {
           bankName: bankAccountInfo.bankName || bankAccountInfo.bankCode,
           accountNumber: bankAccountInfo.accountNumber,
           accountHolder: bankAccountInfo.accountName,
+          bankCode: bankAccountInfo.bankCode,
         }
       : {
           bankName: process.env.SEPAY_BANK_NAME || "",
           accountNumber: process.env.SEPAY_ACCOUNT_NUMBER || "",
           accountHolder: process.env.SEPAY_BANK_HOLDER || "",
+          bankCode: process.env.SEPAY_BANK_CODE || "",
         };
 
     const registrationNumberRows = await prisma.$queryRaw<

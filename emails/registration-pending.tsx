@@ -17,6 +17,7 @@ interface RegistrationPendingEmailProps {
     bankName: string;
     accountNumber: string;
     accountHolder: string;
+    bankCode?: string;
   };
   isNewUser?: boolean;
   temporaryPassword?: string;
@@ -46,7 +47,17 @@ export function RegistrationPendingEmail({
   const isServiceOnly = event.registrationServiceOnly === true;
 
   const trackingUrl = `${process.env.NEXTAUTH_URL || "https://dangkygiaichay.vercel.app"}/registrations/${registration.id}/payment`;
-  const transferContent = registration.shortCode || `DH${registration.id}`;
+  const normalizedBankCode = String(bankInfo.bankCode || event.bankCode || "")
+    .replace(/[\s_-]/g, "")
+    .toUpperCase();
+  const isVietinBank =
+    normalizedBankCode === "VIETINBANK" ||
+    normalizedBankCode === "ICB" ||
+    normalizedBankCode === "CTG" ||
+    normalizedBankCode === "970415";
+  const transferContent =
+    registration.shortCode ||
+    (isVietinBank ? `SEVQR DH${registration.id}` : `DH${registration.id}`);
   const shirtCategoryText =
     registration.shirtCategory === "MALE"
       ? "Nam"

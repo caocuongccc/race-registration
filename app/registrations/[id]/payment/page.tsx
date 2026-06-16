@@ -33,6 +33,7 @@ interface RegistrationData {
     bankName: string;
     bankAccount: string;
     bankHolder: string;
+    bankCode?: string;
     registrationServiceOnly?: boolean;
   };
   shirtCategory?: string;
@@ -153,7 +154,17 @@ export default function PaymentPage() {
   const isPending = registration.paymentStatus === "PENDING";
   const isFailed = registration.paymentStatus === "FAILED";
   const isServiceOnly = registration.event.registrationServiceOnly === true;
-  const transferContent = registration.shortCode || `DH${registration.id}`;
+  const normalizedBankCode = String(registration.event.bankCode || "")
+    .replace(/[\s_-]/g, "")
+    .toUpperCase();
+  const isVietinBank =
+    normalizedBankCode === "VIETINBANK" ||
+    normalizedBankCode === "ICB" ||
+    normalizedBankCode === "CTG" ||
+    normalizedBankCode === "970415";
+  const transferContent =
+    registration.shortCode ||
+    (isVietinBank ? `SEVQR DH${registration.id}` : `DH${registration.id}`);
 
   return (
     <div className="min-h-screen bg-gray-50 py-8">
