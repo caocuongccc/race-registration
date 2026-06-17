@@ -176,18 +176,26 @@ model EventShirt {
 }
 
 model WebhookLog {
-  id           String   @id @default(cuid())
-  provider     String
-  event        String
-  payload      String   @db.Text
-  status       String
-  errorMessage String?  @db.Text
-  eventId      String?  @map("event_id")
-  createdAt    DateTime @default(now())
+  id            String    @id @default(cuid())
+  provider      String
+  event         String
+  payload       String    @db.Text
+  status        String
+  errorMessage  String?   @db.Text
+  eventId       String?   @map("event_id")
+  retryable     Boolean   @default(false)
+  retryCount    Int       @default(0) @map("retry_count")
+  maxRetries    Int       @default(5) @map("max_retries")
+  nextRetryAt   DateTime? @map("next_retry_at")
+  lastRetryAt   DateTime? @map("last_retry_at")
+  retrySourceId String?   @map("retry_source_id")
+  createdAt     DateTime  @default(now())
 
   @@index([provider, createdAt])
   @@index([status])
   @@index([eventId])
+  @@index([retryable, nextRetryAt])
+  @@index([retrySourceId])
   @@map("webhook_logs")
 }
 

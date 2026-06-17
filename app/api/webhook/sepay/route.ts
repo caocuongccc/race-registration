@@ -6,6 +6,7 @@ import { parseSepayWebhook, verifySepayWebhook } from "@/lib/sepay-service";
 import { sendPaymentConfirmationEmailGmailFirst } from "@/lib/email-service-gmail-first";
 import { generateBibNumberHybrid } from "@/lib/bib-generator";
 import { getEventBankAccount } from "@/lib/bank-account-service"; // ✅ Decrypted bank account
+import { getInitialWebhookRetryAt } from "@/lib/sepay-webhook-retry";
 
 /**
  * Generate BIB number
@@ -94,6 +95,10 @@ async function logSepayWebhook(
   payload: unknown,
   errorMessage?: string,
   eventId?: string | null,
+  options?: {
+    retryable?: boolean;
+    nextRetryAt?: Date | null;
+  },
 ) {
   try {
     await prisma.webhookLog.create({
@@ -104,6 +109,8 @@ async function logSepayWebhook(
         status,
         errorMessage,
         eventId,
+        retryable: options?.retryable || false,
+        nextRetryAt: options?.nextRetryAt || null,
       },
     });
   } catch (logError) {
@@ -510,6 +517,11 @@ export async function POST(req: NextRequest) {
       "FAILED",
       webhookData || { error: String(error) },
       (error as Error).message,
+      null,
+      {
+        retryable: Boolean(webhookData),
+        nextRetryAt: webhookData ? getInitialWebhookRetryAt() : null,
+      },
     );
 
     // Return 200 to avoid retry

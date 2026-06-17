@@ -31,6 +31,12 @@ interface WebhookLog {
   accountNumber: string | null;
   subAccount: string | null;
   bank: string | null;
+  retryable: boolean;
+  retryCount: number;
+  maxRetries: number;
+  nextRetryAt: string | null;
+  lastRetryAt: string | null;
+  retrySourceId: string | null;
 }
 
 interface Pagination {
@@ -53,6 +59,7 @@ const eventOptions = [
   "all",
   "payment.received",
   "payment.processed",
+  "payment.retry",
   "payment.error",
   "payment.parse",
   "payment.auth",
@@ -75,6 +82,11 @@ function formatDateTime(value: string) {
     minute: "2-digit",
     second: "2-digit",
   }).format(new Date(value));
+}
+
+function formatRetryTime(value: string | null) {
+  if (!value) return "-";
+  return formatDateTime(value);
 }
 
 function getStatusBadge(status: string) {
@@ -132,6 +144,10 @@ export default function WebhookLogsPage() {
   const [eventId, setEventId] = useState("all");
   const [events, setEvents] = useState<Array<{ id: string; name: string }>>([]);
   const [selectedLog, setSelectedLog] = useState<WebhookLog | null>(null);
+  const [retryingId, setRetryingId] = useState<string | null>(null);
+  const [retryCodeById, setRetryCodeById] = useState<Record<string, string>>(
+    {},
+  );
 
   const params = useMemo(() => {
     const next = new URLSearchParams();
@@ -179,6 +195,48 @@ export default function WebhookLogsPage() {
 
   const resetToFirstPage = () => {
     setPagination((current) => ({ ...current, page: 1 }));
+  };
+
+  const canRetry = (log: WebhookLog) =>
+    ["FAILED", "NO_ORDER_CODE"].includes(log.status);
+
+  const retryWebhook = async (log: WebhookLog) => {
+    const overrideCode = retryCodeById[log.id]?.trim();
+
+    if (log.status === "NO_ORDER_CODE" && !overrideCode) {
+      toast.error("Nhap ma dang ky hoac ma don ao de retry webhook nay");
+      return;
+    }
+
+    setRetryingId(log.id);
+    try {
+      const res = await fetch(`/api/admin/webhooks/${log.id}/retry`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ overrideCode }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        throw new Error(
+          data.error ||
+            data.result?.error ||
+            data.result?.message ||
+            "Retry failed",
+        );
+      }
+
+      toast.success("Retry webhook thanh cong");
+      setRetryCodeById((current) => {
+        const next = { ...current };
+        delete next[log.id];
+        return next;
+      });
+      await loadLogs();
+    } catch (error: any) {
+      toast.error(error.message || "Retry webhook that bai");
+    } finally {
+      setRetryingId(null);
+    }
   };
 
   return (
@@ -285,6 +343,7 @@ export default function WebhookLogsPage() {
                     <th className="px-4 py-3">Event</th>
                     <th className="px-4 py-3">Su kien</th>
                     <th className="px-4 py-3">Status</th>
+                    <th className="px-4 py-3">Retry</th>
                     <th className="px-4 py-3">Code</th>
                     <th className="px-4 py-3">So tien</th>
                     <th className="px-4 py-3">Tai khoan</th>
@@ -308,6 +367,15 @@ export default function WebhookLogsPage() {
                       <td className="whitespace-nowrap px-4 py-3">
                         {getStatusBadge(log.status)}
                       </td>
+                      <td className="whitespace-nowrap px-4 py-3 text-xs">
+                        <div className="font-medium">
+                          {log.retryCount}/{log.maxRetries}
+                          {log.retryable ? " - auto" : ""}
+                        </div>
+                        <div className="text-gray-500">
+                          {formatRetryTime(log.nextRetryAt)}
+                        </div>
+                      </td>
                       <td className="max-w-[260px] truncate px-4 py-3 font-mono">
                         {log.code || log.registrationId || "-"}
                       </td>
@@ -327,13 +395,38 @@ export default function WebhookLogsPage() {
                         {log.errorMessage || "-"}
                       </td>
                       <td className="whitespace-nowrap px-4 py-3 text-right">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => setSelectedLog(log)}
-                        >
-                          Payload
-                        </Button>
+                        <div className="flex justify-end gap-2">
+                          {canRetry(log) && (
+                            <div className="flex items-center gap-2">
+                              <Input
+                                className="h-9 w-44"
+                                placeholder="Ma DK/AO neu can"
+                                value={retryCodeById[log.id] || ""}
+                                onChange={(e) =>
+                                  setRetryCodeById((current) => ({
+                                    ...current,
+                                    [log.id]: e.target.value,
+                                  }))
+                                }
+                              />
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => retryWebhook(log)}
+                                disabled={retryingId === log.id}
+                              >
+                                {retryingId === log.id ? "Dang retry" : "Retry"}
+                              </Button>
+                            </div>
+                          )}
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setSelectedLog(log)}
+                          >
+                            Payload
+                          </Button>
+                        </div>
                       </td>
                     </tr>
                   ))}

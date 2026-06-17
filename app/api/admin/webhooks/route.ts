@@ -91,6 +91,12 @@ export async function GET(req: NextRequest) {
           accountNumber: webhookData?.accountNumber || null,
           subAccount: webhookData?.subAccount || null,
           bank: webhookData?.gateway || webhookData?.bankAbbreviation || null,
+          retryable: log.retryable,
+          retryCount: log.retryCount,
+          maxRetries: log.maxRetries,
+          nextRetryAt: log.nextRetryAt,
+          lastRetryAt: log.lastRetryAt,
+          retrySourceId: log.retrySourceId,
         };
       }),
       pagination: {
