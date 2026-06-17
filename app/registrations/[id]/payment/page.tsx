@@ -390,10 +390,10 @@ export default function PaymentPage() {
 
               <div className="bg-red-50 border border-red-200 p-4 rounded-lg">
                 <p className="text-sm text-red-800">
-                  ⚠️ <strong>Lưu ý:</strong> Vui lòng ghi CHÍNH XÁC nội dung
-                  chuyển khoản{" "}
-                  <strong>{transferContent}</strong>{" "}
-                  để hệ thống tự động xác nhận thanh toán.
+                  ⚠️ <strong>Lưu ý:</strong> Vui lòng giữ nguyên nội dung
+                  chuyển khoản <strong>{transferContent}</strong>. Không sửa,
+                  thêm hoặc xóa ký tự để hệ thống tự động nhận diện và xác nhận
+                  thanh toán.
                 </p>
               </div>
 

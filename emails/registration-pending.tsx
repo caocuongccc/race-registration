@@ -253,8 +253,9 @@ export function RegistrationPendingEmail({
                 </Text>
 
                 <Text style={warningText}>
-                  ⚠️ Vui lòng ghi CHÍNH XÁC nội dung chuyển khoản:{" "}
-                  <strong>{transferContent}</strong>
+                  ⚠️ Vui lòng giữ nguyên nội dung chuyển khoản{" "}
+                  <strong>{transferContent}</strong>. Không sửa, thêm hoặc xóa
+                  ký tự để hệ thống tự động nhận diện và xác nhận thanh toán.
                 </Text>
               </Section>
             )}
