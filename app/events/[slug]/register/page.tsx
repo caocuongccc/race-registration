@@ -245,6 +245,11 @@ export default function RegistrationPage() {
           shirt.type === watchFinisherShirtType,
       )
       ?.sizes?.map((size: any) => size.size) || [];
+  const allShirtPreviewImages = [
+    ...(shirtImages?.MALE || []),
+    ...(shirtImages?.FEMALE || []),
+    ...(shirtImages?.KID || []),
+  ];
 
   const requiresShirtPurchase =
     eventData?.event.requiresShirtPurchase === true;
@@ -1155,37 +1160,16 @@ Tôi đồng ý cho Ban Tổ Chức sử dụng hình ảnh, video, tên và th�
               </CardHeader>
               <CardContent className="space-y-4">
                 {/* Shirt Gallery */}
-                {shirtImages && Object.keys(shirtImages).length > 0 && (
-                  <div className="bg-gradient-to-br from-purple-50 via-pink-50 to-blue-50 rounded-xl p-6 border-2 border-purple-200">
-                    <h3 className="text-lg font-bold text-center text-purple-900 mb-6">
-                      👕 Xem trước các mẫu áo kỷ niệm
+                {allShirtPreviewImages.length > 0 && (
+                  <div className="rounded-xl border-2 border-purple-200 bg-gradient-to-br from-purple-50 via-pink-50 to-blue-50 p-4 sm:p-5">
+                    <h3 className="mb-4 text-center text-lg font-bold text-purple-900">
+                      👕 Xem trước các mẫu áo, bảng size áo
                     </h3>
-                    {/* Flex layout: các card tự co giãn theo số loại áo có ảnh */}
-                    <div className="flex flex-wrap justify-center gap-6">
-                      {shirtImages.MALE?.length > 0 && (
-                        <div className="bg-white rounded-lg p-4 shadow-sm w-full sm:w-auto sm:min-w-[260px] sm:max-w-[320px] flex-1">
-                          <ShirtImageCarousel
-                            images={shirtImages.MALE}
-                            category="MALE"
-                          />
-                        </div>
-                      )}
-                      {shirtImages.FEMALE?.length > 0 && (
-                        <div className="bg-white rounded-lg p-4 shadow-sm w-full sm:w-auto sm:min-w-[260px] sm:max-w-[320px] flex-1">
-                          <ShirtImageCarousel
-                            images={shirtImages.FEMALE}
-                            category="FEMALE"
-                          />
-                        </div>
-                      )}
-                      {shirtImages.KID?.length > 0 && (
-                        <div className="bg-white rounded-lg p-4 shadow-sm w-full sm:w-auto sm:min-w-[260px] sm:max-w-[320px] flex-1">
-                          <ShirtImageCarousel
-                            images={shirtImages.KID}
-                            category="KID"
-                          />
-                        </div>
-                      )}
+                    <div className="w-full rounded-lg bg-white p-3 shadow-sm sm:p-4">
+                      <ShirtImageCarousel
+                        images={allShirtPreviewImages}
+                        showLabel={false}
+                      />
                     </div>
                   </div>
                 )}
