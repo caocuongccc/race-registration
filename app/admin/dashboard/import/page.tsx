@@ -134,7 +134,7 @@ export default function ImportExcelPage() {
 
       if (result.success) {
         toast.success(
-          `✅ Đã import ${result.batch.successCount}/${result.batch.totalRows} VĐV`,
+          `Import thanh cong ${result.batch.successCount}/${result.batch.totalRows} VDV - Ao: ${result.batch.totalShirts || 0}`,
         );
 
         if (result.batch.failedCount > 0) {
