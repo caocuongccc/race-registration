@@ -3,7 +3,10 @@ import { after, NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { generateCheckinQRBuffer } from "@/lib/qr-inline";
 import { parseSepayWebhook, verifySepayWebhook } from "@/lib/sepay-service";
-import { sendEmailGmailFirst, sendPaymentConfirmationEmailGmailFirst } from "@/lib/email-service-gmail-first";
+import {
+  sendEmailGmailFirst,
+  sendPaymentConfirmationEmailGmailFirst,
+} from "@/lib/email-service-gmail-first";
 import { generateBibNumberHybrid } from "@/lib/bib-generator";
 import { getEventBankAccount } from "@/lib/bank-account-service"; // ✅ Decrypted bank account
 import { getInitialWebhookRetryAt } from "@/lib/sepay-webhook-retry";
@@ -53,7 +56,10 @@ async function sendPaymentConfirmationInBackground(
         qrCode = `data:image/png;base64,${qrBuffer.toString("base64")}`;
         console.log(`✅ QR generated inline for BIB ${registration.bibNumber}`);
       } catch (qrErr) {
-        console.warn("⚠️ QR generation failed, sending email without QR:", qrErr);
+        console.warn(
+          "⚠️ QR generation failed, sending email without QR:",
+          qrErr,
+        );
       }
     }
 
@@ -63,29 +69,20 @@ async function sendPaymentConfirmationInBackground(
       qrCode, // ✅ Truyền QR dưới dạng base64 để gắn CID attachment
     });
 
-    console.log(`âœ… Confirmation email sent`);
-
-    await prisma.emailLog.create({
-      data: {
-        registrationId,
-        emailType: "PAYMENT_CONFIRMED",
-        subject: `Thanh toÃ¡n thÃ nh cÃ´ng - Sá»‘ BIB ${bibNumber}`,
-        status: "SENT",
-        recipientEmail,
-        emailProvider: "GMAIL_FIRST",
-      },
-    });
+    // sendPaymentConfirmationEmailGmailFirst owns the success EmailLog.
+    // Logging it again here created a duplicate PAYMENT_CONFIRMED row.
+    console.log("Confirmation email sent");
   } catch (emailError) {
-    console.error("âŒ Email error:", emailError);
+    console.error("Confirmation email error:", emailError);
 
     await prisma.emailLog.create({
       data: {
         registrationId,
         emailType: "PAYMENT_CONFIRMED",
-        subject: `Thanh toÃ¡n thÃ nh cÃ´ng - Sá»‘ BIB ${bibNumber}`,
+        subject: `Thanh toán thất bại - Số BIB ${bibNumber || "chưa cấp"}`,
         status: "FAILED",
         recipientEmail,
-        emailProvider: "GMAIL_FIRST",
+        emailProvider: "gmail_first",
         errorMessage: (emailError as Error).message,
       },
     });
@@ -179,7 +176,9 @@ async function processPaymentConfirmation(
       where: { transactionId },
     });
     if (existingPayment) {
-      console.log(`✅ Transaction ${transactionId} already processed (idempotency)`);
+      console.log(
+        `✅ Transaction ${transactionId} already processed (idempotency)`,
+      );
       return {
         success: true,
         message: "Transaction already processed",
@@ -198,18 +197,21 @@ async function processPaymentConfirmation(
     ].filter(Boolean);
     if (receivedAccountNumbers.length > 0) {
       const eventBank = await getEventBankAccount(registration.eventId);
-      const expectedAccount = eventBank?.accountNumber || process.env.SEPAY_ACCOUNT_NUMBER;
+      const expectedAccount =
+        eventBank?.accountNumber || process.env.SEPAY_ACCOUNT_NUMBER;
       const isExpectedAccount = expectedAccount
         ? receivedAccountNumbers.includes(expectedAccount)
         : true;
 
       if (!isExpectedAccount) {
         console.warn(
-          `⚠️ Account mismatch: received ${receivedAccountNumbers.join(", ")}, expected ${expectedAccount?.substring(0, 4)}****`
+          `⚠️ Account mismatch: received ${receivedAccountNumbers.join(", ")}, expected ${expectedAccount?.substring(0, 4)}****`,
         );
         // Log but don't block - could be legitimate if multiple accounts configured
       } else {
-        console.log(`✅ Account verified: ${expectedAccount?.substring(0, 4)}****`);
+        console.log(
+          `✅ Account verified: ${expectedAccount?.substring(0, 4)}****`,
+        );
       }
     }
     // Verify amount (allow small difference)
@@ -302,7 +304,6 @@ async function processPaymentConfirmation(
       registrationId: registrationId,
       eventId: registration.eventId,
     };
-
   } catch (error) {
     console.error("❌ Payment processing error:", error);
     throw error;
@@ -429,15 +430,26 @@ async function processMerchOrderPaymentConfirmation(
   });
   if (!current) throw new Error("Merch order not found: " + publicCode);
   if (current.paymentStatus === "PAID") {
-    return { success: true, message: "Already paid", merchOrderId: current.id, eventId: null };
+    return {
+      success: true,
+      message: "Already paid",
+      merchOrderId: current.id,
+      eventId: null,
+    };
   }
 
   const bank = await getMerchCampaignBankAccount(current.campaignId);
   const receivedAccounts = [webhookData.subAccount, webhookData.accountNumber]
     .filter(Boolean)
     .map((value) => String(value).replace(/\s/g, ""));
-  if (bank && receivedAccounts.length > 0 && !receivedAccounts.includes(bank.accountNumber.replace(/\s/g, ""))) {
-    throw new Error("Merch payment account does not match campaign " + current.campaignId);
+  if (
+    bank &&
+    receivedAccounts.length > 0 &&
+    !receivedAccounts.includes(bank.accountNumber.replace(/\s/g, ""))
+  ) {
+    throw new Error(
+      "Merch payment account does not match campaign " + current.campaignId,
+    );
   }
 
   const order = await confirmMerchOrderPayment({
@@ -451,12 +463,17 @@ async function processMerchOrderPaymentConfirmation(
   after(async () => {
     const result = await sendEmailGmailFirst({
       to: order.email,
-      subject: "Đã nhận thanh toán - " + order.campaign.name + " - " + order.publicCode,
+      subject:
+        "Đã nhận thanh toán - " +
+        order.campaign.name +
+        " - " +
+        order.publicCode,
       react: MerchOrderEmail({ order, campaign: order.campaign, paid: true }),
       fromName: order.campaign.name,
       fromEmail: order.campaign.contactEmail || process.env.FROM_EMAIL,
     });
-    if (!result.success) console.error("Merch paid email failed:", result.error);
+    if (!result.success)
+      console.error("Merch paid email failed:", result.error);
   });
 
   return { success: true, merchOrderId: order.id, eventId: null };
@@ -549,10 +566,16 @@ export async function POST(req: NextRequest) {
 
     console.log(`✅ Payment processed:`, result);
     console.log("=".repeat(60) + "\n");
-    await logSepayWebhook("payment.processed", "SUCCESS", {
-      webhookData,
-      result,
-    }, undefined, result.eventId);
+    await logSepayWebhook(
+      "payment.processed",
+      "SUCCESS",
+      {
+        webhookData,
+        result,
+      },
+      undefined,
+      result.eventId,
+    );
 
     // Return success
     return NextResponse.json({
