@@ -1,5 +1,6 @@
 // lib/sepay-service.ts - CORRECT SEPAY IMPLEMENTATION
 import {
+  extractMerchOrderCodeFromTransferContent,
   extractRegistrationIdFromTransferContent,
   extractShirtOrderIdFromTransferContent,
   isVietinBank,
@@ -181,7 +182,7 @@ export interface SepayWebhookData {
 
 export function parseSepayWebhook(webhookData: any): {
   orderCode: string | null;
-  orderType: "REGISTRATION" | "SHIRT_ORDER";
+  orderType: "REGISTRATION" | "SHIRT_ORDER" | "MERCH_ORDER";
   amount: number;
   transactionId: string;
   transactionDate: string;
@@ -193,7 +194,10 @@ export function parseSepayWebhook(webhookData: any): {
   const shirtOrderCode =
     extractShirtOrderIdFromTransferContent(webhookData.code) ||
     extractShirtOrderIdFromTransferContent(content);
-  let orderCode = shirtOrderCode ||
+  const merchOrderCode =
+    extractMerchOrderCodeFromTransferContent(webhookData.code) ||
+    extractMerchOrderCodeFromTransferContent(content);
+  let orderCode = merchOrderCode || shirtOrderCode ||
     extractRegistrationIdFromTransferContent(webhookData.code) ||
     extractRegistrationIdFromTransferContent(content);
 
@@ -203,7 +207,11 @@ export function parseSepayWebhook(webhookData: any): {
 
   return {
     orderCode,
-    orderType: shirtOrderCode ? "SHIRT_ORDER" : "REGISTRATION",
+    orderType: merchOrderCode
+      ? "MERCH_ORDER"
+      : shirtOrderCode
+        ? "SHIRT_ORDER"
+        : "REGISTRATION",
     amount: parseInt(webhookData.transferAmount) || 0,
     transactionId: webhookData.id?.toString() || `sepay_${Date.now()}`,
     transactionDate: webhookData.transactionDate || new Date().toISOString(),

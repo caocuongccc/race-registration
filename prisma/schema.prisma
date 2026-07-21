@@ -19,6 +19,7 @@ model User {
   events             Event[]
   importBatches      ImportBatch[]
   registrations      Registration[]
+  merchCampaigns     MerchCampaign[]
   racePacksCollected Registration[] @relation("RacePackCollector")
 
   @@map("users")
@@ -276,6 +277,7 @@ model Payment {
   id             String         @id @default(cuid())
   registrationId String?
   shirtOrderId   String?
+  merchOrderId   String?
   purpose        PaymentPurpose @default(REGISTRATION)
   transactionId  String?        @unique
   amount         Int
@@ -286,9 +288,11 @@ model Payment {
   updatedAt      DateTime       @updatedAt
   registration   Registration?  @relation(fields: [registrationId], references: [id])
   shirtOrder     ShirtOrder?    @relation(fields: [shirtOrderId], references: [id])
+  merchOrder     MerchOrder?    @relation(fields: [merchOrderId], references: [id])
 
   @@index([registrationId])
   @@index([shirtOrderId])
+  @@index([merchOrderId])
   @@index([purpose])
   @@map("payments")
 }
@@ -418,6 +422,126 @@ model ShirtOrderItem {
   @@map("shirt_order_items")
 }
 
+model MerchCampaign {
+  id                   String              @id @default(cuid())
+  name                 String
+  slug                 String              @unique
+  description          String?             @db.Text
+  year                 Int
+  status               MerchCampaignStatus @default(DRAFT)
+  isPublished          Boolean             @default(false)
+  requireOnlinePayment Boolean             @default(true)
+  bankName             String?             @db.Text
+  bankAccount          String?             @db.Text
+  bankHolder           String?             @db.Text
+  bankCode             String?             @db.Text
+  heroImageUrl         String?
+  cloudinaryPublicId   String?
+  saleStartAt          DateTime?
+  saleEndAt            DateTime?
+  contactEmail         String?
+  contactPhone         String?
+  createdById          String
+  createdAt            DateTime            @default(now())
+  updatedAt            DateTime            @updatedAt
+  createdBy            User                @relation(fields: [createdById], references: [id])
+  styles               MerchShirtStyle[]
+  orders               MerchOrder[]
+
+  @@index([status, isPublished])
+  @@index([year])
+  @@map("merch_campaigns")
+}
+
+model MerchShirtStyle {
+  id                 String              @id @default(cuid())
+  campaignId         String
+  name               String
+  category           ShirtCategory
+  type               ShirtType
+  price              Int
+  previewImageUrl    String?
+  cloudinaryPublicId String?
+  isAvailable        Boolean             @default(true)
+  sortOrder          Int                 @default(0)
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
+  campaign           MerchCampaign       @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  variants           MerchShirtVariant[]
+  orderItems         MerchOrderItem[]
+
+  @@unique([campaignId, name, category, type])
+  @@index([campaignId, isAvailable])
+  @@map("merch_shirt_styles")
+}
+
+model MerchShirtVariant {
+  id               String          @id @default(cuid())
+  styleId          String
+  size             ShirtSize
+  stockQuantity    Int
+  reservedQuantity Int             @default(0)
+  soldQuantity     Int             @default(0)
+  isAvailable      Boolean         @default(true)
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
+  style            MerchShirtStyle @relation(fields: [styleId], references: [id], onDelete: Cascade)
+  orderItems       MerchOrderItem[]
+
+  @@unique([styleId, size])
+  @@index([styleId, isAvailable])
+  @@map("merch_shirt_variants")
+}
+
+model MerchOrder {
+  id                String                 @id @default(cuid())
+  campaignId        String
+  publicCode        String                 @unique
+  secretCodeHash    String
+  fullName          String
+  email             String
+  phone             String
+  shippingAddress   String                 @db.Text
+  notes             String?                @db.Text
+  totalAmount       Int
+  paymentStatus     PaymentStatus          @default(PENDING)
+  fulfillmentStatus MerchFulfillmentStatus @default(PENDING)
+  paymentDate       DateTime?
+  createdAt         DateTime               @default(now())
+  updatedAt         DateTime               @updatedAt
+  campaign          MerchCampaign          @relation(fields: [campaignId], references: [id], onDelete: Restrict)
+  items             MerchOrderItem[]
+  payments          Payment[]
+
+  @@index([campaignId, paymentStatus])
+  @@index([email])
+  @@index([phone])
+  @@index([fullName])
+  @@map("merch_orders")
+}
+
+model MerchOrderItem {
+  id         String            @id @default(cuid())
+  orderId    String
+  styleId    String
+  variantId  String
+  styleName  String
+  category   ShirtCategory
+  type       ShirtType
+  size       ShirtSize
+  quantity   Int
+  unitPrice  Int
+  totalPrice Int
+  createdAt  DateTime          @default(now())
+  order      MerchOrder        @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  style      MerchShirtStyle   @relation(fields: [styleId], references: [id])
+  variant    MerchShirtVariant @relation(fields: [variantId], references: [id])
+
+  @@index([orderId])
+  @@index([styleId, variantId])
+  @@map("merch_order_items")
+}
+
 model EventUser {
   id        String        @id @default(dbgenerated("(gen_random_uuid())::text"))
   eventId   String
@@ -490,9 +614,13 @@ enum ShirtSize {
   KID_3
   KID_4
   KID_5
+  KID_6
   KID_7
+  KID_8
   KID_9
+  KID_10
   KID_11
+  KID_12
   KID_13
   KID_15
 }
@@ -518,6 +646,21 @@ enum PaymentStatus {
 enum PaymentPurpose {
   REGISTRATION
   SHIRT_ORDER
+  MERCH_ORDER
+}
+
+enum MerchCampaignStatus {
+  DRAFT
+  OPEN
+  CLOSED
+}
+
+enum MerchFulfillmentStatus {
+  PENDING
+  PROCESSING
+  SHIPPED
+  COMPLETED
+  CANCELLED
 }
 
 enum ImportStatus {

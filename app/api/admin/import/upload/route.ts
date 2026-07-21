@@ -5,6 +5,12 @@ import * as XLSX from "xlsx";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
+const PHUOC_TICH_EVENT_ID = "cmqakv4ob0002umvsljo34jcg";
+const PHUOC_TICH_EXCEL_BIB_ONLY_PRICES: Record<string, number> = {
+  cmqakv7z90004umvsta32aiko: 80000,
+  cmqakv8d20006umvs0dphyan4: 100000,
+};
+
 export function parseDate(dateStr: string): Date | null {
   if (dateStr == null) return null;
 
@@ -103,6 +109,33 @@ function isNoShirtOption(value: string) {
   );
 }
 
+function getImportRowsFromWorkbook(workbook: XLSX.WorkBook): any[] {
+  let fallbackRows: any[] = [];
+
+  for (const sheetName of workbook.SheetNames) {
+    const sheet = workbook.Sheets[sheetName];
+    if (!sheet?.["!ref"]) continue;
+
+    const rows: any[] = XLSX.utils
+      .sheet_to_json(sheet, { raw: false, defval: "" })
+      .filter((row: any) =>
+        Object.values(row).some((value) => String(value || "").trim() !== ""),
+      );
+
+    if (rows.length === 0) continue;
+    if (fallbackRows.length === 0) fallbackRows = rows;
+
+    const headers = Object.keys(rows[0] || {}).map(normalizeText);
+    const hasName = headers.some((header) => header === "ho ten");
+    const hasDistance = headers.some((header) => header === "cu ly");
+
+    if (hasName && hasDistance) {
+      return rows;
+    }
+  }
+
+  return fallbackRows;
+}
 export async function POST(req: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
@@ -136,9 +169,7 @@ export async function POST(req: NextRequest) {
     const arrayBuffer = await file.arrayBuffer();
     const buffer = Buffer.from(arrayBuffer);
     const workbook = XLSX.read(buffer, { type: "buffer" });
-    const sheetName = workbook.SheetNames[0];
-    const sheet = workbook.Sheets[sheetName];
-    const rows: any[] = XLSX.utils.sheet_to_json(sheet, { raw: false });
+    const rows = getImportRowsFromWorkbook(workbook);
 
     if (rows.length === 0) {
       return NextResponse.json(
@@ -162,6 +193,7 @@ export async function POST(req: NextRequest) {
     const isRacekitShirtIncluded = event.distances.some(
       (distance) => distance.requiresFinisherShirt,
     );
+    const allowPhuocTichExcelNoShirt = event.id === PHUOC_TICH_EVENT_ID;
 
     const errors: any[] = [];
     let successCount = 0;
@@ -231,7 +263,7 @@ export async function POST(req: NextRequest) {
           !shirtCategoryValue && !shirtTypeValue && !shirtSizeValue;
 
         const racekitShirtOptedOut =
-          !event.requiresShirtPurchase &&
+          (!event.requiresShirtPurchase || allowPhuocTichExcelNoShirt) &&
           !isRacekitShirtIncluded &&
           (racekitShirtBlank || isNoShirtOption(shirtCategoryValue));
 
@@ -344,7 +376,10 @@ export async function POST(req: NextRequest) {
             }
           }
         }
-        const raceFee = distance.price;
+        const raceFee =
+          allowPhuocTichExcelNoShirt && !shirtId
+            ? PHUOC_TICH_EXCEL_BIB_ONLY_PRICES[distance.id] ?? distance.price
+            : distance.price;
         const totalAmount = raceFee + shirtFee;
         const phone =
           getString(row, ["Số điện thoại", "So dien thoai", "Phone"]) ||

@@ -36,6 +36,13 @@ export function buildShirtOrderTransferContent(
   return `DHAO${shirtOrderId}`;
 }
 
+export function buildMerchOrderTransferContent(
+  publicCode: string,
+  bankCode?: string | null,
+): string {
+  return isVietinBank(bankCode) ? `SEVQR ${publicCode}` : publicCode;
+}
+
 export function isVietinBank(bankCode?: string | null): boolean {
   if (!bankCode) return false;
   const normalized = bankCode.replace(/[\s_-]/g, "").toUpperCase();
@@ -72,4 +79,11 @@ export function extractShirtOrderIdFromTransferContent(
   );
 
   return shirtOrderMatch?.[1] ?? null;
+}
+
+export function extractMerchOrderCodeFromTransferContent(
+  content?: string | null,
+): string | null {
+  if (!content) return null;
+  return content.match(/\b(TTE[A-Z0-9]{8,20})\b/i)?.[1]?.toUpperCase() || null;
 }

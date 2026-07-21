@@ -3,10 +3,13 @@ import { after, NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { generateCheckinQRBuffer } from "@/lib/qr-inline";
 import { parseSepayWebhook, verifySepayWebhook } from "@/lib/sepay-service";
-import { sendPaymentConfirmationEmailGmailFirst } from "@/lib/email-service-gmail-first";
+import { sendEmailGmailFirst, sendPaymentConfirmationEmailGmailFirst } from "@/lib/email-service-gmail-first";
 import { generateBibNumberHybrid } from "@/lib/bib-generator";
 import { getEventBankAccount } from "@/lib/bank-account-service"; // ✅ Decrypted bank account
 import { getInitialWebhookRetryAt } from "@/lib/sepay-webhook-retry";
+import { confirmMerchOrderPayment } from "@/lib/merch-order-service";
+import { MerchOrderEmail } from "@/emails/merch-order-email";
+import { getMerchCampaignBankAccount } from "@/lib/merch-bank-account-service";
 
 /**
  * Generate BIB number
@@ -414,6 +417,50 @@ async function processShirtOrderPaymentConfirmation(
   }
 }
 
+async function processMerchOrderPaymentConfirmation(
+  publicCode: string,
+  transactionId: string,
+  amount: number,
+  webhookData: any,
+) {
+  const current = await prisma.merchOrder.findUnique({
+    where: { publicCode: publicCode.toUpperCase() },
+    include: { campaign: true, items: true },
+  });
+  if (!current) throw new Error("Merch order not found: " + publicCode);
+  if (current.paymentStatus === "PAID") {
+    return { success: true, message: "Already paid", merchOrderId: current.id, eventId: null };
+  }
+
+  const bank = await getMerchCampaignBankAccount(current.campaignId);
+  const receivedAccounts = [webhookData.subAccount, webhookData.accountNumber]
+    .filter(Boolean)
+    .map((value) => String(value).replace(/\s/g, ""));
+  if (bank && receivedAccounts.length > 0 && !receivedAccounts.includes(bank.accountNumber.replace(/\s/g, ""))) {
+    throw new Error("Merch payment account does not match campaign " + current.campaignId);
+  }
+
+  const order = await confirmMerchOrderPayment({
+    publicCode,
+    transactionId,
+    amount,
+    paymentMethod: "sepay_transfer",
+    webhookData,
+  });
+
+  after(async () => {
+    const result = await sendEmailGmailFirst({
+      to: order.email,
+      subject: "Đã nhận thanh toán - " + order.campaign.name + " - " + order.publicCode,
+      react: MerchOrderEmail({ order, campaign: order.campaign, paid: true }),
+      fromName: order.campaign.name,
+      fromEmail: order.campaign.contactEmail || process.env.FROM_EMAIL,
+    });
+    if (!result.success) console.error("Merch paid email failed:", result.error);
+  });
+
+  return { success: true, merchOrderId: order.id, eventId: null };
+}
 /**
  * SePay Webhook Handler
  * Receives bank transaction notifications from SePay
@@ -479,19 +526,26 @@ export async function POST(req: NextRequest) {
 
     // Process payment
     const result =
-      orderType === "SHIRT_ORDER"
-        ? await processShirtOrderPaymentConfirmation(
+      orderType === "MERCH_ORDER"
+        ? await processMerchOrderPaymentConfirmation(
             orderCode,
             transactionId,
             amount,
             webhookData,
           )
-        : await processPaymentConfirmation(
-            orderCode,
-            transactionId,
-            amount,
-            webhookData,
-          );
+        : orderType === "SHIRT_ORDER"
+          ? await processShirtOrderPaymentConfirmation(
+              orderCode,
+              transactionId,
+              amount,
+              webhookData,
+            )
+          : await processPaymentConfirmation(
+              orderCode,
+              transactionId,
+              amount,
+              webhookData,
+            );
 
     console.log(`✅ Payment processed:`, result);
     console.log("=".repeat(60) + "\n");
@@ -506,6 +560,7 @@ export async function POST(req: NextRequest) {
       message: "Payment confirmed",
       bibNumber: "bibNumber" in result ? result.bibNumber : undefined,
       shirtOrderId: "shirtOrderId" in result ? result.shirtOrderId : undefined,
+      merchOrderId: "merchOrderId" in result ? result.merchOrderId : undefined,
     });
   } catch (error) {
     console.error("❌ Webhook error:", error);

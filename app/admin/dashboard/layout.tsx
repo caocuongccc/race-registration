@@ -21,6 +21,7 @@ import {
   QrCode,
   Wrench,
   KeyRound,
+  Gift,
 } from "lucide-react";
 import { useEffect, useState } from "react";
 
@@ -28,6 +29,11 @@ const navigationConfig = {
   ADMIN: [
     { name: "Tổng quan", href: "/admin/dashboard", icon: LayoutDashboard },
     { name: "Sự kiện", href: "/admin/dashboard/events", icon: Calendar },
+    {
+      name: "Cổng bán áo",
+      href: "/admin/dashboard/merch-campaigns",
+      icon: Gift,
+    },
     { name: "Đăng ký", href: "/admin/dashboard/registrations", icon: Users },
     { name: "Số BIB", href: "/admin/dashboard/bibs", icon: Award }, // NEW
     {
@@ -71,7 +77,13 @@ const navigationConfig = {
     // { name: "Số BIB", href: "/admin/dashboard/bibs", icon: Award }, // NEW
     // { name: "Thống kê", href: "/admin/dashboard/statistics", icon: BarChart3 },
   ],
-  MEMBER: [],
+  MEMBER: [
+    {
+      name: "Cổng bán áo",
+      href: "/admin/dashboard/merch-campaigns",
+      icon: Gift,
+    },
+  ],
 };
 
 export default function AdminLayout({
@@ -102,10 +114,15 @@ export default function AdminLayout({
   }, []);
 
   useEffect(() => {
-    if (status === "authenticated" && session?.user?.role === "MEMBER") {
-      router.push("/member");
+    if (status !== "authenticated" || session?.user?.role !== "MEMBER") return;
+    if (pathname === "/admin/dashboard") {
+      router.replace("/admin/dashboard/merch-campaigns");
+      return;
     }
-  }, [status, session, router]);
+    if (!pathname.startsWith("/admin/dashboard/merch-campaigns")) {
+      router.replace("/member");
+    }
+  }, [status, session, pathname, router]);
 
   if (status === "loading") {
     return (
@@ -119,9 +136,6 @@ export default function AdminLayout({
     ? navigationConfig[session.user.role as keyof typeof navigationConfig] || []
     : [];
 
-  if (session?.user?.role === "MEMBER") {
-    return null;
-  }
 
   return (
     <div className="min-h-screen bg-gray-50">

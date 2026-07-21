@@ -18,7 +18,14 @@ export async function middleware(request: NextRequest) {
     }
 
     if (token.role === "MEMBER") {
-      return NextResponse.redirect(new URL("/member", request.url));
+      if (pathname === "/admin/dashboard") {
+        return NextResponse.redirect(
+          new URL("/admin/dashboard/merch-campaigns", request.url),
+        );
+      }
+      if (!pathname.startsWith("/admin/dashboard/merch-campaigns")) {
+        return NextResponse.redirect(new URL("/member", request.url));
+      }
     }
 
     return NextResponse.next();
