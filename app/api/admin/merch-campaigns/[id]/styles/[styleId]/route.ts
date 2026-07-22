@@ -66,6 +66,8 @@ export async function PUT(
           price,
           previewImageUrl: body.previewImageUrl || null,
           cloudinaryPublicId: body.cloudinaryPublicId || null,
+          backImageUrl: body.backImageUrl || null,
+          backCloudinaryPublicId: body.backCloudinaryPublicId || null,
           isAvailable: body.isAvailable !== false,
           sortOrder: Number(body.sortOrder) || 0,
         },

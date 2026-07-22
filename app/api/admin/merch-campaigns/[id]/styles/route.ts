@@ -36,6 +36,8 @@ export async function POST(
         price,
         previewImageUrl: body.previewImageUrl || null,
         cloudinaryPublicId: body.cloudinaryPublicId || null,
+        backImageUrl: body.backImageUrl || null,
+        backCloudinaryPublicId: body.backCloudinaryPublicId || null,
         sortOrder: Number(body.sortOrder) || 0,
         variants: {
           create: variants.map((v: any) => ({

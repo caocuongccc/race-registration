@@ -8,19 +8,19 @@ datasource db {
 }
 
 model User {
-  id                 String         @id @default(cuid())
-  email              String         @unique
+  id                 String          @id @default(cuid())
+  email              String          @unique
   password           String
   name               String?
-  role               UserRole       @default(ADMIN)
-  createdAt          DateTime       @default(now())
-  updatedAt          DateTime       @updatedAt
+  role               UserRole        @default(ADMIN)
+  createdAt          DateTime        @default(now())
+  updatedAt          DateTime        @updatedAt
   eventUsers         EventUser[]
   events             Event[]
   importBatches      ImportBatch[]
   registrations      Registration[]
   merchCampaigns     MerchCampaign[]
-  racePacksCollected Registration[] @relation("RacePackCollector")
+  racePacksCollected Registration[]  @relation("RacePackCollector")
 
   @@map("users")
 }
@@ -454,21 +454,23 @@ model MerchCampaign {
 }
 
 model MerchShirtStyle {
-  id                 String              @id @default(cuid())
-  campaignId         String
-  name               String
-  category           ShirtCategory
-  type               ShirtType
-  price              Int
-  previewImageUrl    String?
-  cloudinaryPublicId String?
-  isAvailable        Boolean             @default(true)
-  sortOrder          Int                 @default(0)
-  createdAt          DateTime            @default(now())
-  updatedAt          DateTime            @updatedAt
-  campaign           MerchCampaign       @relation(fields: [campaignId], references: [id], onDelete: Cascade)
-  variants           MerchShirtVariant[]
-  orderItems         MerchOrderItem[]
+  id                     String              @id @default(cuid())
+  campaignId             String
+  name                   String
+  category               ShirtCategory
+  type                   ShirtType
+  price                  Int
+  previewImageUrl        String?
+  cloudinaryPublicId     String?
+  backImageUrl           String?
+  backCloudinaryPublicId String?
+  isAvailable            Boolean             @default(true)
+  sortOrder              Int                 @default(0)
+  createdAt              DateTime            @default(now())
+  updatedAt              DateTime            @updatedAt
+  campaign               MerchCampaign       @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  variants               MerchShirtVariant[]
+  orderItems             MerchOrderItem[]
 
   @@unique([campaignId, name, category, type])
   @@index([campaignId, isAvailable])
@@ -476,16 +478,16 @@ model MerchShirtStyle {
 }
 
 model MerchShirtVariant {
-  id               String          @id @default(cuid())
+  id               String           @id @default(cuid())
   styleId          String
   size             ShirtSize
   stockQuantity    Int
-  reservedQuantity Int             @default(0)
-  soldQuantity     Int             @default(0)
-  isAvailable      Boolean         @default(true)
-  createdAt        DateTime        @default(now())
-  updatedAt        DateTime        @updatedAt
-  style            MerchShirtStyle @relation(fields: [styleId], references: [id], onDelete: Cascade)
+  reservedQuantity Int              @default(0)
+  soldQuantity     Int              @default(0)
+  isAvailable      Boolean          @default(true)
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+  style            MerchShirtStyle  @relation(fields: [styleId], references: [id], onDelete: Cascade)
   orderItems       MerchOrderItem[]
 
   @@unique([styleId, size])

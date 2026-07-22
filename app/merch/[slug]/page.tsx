@@ -289,11 +289,8 @@ export default function MerchCampaignPage() {
           </h1>
         </div> */}
       </section>
-      <div className="mx-auto max-w-7xl px-4 py-8">
-        <div className="mb-8 flex flex-wrap items-start justify-between gap-4">
-          <p className="max-w-3xl whitespace-pre-line text-gray-700">
-            {/* {campaign.description} */}
-          </p>
+      <div className="mx-auto max-w-[1440px] px-4 py-8 sm:px-6 lg:px-8 lg:py-10">
+        <div className="mb-6 flex justify-end">
           <Button variant="outline" onClick={() => setLookupOpen(true)}>
             <PackageSearch className="mr-2 h-4 w-4" />
             Tra cứu đơn
@@ -304,95 +301,70 @@ export default function MerchCampaignPage() {
             {campaign.closedReason || "Chương trình hiện chưa nhận đơn."}
           </div>
         )}
-        <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_360px]">
+        <div className="grid items-start gap-8 xl:grid-cols-[minmax(0,1fr)_400px]">
           <section className="min-w-0">
-            <h2 className="flex items-center gap-2 text-2xl font-bold">
+            <h2 className="flex items-center gap-2 text-xl font-bold text-gray-950 sm:text-2xl">
               <Shirt className="h-6 w-6" />
               Chọn áo
             </h2>
-            <div className="mt-5 flex flex-wrap gap-2">
+            <div className="mt-4 inline-flex max-w-full flex-wrap gap-1 bg-gray-100 p-1 rounded-lg">
               {categories.map((item) => (
                 <button
                   key={item}
                   onClick={() => setCategory(item)}
-                  className={`border px-5 py-2 text-sm font-medium rounded-lg ${category === item ? "border-emerald-700 bg-emerald-700 text-white" : "bg-white"}`}
+                  className={`border border-transparent px-5 py-2 text-sm font-semibold transition-colors rounded-md ${category === item ? "bg-emerald-700 text-white shadow-sm" : "text-gray-600 hover:bg-white hover:text-gray-950"}`}
                 >
                   {categoryNames[item]}
                 </button>
               ))}
             </div>
-            <div className="mt-5 space-y-5">
+            <div className="mt-6 space-y-6">
               {campaign.styles
                 .filter((s: any) => s.category === category)
                 .map((style: any) => (
                   <article
                     key={style.id}
-                    className="grid overflow-hidden border bg-white shadow-sm rounded-lg md:grid-cols-[minmax(260px,42%)_minmax(0,1fr)]"
+                    className="grid overflow-hidden border border-gray-200 bg-white shadow-[0_10px_35px_rgba(15,23,42,0.07)] rounded-lg md:grid-cols-[minmax(340px,44%)_minmax(0,1fr)]"
                   >
-                    <div className="relative aspect-square bg-gray-100 p-3 md:aspect-[4/5] md:min-h-[340px]">
-                      {style.previewImageUrl ? (
-                        <>
-                          <img
-                            src={style.previewImageUrl}
-                            alt={style.name}
-                            className="h-full w-full object-contain"
-                          />
-                          <button
-                            type="button"
-                            title="Xem ảnh lớn"
-                            aria-label={`Xem ảnh lớn ${style.name}`}
-                            onClick={() =>
-                              setPreviewImage({
-                                url: style.previewImageUrl,
-                                name: style.name,
-                              })
-                            }
-                            className="absolute right-3 top-3 grid h-9 w-9 place-items-center border bg-white/95 text-gray-700 shadow-sm rounded-lg hover:bg-white"
-                          >
-                            <Maximize2 className="h-4 w-4" />
-                          </button>
-                        </>
-                      ) : (
-                        <div className="grid h-full place-items-center text-gray-400">
-                          <Shirt className="h-16 w-16" />
-                        </div>
-                      )}
-                    </div>
-                    <div className="min-w-0 p-4">
+                    <MerchStyleImage
+                      style={style}
+                      onPreview={(url, name) => setPreviewImage({ url, name })}
+                    />
+                    <div className="min-w-0 p-5 sm:p-6 lg:p-7">
                       <div className="flex justify-between gap-3">
                         <div>
-                          <h3 className="font-bold">{style.name}</h3>
+                          <h3 className="text-lg font-bold text-gray-950">{style.name}</h3>
                           <p className="text-sm text-gray-500">
                             {categoryNames[style.category]} ·{" "}
                             {typeNames[style.type]}
                           </p>
                         </div>
-                        <strong className="shrink-0 text-emerald-700">
+                        <strong className="shrink-0 text-lg text-emerald-700">
                           {formatCurrency(style.price)}
                         </strong>
                       </div>
-                      <p className="mt-4 text-sm font-semibold text-gray-700">
+                      <p className="mt-6 text-sm font-semibold text-gray-800">
                         Chọn size và số lượng
                       </p>
-                      <div className="mt-2 grid gap-2 sm:grid-cols-2">
+                      <div className="mt-3 grid gap-3 sm:grid-cols-2">
                         {style.variants.map((variant: any) => (
                           <div
                             key={variant.id}
-                            className="flex min-h-11 items-center justify-between gap-2 border px-3 py-1.5 rounded-lg"
+                            className="flex min-h-14 items-center justify-between gap-3 border border-gray-200 bg-gray-50/70 px-3.5 py-2.5 transition-colors rounded-lg hover:border-emerald-300 hover:bg-emerald-50/30"
                           >
                             <div className="min-w-0">
-                              <span className="font-semibold">
+                              <span className="block text-sm font-semibold text-gray-900">
                                 Size {sizeName(variant.size)}
                               </span>
-                              <span className="ml-2 text-xs text-gray-500">
+                              <span className="mt-0.5 block text-[11px] text-gray-500">
                                 còn {variant.remaining}
                               </span>
                             </div>
-                            <div className="flex h-8 shrink-0 items-center border rounded-lg">
+                            <div className="flex h-9 shrink-0 items-center border border-gray-300 bg-white shadow-sm rounded-md">
                               <button
                                 aria-label={`Giảm size ${sizeName(variant.size)}`}
                                 disabled={!cart[variant.id]}
-                                className="grid h-full w-8 place-items-center disabled:opacity-30"
+                                className="grid h-full w-8 place-items-center text-gray-600 transition-colors hover:bg-gray-100 disabled:opacity-30"
                                 onClick={() => changeQuantity(variant, -1)}
                               >
                                 <Minus className="h-4 w-4" />
@@ -406,7 +378,7 @@ export default function MerchCampaignPage() {
                                   !variant.remaining ||
                                   (cart[variant.id] || 0) >= variant.remaining
                                 }
-                                className="grid h-full w-8 place-items-center disabled:opacity-30"
+                                className="grid h-full w-8 place-items-center text-gray-600 transition-colors hover:bg-gray-100 disabled:opacity-30"
                                 onClick={() => changeQuantity(variant, 1)}
                               >
                                 <Plus className="h-4 w-4" />
@@ -421,8 +393,8 @@ export default function MerchCampaignPage() {
             </div>
           </section>
 
-          <aside className="border bg-white p-5 shadow-sm rounded-lg lg:sticky lg:top-4">
-            <h2 className="flex items-center gap-2 text-xl font-bold">
+          <aside className="border border-gray-200 bg-white p-5 shadow-[0_10px_35px_rgba(15,23,42,0.07)] rounded-lg sm:p-6 xl:sticky xl:top-6">
+            <h2 className="flex items-center gap-2 text-lg font-bold text-gray-950">
               <ShoppingBag className="h-5 w-5" />
               Thông tin nhận hàng
             </h2>
@@ -463,7 +435,7 @@ export default function MerchCampaignPage() {
               />
             </div>
 
-            <div className="mt-5 border-t pt-4">
+            <div className="mt-6 border-t border-gray-200 pt-5">
               <p className="text-sm font-semibold text-gray-700">Áo đã chọn</p>
               {totalQuantity ? (
                 <div className="mt-2 max-h-40 space-y-2 overflow-y-auto">
@@ -499,7 +471,7 @@ export default function MerchCampaignPage() {
                 </div>
               </div>
               <Button
-                className="mt-4 w-full"
+                className="mt-5 h-11 w-full"
                 disabled={!campaign.isOpen || !totalQuantity}
                 isLoading={submitting}
                 onClick={submit}
@@ -557,12 +529,95 @@ export default function MerchCampaignPage() {
   );
 }
 
+function MerchStyleImage({
+  style,
+  onPreview,
+}: {
+  style: {
+    name: string;
+    previewImageUrl?: string | null;
+    backImageUrl?: string | null;
+  };
+  onPreview: (url: string, name: string) => void;
+}) {
+  const [selectedSide, setSelectedSide] = useState<"front" | "back">("front");
+  const images: Array<{
+    side: "front" | "back";
+    label: string;
+    url: string;
+  }> = [];
+
+  if (style.previewImageUrl) {
+    images.push({
+      side: "front",
+      label: "Mặt trước",
+      url: style.previewImageUrl,
+    });
+  }
+  if (style.backImageUrl) {
+    images.push({
+      side: "back",
+      label: "Mặt sau",
+      url: style.backImageUrl,
+    });
+  }
+
+  const selectedImage =
+    images.find((image) => image.side === selectedSide) || images[0];
+
+  return (
+    <div className="relative aspect-square bg-[#eef2f0] p-5 md:aspect-auto md:min-h-[460px]">
+      {selectedImage ? (
+        <>
+          <img
+            src={selectedImage.url}
+            alt={`${style.name} - ${selectedImage.label}`}
+            className="h-full w-full object-contain"
+          />
+          <button
+            type="button"
+            title="Xem ảnh lớn"
+            aria-label={`Xem ảnh lớn ${style.name} ${selectedImage.label}`}
+            onClick={() =>
+              onPreview(
+                selectedImage.url,
+                `${style.name} - ${selectedImage.label}`,
+              )
+            }
+            className="absolute right-4 top-4 grid h-10 w-10 place-items-center border border-gray-200 bg-white/95 text-gray-700 shadow-sm transition-colors rounded-lg hover:bg-white hover:text-emerald-700"
+          >
+            <Maximize2 className="h-4 w-4" />
+          </button>
+          {images.length > 1 && (
+            <div className="absolute bottom-4 left-1/2 flex -translate-x-1/2 border border-gray-200 bg-white/95 p-1 shadow-sm backdrop-blur rounded-lg">
+              {images.map((image) => (
+                <button
+                  key={image.side}
+                  type="button"
+                  onClick={() => setSelectedSide(image.side)}
+                  className={`min-w-20 px-3 py-2 text-xs font-semibold transition-colors rounded-md ${selectedImage.side === image.side ? "bg-emerald-700 text-white" : "text-gray-600 hover:bg-gray-100 hover:text-gray-950"}`}
+                >
+                  {image.label}
+                </button>
+              ))}
+            </div>
+          )}
+        </>
+      ) : (
+        <div className="grid h-full place-items-center text-gray-400">
+          <Shirt className="h-16 w-16" />
+        </div>
+      )}
+    </div>
+  );
+}
+
 function LookupModal(props: any) {
   return (
     <div className="fixed inset-0 z-50 grid place-items-center bg-black/50 p-4">
       <div className="max-h-[90vh] w-full max-w-xl overflow-y-auto bg-white p-5 shadow-xl rounded-lg">
         <div className="flex items-center justify-between">
-          <h2 className="flex items-center gap-2 text-xl font-bold">
+          <h2 className="flex items-center gap-2 text-lg font-bold text-gray-950">
             <LockKeyhole className="h-5 w-5" />
             Tra cứu đơn áo
           </h2>

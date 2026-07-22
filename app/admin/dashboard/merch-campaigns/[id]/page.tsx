@@ -53,6 +53,8 @@ const emptyStyle = {
   price: "",
   previewImageUrl: "",
   cloudinaryPublicId: "",
+  backImageUrl: "",
+  backCloudinaryPublicId: "",
   isAvailable: true,
   variants: {} as Record<string, number>,
 };
@@ -544,26 +546,48 @@ export default function MerchCampaignDetailPage() {
                 value={style.price}
                 onChange={(e) => setStyle({ ...style, price: e.target.value })}
               />
-              <ImageUploader
-                folder={`merch-campaigns/${campaign.slug}/shirts`}
-                label="Ảnh mẫu áo"
-                currentImage={style.previewImageUrl}
-                aspectRatio="aspect-square"
-                onUploadComplete={(url, publicId) =>
-                  setStyle({
-                    ...style,
-                    previewImageUrl: url,
-                    cloudinaryPublicId: publicId,
-                  })
-                }
-                onRemove={() =>
-                  setStyle({
-                    ...style,
-                    previewImageUrl: "",
-                    cloudinaryPublicId: "",
-                  })
-                }
-              />
+              <div className="grid gap-4 md:grid-cols-2">
+                <ImageUploader
+                  folder={`merch-campaigns/${campaign.slug}/shirts/front`}
+                  label="Ảnh mặt trước"
+                  currentImage={style.previewImageUrl}
+                  aspectRatio="aspect-square"
+                  onUploadComplete={(url, publicId) =>
+                    setStyle({
+                      ...style,
+                      previewImageUrl: url,
+                      cloudinaryPublicId: publicId,
+                    })
+                  }
+                  onRemove={() =>
+                    setStyle({
+                      ...style,
+                      previewImageUrl: "",
+                      cloudinaryPublicId: "",
+                    })
+                  }
+                />
+                <ImageUploader
+                  folder={`merch-campaigns/${campaign.slug}/shirts/back`}
+                  label="Ảnh mặt sau"
+                  currentImage={style.backImageUrl}
+                  aspectRatio="aspect-square"
+                  onUploadComplete={(url, publicId) =>
+                    setStyle({
+                      ...style,
+                      backImageUrl: url,
+                      backCloudinaryPublicId: publicId,
+                    })
+                  }
+                  onRemove={() =>
+                    setStyle({
+                      ...style,
+                      backImageUrl: "",
+                      backCloudinaryPublicId: "",
+                    })
+                  }
+                />
+              </div>
               <div>
                 <p className="text-sm font-medium">Tồn kho theo size</p>
                 <div className="mt-2 grid grid-cols-3 gap-2">
@@ -615,12 +639,25 @@ export default function MerchCampaignDetailPage() {
                   className={`border bg-white p-4 rounded-lg ${!item.isAvailable ? "opacity-50" : ""}`}
                 >
                   <div className="flex gap-4">
-                    {item.previewImageUrl ? (
-                      <img
-                        src={item.previewImageUrl}
-                        className="h-24 w-24 object-cover rounded-lg"
-                        alt={item.name}
-                      />
+                    {item.previewImageUrl || item.backImageUrl ? (
+                      <div className="flex shrink-0 gap-2">
+                        {item.previewImageUrl && (
+                          <img
+                            src={item.previewImageUrl}
+                            className="h-24 w-20 bg-gray-100 object-contain rounded-lg"
+                            alt={`${item.name} - Mặt trước`}
+                            title="Mặt trước"
+                          />
+                        )}
+                        {item.backImageUrl && (
+                          <img
+                            src={item.backImageUrl}
+                            className="h-24 w-20 bg-gray-100 object-contain rounded-lg"
+                            alt={`${item.name} - Mặt sau`}
+                            title="Mặt sau"
+                          />
+                        )}
+                      </div>
                     ) : (
                       <div className="grid h-24 w-24 place-items-center bg-gray-100 rounded-lg">
                         <Shirt />
