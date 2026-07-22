@@ -8,6 +8,7 @@ import { formatCurrency } from "@/lib/utils";
 import {
   CheckCircle2,
   LockKeyhole,
+  Maximize2,
   Minus,
   PackageSearch,
   Plus,
@@ -58,6 +59,10 @@ export default function MerchCampaignPage() {
   const [lookupOrders, setLookupOrders] = useState<any[]>([]);
   const [lookupLoading, setLookupLoading] = useState(false);
   const [lookupCodeRequested, setLookupCodeRequested] = useState(false);
+  const [previewImage, setPreviewImage] = useState<{
+    url: string;
+    name: string;
+  } | null>(null);
 
   useEffect(() => {
     fetch(`/api/merch-campaigns/${slug}`)
@@ -284,7 +289,7 @@ export default function MerchCampaignPage() {
           </h1>
         </div> */}
       </section>
-      <div className="mx-auto max-w-6xl px-4 py-8">
+      <div className="mx-auto max-w-7xl px-4 py-8">
         <div className="mb-8 flex flex-wrap items-start justify-between gap-4">
           <p className="max-w-3xl whitespace-pre-line text-gray-700">
             {/* {campaign.description} */}
@@ -299,7 +304,7 @@ export default function MerchCampaignPage() {
             {campaign.closedReason || "Chương trình hiện chưa nhận đơn."}
           </div>
         )}
-        <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_380px]">
+        <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_360px]">
           <section className="min-w-0">
             <h2 className="flex items-center gap-2 text-2xl font-bold">
               <Shirt className="h-6 w-6" />
@@ -322,15 +327,31 @@ export default function MerchCampaignPage() {
                 .map((style: any) => (
                   <article
                     key={style.id}
-                    className="grid overflow-hidden border bg-white shadow-sm rounded-lg md:grid-cols-[220px_minmax(0,1fr)]"
+                    className="grid overflow-hidden border bg-white shadow-sm rounded-lg md:grid-cols-[minmax(260px,42%)_minmax(0,1fr)]"
                   >
-                    <div className="aspect-square bg-gray-100 md:aspect-auto md:min-h-[260px]">
+                    <div className="relative aspect-square bg-gray-100 p-3 md:aspect-[4/5] md:min-h-[340px]">
                       {style.previewImageUrl ? (
-                        <img
-                          src={style.previewImageUrl}
-                          alt={style.name}
-                          className="h-full w-full object-cover"
-                        />
+                        <>
+                          <img
+                            src={style.previewImageUrl}
+                            alt={style.name}
+                            className="h-full w-full object-contain"
+                          />
+                          <button
+                            type="button"
+                            title="Xem ảnh lớn"
+                            aria-label={`Xem ảnh lớn ${style.name}`}
+                            onClick={() =>
+                              setPreviewImage({
+                                url: style.previewImageUrl,
+                                name: style.name,
+                              })
+                            }
+                            className="absolute right-3 top-3 grid h-9 w-9 place-items-center border bg-white/95 text-gray-700 shadow-sm rounded-lg hover:bg-white"
+                          >
+                            <Maximize2 className="h-4 w-4" />
+                          </button>
+                        </>
                       ) : (
                         <div className="grid h-full place-items-center text-gray-400">
                           <Shirt className="h-16 w-16" />
@@ -505,6 +526,32 @@ export default function MerchCampaignPage() {
             setLookupOpen,
           }}
         />
+      )}
+      {previewImage && (
+        <div
+          className="fixed inset-0 z-50 grid place-items-center bg-black/80 p-4"
+          onClick={() => setPreviewImage(null)}
+        >
+          <div
+            className="relative flex max-h-[92vh] w-full max-w-5xl items-center justify-center bg-white p-3 shadow-2xl rounded-lg"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <img
+              src={previewImage.url}
+              alt={previewImage.name}
+              className="max-h-[calc(92vh-24px)] max-w-full object-contain"
+            />
+            <button
+              type="button"
+              title="Đóng"
+              aria-label="Đóng ảnh xem trước"
+              onClick={() => setPreviewImage(null)}
+              className="absolute right-3 top-3 grid h-10 w-10 place-items-center border bg-white/95 text-gray-800 shadow-sm rounded-lg hover:bg-white"
+            >
+              <X className="h-5 w-5" />
+            </button>
+          </div>
+        </div>
       )}
     </main>
   );

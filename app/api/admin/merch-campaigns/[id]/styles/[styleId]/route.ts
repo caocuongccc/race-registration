@@ -17,6 +17,7 @@ export async function PUT(
     const body = await req.json();
     const current = await prisma.merchShirtStyle.findFirst({
       where: { id: styleId, campaignId: id },
+      include: { variants: true },
     });
     if (!current)
       return NextResponse.json(
@@ -38,8 +39,25 @@ export async function PUT(
         { status: 400 },
       );
     }
-    await prisma.$transaction(async (tx) => {
-      await tx.merchShirtStyle.update({
+    const currentVariants = new Map(
+      current.variants.map((variant) => [variant.size, variant]),
+    );
+
+    for (const variant of variants) {
+      const existing = currentVariants.get(variant.size);
+      const stockQuantity = Math.max(Number(variant.stockQuantity) || 0, 0);
+      if (
+        existing &&
+        stockQuantity < existing.soldQuantity + existing.reservedQuantity
+      ) {
+        throw new Error(
+          `Stock for ${variant.size} cannot be lower than sold + reserved`,
+        );
+      }
+    }
+
+    await prisma.$transaction([
+      prisma.merchShirtStyle.update({
         where: { id: styleId },
         data: {
           name: String(body.name).trim(),
@@ -51,37 +69,29 @@ export async function PUT(
           isAvailable: body.isAvailable !== false,
           sortOrder: Number(body.sortOrder) || 0,
         },
-      });
-      for (const v of variants) {
-        const existing = await tx.merchShirtVariant.findUnique({
-          where: { styleId_size: { styleId, size: v.size } },
-        });
-        if (
-          existing &&
-          Number(v.stockQuantity) <
-            existing.soldQuantity + existing.reservedQuantity
-        ) {
-          throw new Error(
-            `Stock for ${v.size} cannot be lower than sold + reserved`,
-          );
-        }
-        await tx.merchShirtVariant.upsert({
-          where: { styleId_size: { styleId, size: v.size } },
+      }),
+      ...variants.map((variant) =>
+        prisma.merchShirtVariant.upsert({
+          where: {
+            styleId_size: { styleId, size: variant.size },
+          },
           update: {
-            stockQuantity: Math.max(Number(v.stockQuantity) || 0, 0),
-            isAvailable: v.isAvailable !== false,
+            stockQuantity: Math.max(Number(variant.stockQuantity) || 0, 0),
+            isAvailable: variant.isAvailable !== false,
           },
           create: {
             styleId,
-            size: v.size,
-            stockQuantity: Math.max(Number(v.stockQuantity) || 0, 0),
+            size: variant.size,
+            stockQuantity: Math.max(Number(variant.stockQuantity) || 0, 0),
+            isAvailable: variant.isAvailable !== false,
           },
-        });
-      }
-    });
+        }),
+      ),
+    ]);
     return NextResponse.json({ success: true });
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 400 });
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : "Unknown error";
+    return NextResponse.json({ error: message }, { status: 400 });
   }
 }
 
@@ -105,7 +115,8 @@ export async function DELETE(
       data: { isAvailable: false },
     });
     return NextResponse.json({ success: true });
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 400 });
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : "Unknown error";
+    return NextResponse.json({ error: message }, { status: 400 });
   }
 }
