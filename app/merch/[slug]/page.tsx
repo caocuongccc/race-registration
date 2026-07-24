@@ -320,10 +320,27 @@ export default function MerchCampaignPage() {
         )}
         <div className="grid items-start gap-8 xl:grid-cols-[minmax(0,1fr)_400px]">
           <section className="min-w-0">
-            <h2 className="flex items-center gap-2 text-xl font-bold text-gray-950 sm:text-2xl">
-              <Shirt className="h-6 w-6" />
-              Chọn áo
-            </h2>
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <h2 className="flex items-center gap-2 text-xl font-bold text-gray-950 sm:text-2xl">
+                <Shirt className="h-6 w-6" />
+                {"Ch\u1ecdn \u00e1o"}
+              </h2>
+              {campaign.sizeGuideImageUrl && (
+                <button
+                  type="button"
+                  onClick={() =>
+                    setPreviewImage({
+                      url: campaign.sizeGuideImageUrl,
+                      name: "B\u1ea3ng h\u01b0\u1edbng d\u1eabn ch\u1ecdn size",
+                    })
+                  }
+                  className="inline-flex h-10 w-fit items-center justify-center gap-2 rounded-lg border border-emerald-600 bg-white px-4 text-sm font-semibold text-emerald-700 shadow-sm transition-colors hover:bg-emerald-50 hover:text-emerald-900"
+                >
+                  <Ruler className="h-4 w-4" />
+                  {"Xem b\u1ea3ng size \u00e1o"}
+                </button>
+              )}
+            </div>
             <div className="mt-4 inline-flex max-w-full flex-wrap gap-1 bg-gray-100 p-1 rounded-lg">
               {categories.map((item) => (
                 <button
@@ -350,7 +367,9 @@ export default function MerchCampaignPage() {
                     <div className="min-w-0 p-5 sm:p-6 lg:p-7">
                       <div className="flex justify-between gap-3">
                         <div>
-                          <h3 className="text-lg font-bold text-gray-950">{style.name}</h3>
+                          <h3 className="text-lg font-bold text-gray-950">
+                            {style.name}
+                          </h3>
                           <p className="text-sm text-gray-500">
                             {categoryNames[style.category]} ·{" "}
                             {typeNames[style.type]}
@@ -360,26 +379,9 @@ export default function MerchCampaignPage() {
                           {formatCurrency(style.price)}
                         </strong>
                       </div>
-                      <div className="mt-6 flex flex-wrap items-center justify-between gap-3">
-                        <p className="text-sm font-semibold text-gray-800">
-                          {"Ch\u1ecdn size v\u00e0 s\u1ed1 l\u01b0\u1ee3ng"}
-                        </p>
-                        {campaign.sizeGuideImageUrl && (
-                          <button
-                            type="button"
-                            onClick={() =>
-                              setPreviewImage({
-                                url: campaign.sizeGuideImageUrl,
-                                name: "B\u1ea3ng h\u01b0\u1edbng d\u1eabn ch\u1ecdn size",
-                              })
-                            }
-                            className="inline-flex items-center gap-2 text-sm font-semibold text-emerald-700 transition-colors hover:text-emerald-900"
-                          >
-                            <Ruler className="h-4 w-4" />
-                            {"H\u01b0\u1edbng d\u1eabn ch\u1ecdn size"}
-                          </button>
-                        )}
-                      </div>
+                      <p className="mt-6 text-sm font-semibold text-gray-800">
+                        {"Ch\u1ecdn size v\u00e0 s\u1ed1 l\u01b0\u1ee3ng"}
+                      </p>
                       <div className="mt-3 grid gap-3 sm:grid-cols-2">
                         {style.variants.map((variant: any) => (
                           <div
