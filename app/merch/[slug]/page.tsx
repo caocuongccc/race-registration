@@ -318,8 +318,8 @@ export default function MerchCampaignPage() {
             </div>
           </div>
         )}
-        <div className="grid items-start gap-8 xl:grid-cols-[minmax(0,1fr)_400px]">
-          <section className="min-w-0">
+        <div className="grid gap-8 xl:grid-cols-[minmax(0,1fr)_400px]">
+          <section className="flex min-w-0 flex-col">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <h2 className="flex items-center gap-2 text-xl font-bold text-gray-950 sm:text-2xl">
                 <Shirt className="h-6 w-6" />
@@ -352,13 +352,13 @@ export default function MerchCampaignPage() {
                 </button>
               ))}
             </div>
-            <div className="mt-6 space-y-6">
+            <div className="mt-6 flex flex-1 flex-col gap-6">
               {campaign.styles
                 .filter((s: any) => s.category === category)
                 .map((style: any) => (
                   <article
                     key={style.id}
-                    className="grid overflow-hidden border border-gray-200 bg-white shadow-[0_10px_35px_rgba(15,23,42,0.07)] rounded-lg md:grid-cols-[minmax(340px,44%)_minmax(0,1fr)]"
+                    className="grid flex-1 overflow-hidden border border-gray-200 bg-white shadow-[0_10px_35px_rgba(15,23,42,0.07)] rounded-lg md:grid-cols-[minmax(340px,44%)_minmax(0,1fr)]"
                   >
                     <MerchStyleImage
                       style={style}
@@ -429,7 +429,7 @@ export default function MerchCampaignPage() {
             </div>
           </section>
 
-          <aside className="border border-gray-200 bg-white p-5 shadow-[0_10px_35px_rgba(15,23,42,0.07)] rounded-lg sm:p-6 xl:sticky xl:top-6">
+          <aside className="border border-gray-200 bg-white p-5 shadow-[0_10px_35px_rgba(15,23,42,0.07)] rounded-lg sm:p-6 xl:sticky xl:top-6 xl:self-start">
             <h2 className="flex items-center gap-2 text-lg font-bold text-gray-950">
               <ShoppingBag className="h-5 w-5" />
               Thông tin nhận hàng
