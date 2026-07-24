@@ -117,10 +117,7 @@ export default function CreateEventPage() {
       const res = await fetch("/api/admin/events/create", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          ...formData,
-          date: new Date(formData.date),
-        }),
+        body: JSON.stringify(formData),
       });
 
       const result = await res.json();

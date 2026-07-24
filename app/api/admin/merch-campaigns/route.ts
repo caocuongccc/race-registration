@@ -65,6 +65,7 @@ export async function POST(req: NextRequest) {
         slug,
         year,
         description: String(body.description || "").trim() || null,
+        buyerNote: String(body.buyerNote || "").trim() || null,
         status: "DRAFT",
         isPublished: false,
         requireOnlinePayment: body.requireOnlinePayment !== false,

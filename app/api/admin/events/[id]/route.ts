@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { parseEventDate } from "@/lib/date-utils";
 import {
   getUserSession,
   requireEventPermission,
@@ -178,7 +179,7 @@ export async function PUT(
         name: body.name,
         slug: body.slug,
         description: body.description,
-        date: body.date ? new Date(body.date) : undefined,
+        date: body.date ? parseEventDate(body.date) : undefined,
         location: body.location,
         address: body.address,
         city: body.city,

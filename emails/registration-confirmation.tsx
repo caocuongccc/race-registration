@@ -57,6 +57,7 @@ export function RegistrationConfirmationEmail({
 }: Props) {
   const formatDate = (date: Date) => {
     return new Intl.DateTimeFormat("vi-VN", {
+      timeZone: "Asia/Ho_Chi_Minh",
       weekday: "long",
       day: "2-digit",
       month: "long",

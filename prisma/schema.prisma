@@ -423,30 +423,33 @@ model ShirtOrderItem {
 }
 
 model MerchCampaign {
-  id                   String              @id @default(cuid())
-  name                 String
-  slug                 String              @unique
-  description          String?             @db.Text
-  year                 Int
-  status               MerchCampaignStatus @default(DRAFT)
-  isPublished          Boolean             @default(false)
-  requireOnlinePayment Boolean             @default(true)
-  bankName             String?             @db.Text
-  bankAccount          String?             @db.Text
-  bankHolder           String?             @db.Text
-  bankCode             String?             @db.Text
-  heroImageUrl         String?
-  cloudinaryPublicId   String?
-  saleStartAt          DateTime?
-  saleEndAt            DateTime?
-  contactEmail         String?
-  contactPhone         String?
-  createdById          String
-  createdAt            DateTime            @default(now())
-  updatedAt            DateTime            @updatedAt
-  createdBy            User                @relation(fields: [createdById], references: [id])
-  styles               MerchShirtStyle[]
-  orders               MerchOrder[]
+  id                          String              @id @default(cuid())
+  name                        String
+  slug                        String              @unique
+  description                 String?             @db.Text
+  buyerNote                   String?             @db.Text
+  year                        Int
+  status                      MerchCampaignStatus @default(DRAFT)
+  isPublished                 Boolean             @default(false)
+  requireOnlinePayment        Boolean             @default(true)
+  bankName                    String?             @db.Text
+  bankAccount                 String?             @db.Text
+  bankHolder                  String?             @db.Text
+  bankCode                    String?             @db.Text
+  heroImageUrl                String?
+  cloudinaryPublicId          String?
+  sizeGuideImageUrl           String?
+  sizeGuideCloudinaryPublicId String?
+  saleStartAt                 DateTime?
+  saleEndAt                   DateTime?
+  contactEmail                String?
+  contactPhone                String?
+  createdById                 String
+  createdAt                   DateTime            @default(now())
+  updatedAt                   DateTime            @updatedAt
+  createdBy                   User                @relation(fields: [createdById], references: [id])
+  styles                      MerchShirtStyle[]
+  orders                      MerchOrder[]
 
   @@index([status, isPublished])
   @@index([year])

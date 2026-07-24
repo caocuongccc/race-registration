@@ -12,6 +12,7 @@ import { ImageGallery } from "@/components/ImageGallery";
 import DistanceShirtManager from "@/components/DistanceShirtManager";
 import EventUserManager from "@/components/EventUserManager";
 import { toast } from "sonner";
+import { eventDateToInputValue } from "@/lib/date-utils";
 import {
   Save,
   ArrowLeft,
@@ -154,8 +155,7 @@ export default function EditEventPage() {
       const res = await fetch(`/api/admin/events/${id}`);
       const data = await res.json();
 
-      const eventDate = new Date(data.event.date);
-      const formattedDate = eventDate.toISOString().split("T")[0];
+      const formattedDate = eventDateToInputValue(data.event.date);
 
       setFormData({
         ...data.event,

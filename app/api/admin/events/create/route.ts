@@ -4,6 +4,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { encryptBankAccount } from "@/lib/encryption";
+import { parseEventDate } from "@/lib/date-utils";
 
 export async function POST(req: NextRequest) {
   try {
@@ -42,7 +43,7 @@ export async function POST(req: NextRequest) {
         name: body.name,
         slug: body.slug,
         description: body.description,
-        date: new Date(body.date),
+        date: parseEventDate(body.date),
         location: body.location,
         address: body.address,
         city: body.city,

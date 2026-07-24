@@ -7,11 +7,13 @@ import { Input } from "@/components/ui/input";
 import { formatCurrency } from "@/lib/utils";
 import {
   CheckCircle2,
+  HeartHandshake,
   LockKeyhole,
   Maximize2,
   Minus,
   PackageSearch,
   Plus,
+  Ruler,
   Search,
   Shirt,
   ShoppingBag,
@@ -301,6 +303,21 @@ export default function MerchCampaignPage() {
             {campaign.closedReason || "Chương trình hiện chưa nhận đơn."}
           </div>
         )}
+        {campaign.buyerNote && (
+          <div className="mb-8 flex gap-4 border border-emerald-200 bg-emerald-50/80 p-4 text-emerald-950 shadow-sm rounded-lg sm:p-5">
+            <div className="grid h-10 w-10 shrink-0 place-items-center bg-emerald-700 text-white rounded-lg">
+              <HeartHandshake className="h-5 w-5" />
+            </div>
+            <div className="min-w-0">
+              <p className="font-semibold">
+                {"Th\u00f4ng tin t\u1eeb Ban t\u1ed5 ch\u1ee9c"}
+              </p>
+              <p className="mt-1 whitespace-pre-line text-sm leading-6 text-emerald-900">
+                {campaign.buyerNote}
+              </p>
+            </div>
+          </div>
+        )}
         <div className="grid items-start gap-8 xl:grid-cols-[minmax(0,1fr)_400px]">
           <section className="min-w-0">
             <h2 className="flex items-center gap-2 text-xl font-bold text-gray-950 sm:text-2xl">
@@ -343,9 +360,26 @@ export default function MerchCampaignPage() {
                           {formatCurrency(style.price)}
                         </strong>
                       </div>
-                      <p className="mt-6 text-sm font-semibold text-gray-800">
-                        Chọn size và số lượng
-                      </p>
+                      <div className="mt-6 flex flex-wrap items-center justify-between gap-3">
+                        <p className="text-sm font-semibold text-gray-800">
+                          {"Ch\u1ecdn size v\u00e0 s\u1ed1 l\u01b0\u1ee3ng"}
+                        </p>
+                        {campaign.sizeGuideImageUrl && (
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setPreviewImage({
+                                url: campaign.sizeGuideImageUrl,
+                                name: "B\u1ea3ng h\u01b0\u1edbng d\u1eabn ch\u1ecdn size",
+                              })
+                            }
+                            className="inline-flex items-center gap-2 text-sm font-semibold text-emerald-700 transition-colors hover:text-emerald-900"
+                          >
+                            <Ruler className="h-4 w-4" />
+                            {"H\u01b0\u1edbng d\u1eabn ch\u1ecdn size"}
+                          </button>
+                        )}
+                      </div>
                       <div className="mt-3 grid gap-3 sm:grid-cols-2">
                         {style.variants.map((variant: any) => (
                           <div

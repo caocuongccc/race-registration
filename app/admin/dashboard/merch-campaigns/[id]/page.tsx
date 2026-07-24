@@ -469,6 +469,17 @@ export default function MerchCampaignDetailPage() {
                   }
                 />
               </label>
+              <label className="md:col-span-2 text-sm font-medium">
+                {"Th\u00f4ng tin d\u00e0nh cho ng\u01b0\u1eddi mua"}
+                <textarea
+                  className="mt-1 min-h-24 w-full border p-3 rounded-lg"
+                  placeholder={"V\u00ed d\u1ee5: Ti\u1ec1n b\u00e1n \u00e1o sau khi tr\u1eeb chi ph\u00ed s\u1ea3n xu\u1ea5t..."}
+                  value={campaign.buyerNote || ""}
+                  onChange={(e) =>
+                    setCampaign({ ...campaign, buyerNote: e.target.value })
+                  }
+                />
+              </label>
             </div>
             <ImageUploader
               folder={`merch-campaigns/${campaign.slug}`}
@@ -486,6 +497,25 @@ export default function MerchCampaignDetailPage() {
                   ...campaign,
                   heroImageUrl: "",
                   cloudinaryPublicId: "",
+                })
+              }
+            />
+            <ImageUploader
+              folder={`merch-campaigns/${campaign.slug}/size-guide`}
+              label={"B\u1ea3ng h\u01b0\u1edbng d\u1eabn ch\u1ecdn size"}
+              currentImage={campaign.sizeGuideImageUrl}
+              onUploadComplete={(url, publicId) =>
+                setCampaign({
+                  ...campaign,
+                  sizeGuideImageUrl: url,
+                  sizeGuideCloudinaryPublicId: publicId,
+                })
+              }
+              onRemove={() =>
+                setCampaign({
+                  ...campaign,
+                  sizeGuideImageUrl: "",
+                  sizeGuideCloudinaryPublicId: "",
                 })
               }
             />

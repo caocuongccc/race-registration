@@ -1,12 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { withPrismaRetry } from "@/lib/prisma-retry";
 import { getUserSession } from "@/lib/event-permissions";
 import { encryptBankAccount } from "@/lib/encryption";
 import { getMerchCampaignBankAccount } from "@/lib/merch-bank-account-service";
 
 async function checkAdmin() {
   const user = await getUserSession();
-  if (user.role !== "ADMIN" && user.role !== "MEMBER") throw new Error("FORBIDDEN");
+  if (user.role !== "ADMIN" && user.role !== "MEMBER")
+    throw new Error("FORBIDDEN");
 }
 
 export async function GET(
@@ -16,15 +18,17 @@ export async function GET(
   try {
     await checkAdmin();
     const { id } = await context.params;
-    const campaign = await prisma.merchCampaign.findUnique({
-      where: { id },
-      include: {
-        styles: {
-          orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
-          include: { variants: { orderBy: { size: "asc" } } },
+    const campaign = await withPrismaRetry(() =>
+      prisma.merchCampaign.findUnique({
+        where: { id },
+        include: {
+          styles: {
+            orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
+            include: { variants: { orderBy: { size: "asc" } } },
+          },
         },
-      },
-    });
+      }),
+    );
     if (!campaign)
       return NextResponse.json(
         { error: "Không tìm thấy chương trình" },
@@ -103,17 +107,19 @@ export async function PUT(
       );
     }
     if (body.status === "OPEN") {
-      const variants = await prisma.merchShirtVariant.findMany({
-        where: {
-          isAvailable: true,
-          style: { campaignId: id, isAvailable: true },
-        },
-        select: {
-          stockQuantity: true,
-          soldQuantity: true,
-          reservedQuantity: true,
-        },
-      });
+      const variants = await withPrismaRetry(() =>
+        prisma.merchShirtVariant.findMany({
+          where: {
+            isAvailable: true,
+            style: { campaignId: id, isAvailable: true },
+          },
+          select: {
+            stockQuantity: true,
+            soldQuantity: true,
+            reservedQuantity: true,
+          },
+        }),
+      );
       if (
         !variants.some(
           (variant) =>
@@ -127,32 +133,37 @@ export async function PUT(
         );
       }
     }
-    const campaign = await prisma.merchCampaign.update({
-      where: { id },
-      data: {
-        name,
-        slug,
-        year,
-        description: String(body.description || "").trim() || null,
-        status: body.status,
-        isPublished: body.isPublished === true,
-        requireOnlinePayment: body.requireOnlinePayment !== false,
-        ...(bankData
-          ? {
-              bankName: bankData.bankNameEncrypted,
-              bankAccount: bankData.accountNumberEncrypted,
-              bankHolder: bankData.accountNameEncrypted,
-              bankCode: bankData.bankCodeEncrypted,
-            }
-          : {}),
-        heroImageUrl: body.heroImageUrl || null,
-        cloudinaryPublicId: body.cloudinaryPublicId || null,
-        saleStartAt,
-        saleEndAt,
-        contactEmail: String(body.contactEmail || "").trim() || null,
-        contactPhone: String(body.contactPhone || "").trim() || null,
-      },
-    });
+    const campaign = await withPrismaRetry(() =>
+      prisma.merchCampaign.update({
+        where: { id },
+        data: {
+          name,
+          slug,
+          year,
+          description: String(body.description || "").trim() || null,
+          buyerNote: String(body.buyerNote || "").trim() || null,
+          status: body.status,
+          isPublished: body.isPublished === true,
+          requireOnlinePayment: body.requireOnlinePayment !== false,
+          ...(bankData
+            ? {
+                bankName: bankData.bankNameEncrypted,
+                bankAccount: bankData.accountNumberEncrypted,
+                bankHolder: bankData.accountNameEncrypted,
+                bankCode: bankData.bankCodeEncrypted,
+              }
+            : {}),
+          heroImageUrl: body.heroImageUrl || null,
+          cloudinaryPublicId: body.cloudinaryPublicId || null,
+          sizeGuideImageUrl: body.sizeGuideImageUrl || null,
+          sizeGuideCloudinaryPublicId: body.sizeGuideCloudinaryPublicId || null,
+          saleStartAt,
+          saleEndAt,
+          contactEmail: String(body.contactEmail || "").trim() || null,
+          contactPhone: String(body.contactPhone || "").trim() || null,
+        },
+      }),
+    );
     return NextResponse.json({ success: true, campaign });
   } catch (error: any) {
     return NextResponse.json(
