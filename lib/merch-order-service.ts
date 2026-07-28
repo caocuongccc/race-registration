@@ -33,49 +33,88 @@ export async function confirmMerchOrderPayment(input: {
   if (!order) throw new Error(`Merch order not found: ${input.publicCode}`);
   if (order.paymentStatus === "PAID") return order;
 
-  const duplicate = await prisma.payment.findUnique({ where: { transactionId: input.transactionId } });
-  if (duplicate) {
-    if (duplicate.merchOrderId !== order.id) {
-      throw new Error("Transaction " + input.transactionId + " was already assigned to another order");
-    }
+  const duplicate = await prisma.payment.findUnique({
+    where: { transactionId: input.transactionId },
+  });
+  if (duplicate && duplicate.merchOrderId !== order.id) {
+    throw new Error(
+      "Transaction " +
+        input.transactionId +
+        " was already assigned to another order",
+    );
+  }
+  if (input.amount + 1000 < order.totalAmount) {
+    throw new Error(
+      `Payment amount ${input.amount} is less than required ${order.totalAmount}`,
+    );
+  }
+
+  const fresh = await prisma.merchOrder.findUnique({
+    where: { id: order.id },
+    include: {
+      items: {
+        include: { variant: true },
+      },
+    },
+  });
+  if (!fresh) throw new Error(`Merch order not found: ${input.publicCode}`);
+  if (fresh.paymentStatus === "PAID") {
     return prisma.merchOrder.findUniqueOrThrow({
       where: { id: order.id },
       include: { campaign: true, items: true },
     });
   }
-  if (input.amount + 1000 < order.totalAmount) {
-    throw new Error(`Payment amount ${input.amount} is less than required ${order.totalAmount}`);
+
+  for (const item of fresh.items) {
+    if (!item.variant || item.variant.reservedQuantity < item.quantity) {
+      throw new Error(`Reserved stock is invalid for ${item.variantId}`);
+    }
   }
 
-  await prisma.$transaction(async (tx) => {
-    const fresh = await tx.merchOrder.findUnique({ where: { id: order.id }, include: { items: true } });
-    if (!fresh || fresh.paymentStatus === "PAID") return;
-    for (const item of fresh.items) {
-      const variant = await tx.merchShirtVariant.findUnique({ where: { id: item.variantId } });
-      if (!variant || variant.reservedQuantity < item.quantity) {
-        throw new Error(`Reserved stock is invalid for ${item.variantId}`);
-      }
-      await tx.merchShirtVariant.update({
-        where: { id: item.variantId },
-        data: { reservedQuantity: { decrement: item.quantity }, soldQuantity: { increment: item.quantity } },
+  const paidAt = new Date();
+  try {
+    await prisma.$transaction([
+      ...fresh.items.map((item) =>
+        prisma.merchShirtVariant.updateMany({
+          where: {
+            id: item.variantId,
+            reservedQuantity: { gte: item.quantity },
+          },
+          data: {
+            reservedQuantity: { decrement: item.quantity },
+            soldQuantity: { increment: item.quantity },
+          },
+        }),
+      ),
+      prisma.merchOrder.update({
+        where: { id: fresh.id },
+        data: { paymentStatus: "PAID", paymentDate: paidAt },
+      }),
+      ...(duplicate
+        ? []
+        : [
+            prisma.payment.create({
+              data: {
+                merchOrderId: fresh.id,
+                purpose: "MERCH_ORDER",
+                transactionId: input.transactionId,
+                amount: input.amount,
+                status: "PAID",
+                paymentMethod: input.paymentMethod,
+                webhookData: input.webhookData as any,
+              },
+            }),
+          ]),
+    ]);
+  } catch (error: any) {
+    if (error?.code === "P2002") {
+      return prisma.merchOrder.findUniqueOrThrow({
+        where: { id: order.id },
+        include: { campaign: true, items: true },
       });
     }
-    await tx.merchOrder.update({
-      where: { id: fresh.id },
-      data: { paymentStatus: "PAID", paymentDate: new Date() },
-    });
-    await tx.payment.create({
-      data: {
-        merchOrderId: fresh.id,
-        purpose: "MERCH_ORDER",
-        transactionId: input.transactionId,
-        amount: input.amount,
-        status: "PAID",
-        paymentMethod: input.paymentMethod,
-        webhookData: input.webhookData as any,
-      },
-    });
-  });
+    throw error;
+  }
 
   return prisma.merchOrder.findUniqueOrThrow({
     where: { id: order.id },
