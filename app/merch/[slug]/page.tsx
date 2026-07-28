@@ -182,6 +182,62 @@ export default function MerchCampaignPage() {
     }
   };
 
+  useEffect(() => {
+    if (
+      !result?.order?.secretCode ||
+      !form.email ||
+      result.order.paymentStatus === "PAID"
+    ) {
+      return;
+    }
+
+    let cancelled = false;
+    const refreshPaymentStatus = async () => {
+      try {
+        const res = await fetch("/api/merch-orders/lookup", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            identifier: form.email,
+            secretCode: result.order.secretCode,
+          }),
+        });
+        const data = await res.json();
+        if (!res.ok || cancelled) return;
+        const latest = (data.orders || []).find(
+          (order: any) =>
+            order.id === result.order.id ||
+            order.publicCode === result.order.publicCode,
+        );
+        if (!latest) return;
+        setResult((current: any) => ({
+          ...current,
+          order: {
+            ...current.order,
+            ...latest,
+            secretCode: current.order.secretCode,
+            transferContent: current.order.transferContent,
+          },
+        }));
+      } catch {
+        // Keep the payment screen stable; manual lookup still works if polling misses.
+      }
+    };
+
+    refreshPaymentStatus();
+    const timer = window.setInterval(refreshPaymentStatus, 7000);
+    return () => {
+      cancelled = true;
+      window.clearInterval(timer);
+    };
+  }, [
+    form.email,
+    result?.order?.id,
+    result?.order?.publicCode,
+    result?.order?.secretCode,
+    result?.order?.paymentStatus,
+  ]);
+
   if (loading)
     return (
       <div className="min-h-screen grid place-items-center">
@@ -195,51 +251,121 @@ export default function MerchCampaignPage() {
       </div>
     );
 
-  if (result)
+  if (result) {
+    const isPaid = result.order.paymentStatus === "PAID";
+    const resultItems = result.order.items || [];
+
     return (
       <main className="min-h-screen bg-gray-50 px-4 py-10">
         <div className="mx-auto max-w-2xl border bg-white p-6 shadow-sm rounded-lg">
           <CheckCircle2 className="h-12 w-12 text-emerald-600" />
-          <h1 className="mt-4 text-2xl font-bold">Đặt áo thành công</h1>
+          <h1 className="mt-4 text-2xl font-bold">
+            {isPaid ? "Thanh toán thành công" : "Đặt áo thành công"}
+          </h1>
           <p className="mt-2 text-gray-600">
-            Mã đơn <strong>{result.order.publicCode}</strong>. Thông tin và mã
-            bí mật đã được gửi tới email của bạn.
+            Mã đơn <strong>{result.order.publicCode}</strong>.{" "}
+            {isPaid
+              ? "Hệ thống đã ghi nhận thanh toán cho đơn hàng này."
+              : "Thông tin và mã bí mật đã được gửi tới email của bạn."}
           </p>
-          <div className="mt-5 border border-orange-200 bg-orange-50 p-4 rounded-lg">
-            <p className="text-sm text-orange-800">Mã bí mật tra cứu</p>
-            <p className="mt-1 text-3xl font-bold tracking-widest text-orange-900">
-              {result.order.secretCode}
+          <div
+            className={`mt-5 rounded-lg border p-4 ${isPaid ? "border-emerald-200 bg-emerald-50" : "border-orange-200 bg-orange-50"}`}
+          >
+            <p
+              className={`text-sm ${isPaid ? "text-emerald-800" : "text-orange-800"}`}
+            >
+              {isPaid ? "Trạng thái đơn hàng" : "Mã bí mật tra cứu"}
+            </p>
+            <p
+              className={`mt-1 text-3xl font-bold ${isPaid ? "text-emerald-900" : "tracking-widest text-orange-900"}`}
+            >
+              {isPaid ? "ĐÃ THANH TOÁN" : result.order.secretCode}
             </p>
           </div>
-          <div className="mt-6 border-t pt-6">
-            <p className="font-semibold">
-              Thanh toán {formatCurrency(result.order.totalAmount)}
-            </p>
-            {result.qrPaymentUrl && (
-              <img
-                src={result.qrPaymentUrl}
-                alt="QR thanh toán"
-                className="mx-auto my-4 w-72 border"
-              />
-            )}
-            <dl className="grid grid-cols-[120px_1fr] gap-2 text-sm">
-              <dt>Ngân hàng</dt>
-              <dd className="font-medium">{result.bankInfo?.bankName}</dd>
-              <dt>Số tài khoản</dt>
-              <dd className="font-medium">{result.bankInfo?.accountNumber}</dd>
-              <dt>Chủ tài khoản</dt>
-              <dd className="font-medium">{result.bankInfo?.accountName}</dd>
-              <dt>Nội dung</dt>
-              <dd className="font-bold text-red-600">
-                {result.order.transferContent}
-              </dd>
-            </dl>
-            <p className="mt-4 border-l-4 border-amber-500 bg-amber-50 p-3 text-sm font-medium text-amber-800">
-              {campaign.requireOnlinePayment
-                ? "Không thay đổi nội dung chuyển khoản để hệ thống tự động nhận diện."
-                : "Ghi đúng nội dung chuyển khoản để ban tổ chức đối soát nhanh."}
-            </p>
-          </div>
+
+          <section className="mt-6 border-t pt-6">
+            <div className="flex items-center justify-between gap-4">
+              <h2 className="font-semibold">Thông tin đã đăng ký</h2>
+              <span
+                className={`rounded-full px-3 py-1 text-xs font-semibold ${isPaid ? "bg-emerald-100 text-emerald-700" : "bg-amber-100 text-amber-700"}`}
+              >
+                {isPaid ? "Đã thanh toán" : "Chờ thanh toán"}
+              </span>
+            </div>
+            <div className="mt-4 space-y-3 rounded-lg border border-gray-200 bg-gray-50 p-4 text-sm">
+              <div className="grid gap-2 sm:grid-cols-[130px_1fr]">
+                <span className="text-gray-500">Người mua</span>
+                <strong>{form.fullName}</strong>
+                <span className="text-gray-500">Email</span>
+                <span>{form.email}</span>
+                <span className="text-gray-500">Số điện thoại</span>
+                <span>{form.phone}</span>
+                <span className="text-gray-500">Địa chỉ</span>
+                <span>{form.shippingAddress}</span>
+              </div>
+              <div className="border-t pt-3">
+                <p className="font-semibold">Áo đã chọn</p>
+                <div className="mt-2 space-y-2">
+                  {resultItems.map((item: any) => (
+                    <div
+                      key={item.id || `${item.styleName}-${item.size}`}
+                      className="flex justify-between gap-3"
+                    >
+                      <span>
+                        {item.styleName} - {categoryNames[item.category]} -{" "}
+                        {typeNames[item.type]} - Size {sizeName(item.size)} ×{" "}
+                        {item.quantity}
+                      </span>
+                      <strong className="shrink-0">
+                        {formatCurrency(item.totalPrice)}
+                      </strong>
+                    </div>
+                  ))}
+                </div>
+              </div>
+              <div className="flex justify-between border-t pt-3 text-base font-bold">
+                <span>Tổng cộng</span>
+                <span className="text-emerald-700">
+                  {formatCurrency(result.order.totalAmount)}
+                </span>
+              </div>
+            </div>
+          </section>
+
+          {!isPaid && (
+            <div className="mt-6 border-t pt-6">
+              <p className="font-semibold">
+                Thanh toán {formatCurrency(result.order.totalAmount)}
+              </p>
+              {result.qrPaymentUrl && (
+                <img
+                  src={result.qrPaymentUrl}
+                  alt="QR thanh toán"
+                  className="mx-auto my-4 w-72 border"
+                />
+              )}
+              <dl className="grid grid-cols-[120px_1fr] gap-2 text-sm">
+                <dt>Ngân hàng</dt>
+                <dd className="font-medium">{result.bankInfo?.bankName}</dd>
+                <dt>Số tài khoản</dt>
+                <dd className="font-medium">
+                  {result.bankInfo?.accountNumber}
+                </dd>
+                <dt>Chủ tài khoản</dt>
+                <dd className="font-medium">{result.bankInfo?.accountName}</dd>
+                <dt>Nội dung</dt>
+                <dd className="font-bold text-red-600">
+                  {result.order.transferContent}
+                </dd>
+              </dl>
+              <p className="mt-4 border-l-4 border-amber-500 bg-amber-50 p-3 text-sm font-medium text-amber-800">
+                {campaign.requireOnlinePayment
+                  ? "Không thay đổi nội dung chuyển khoản để hệ thống tự động nhận diện. Màn hình sẽ tự cập nhật sau khi thanh toán được xác nhận."
+                  : "Ghi đúng nội dung chuyển khoản để ban tổ chức đối soát nhanh."}
+              </p>
+            </div>
+          )}
+
           <Button
             className="mt-6 w-full"
             onClick={() => {
@@ -271,6 +397,7 @@ export default function MerchCampaignPage() {
         )}
       </main>
     );
+  }
 
   return (
     <main className="min-h-screen bg-[#f7faf8] pb-16">
@@ -341,18 +468,26 @@ export default function MerchCampaignPage() {
                 </button>
               )}
             </div>
-            <div className="mt-4 inline-flex max-w-full flex-wrap gap-1 bg-gray-100 p-1 rounded-lg">
-              {categories.map((item) => (
-                <button
-                  key={item}
-                  onClick={() => setCategory(item)}
-                  className={`border border-transparent px-5 py-2 text-sm font-semibold transition-colors rounded-md ${category === item ? "bg-emerald-700 text-white shadow-sm" : "text-gray-600 hover:bg-white hover:text-gray-950"}`}
-                >
-                  {categoryNames[item]}
-                </button>
-              ))}
-            </div>
+            {categories.length > 0 && (
+              <div className="mt-4 inline-flex max-w-full flex-wrap gap-1 bg-gray-100 p-1 rounded-lg">
+                {categories.map((item) => (
+                  <button
+                    key={item}
+                    onClick={() => setCategory(item)}
+                    className={`border border-transparent px-5 py-2 text-sm font-semibold transition-colors rounded-md ${category === item ? "bg-emerald-700 text-white shadow-sm" : "text-gray-600 hover:bg-white hover:text-gray-950"}`}
+                  >
+                    {categoryNames[item]}
+                  </button>
+                ))}
+              </div>
+            )}
             <div className="mt-6 flex flex-1 flex-col gap-6">
+              {categories.length === 0 && (
+                <div className="rounded-lg border border-amber-200 bg-amber-50 p-5 text-sm text-amber-900">
+                  Chưa có mẫu áo đang bật bán. Vui lòng kiểm tra lại trạng thái
+                  mẫu áo và tồn kho trong trang quản trị.
+                </div>
+              )}
               {campaign.styles
                 .filter((s: any) => s.category === category)
                 .map((style: any) => (
