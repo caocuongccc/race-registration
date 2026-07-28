@@ -43,6 +43,18 @@ export function buildMerchOrderTransferContent(
   return isVietinBank(bankCode) ? `SEVQR ${publicCode}` : publicCode;
 }
 
+export function buildManualMerchOrderTransferContent(
+  phone: string,
+  publicCode: string,
+  bankCode?: string | null,
+): string {
+  const normalizedPhone = phone.replace(/\D/g, "") || phone.trim();
+  const shortCode = publicCode.slice(-6).toUpperCase();
+  const content = `AO ${normalizedPhone} ${shortCode}`;
+
+  return isVietinBank(bankCode) ? `SEVQR ${content}` : content;
+}
+
 export function isVietinBank(bankCode?: string | null): boolean {
   if (!bankCode) return false;
   const normalized = bankCode.replace(/[\s_-]/g, "").toUpperCase();

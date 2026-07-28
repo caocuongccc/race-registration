@@ -2,7 +2,10 @@ import { NextRequest, NextResponse, after } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getMerchCampaignBankAccount } from "@/lib/merch-bank-account-service";
 import { generateSepayQR } from "@/lib/sepay-service";
-import { buildMerchOrderTransferContent } from "@/lib/payment-content";
+import {
+  buildManualMerchOrderTransferContent,
+  buildMerchOrderTransferContent,
+} from "@/lib/payment-content";
 import {
   createMerchPublicCode,
   createMerchSecretCode,
@@ -164,7 +167,11 @@ export async function POST(
 
     const transferContent = campaign.requireOnlinePayment
       ? buildMerchOrderTransferContent(publicCode, bankInfo.bankCode)
-      : `AO ${phone} ${publicCode.slice(-6)}`;
+      : buildManualMerchOrderTransferContent(
+          phone,
+          publicCode,
+          bankInfo.bankCode,
+        );
     const qrPaymentUrl = generateSepayQR(
       bankInfo.accountNumber,
       bankInfo.bankCode,
