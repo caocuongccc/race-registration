@@ -183,6 +183,17 @@ export default function MerchCampaignPage() {
   };
 
   useEffect(() => {
+    if (!previewImage) return;
+
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setPreviewImage(null);
+    };
+
+    window.addEventListener("keydown", closeOnEscape);
+    return () => window.removeEventListener("keydown", closeOnEscape);
+  }, [previewImage]);
+
+  useEffect(() => {
     if (
       !result?.order?.secretCode ||
       !form.email ||
@@ -469,12 +480,12 @@ export default function MerchCampaignPage() {
               )}
             </div>
             {categories.length > 0 && (
-              <div className="mt-4 inline-flex max-w-full flex-wrap gap-1 bg-gray-100 p-1 rounded-lg">
+              <div className="mt-4 grid w-full max-w-md grid-cols-3 gap-2 rounded-lg border border-gray-200 bg-white p-1 shadow-sm">
                 {categories.map((item) => (
                   <button
                     key={item}
                     onClick={() => setCategory(item)}
-                    className={`border border-transparent px-5 py-2 text-sm font-semibold transition-colors rounded-md ${category === item ? "bg-emerald-700 text-white shadow-sm" : "text-gray-600 hover:bg-white hover:text-gray-950"}`}
+                    className={`min-h-10 rounded-md border px-4 py-2 text-sm font-semibold transition-all ${category === item ? "border-emerald-700 bg-emerald-700 text-white shadow-sm" : "border-gray-200 bg-gray-50 text-gray-700 hover:border-emerald-300 hover:bg-emerald-50 hover:text-emerald-800"}`}
                   >
                     {categoryNames[item]}
                   </button>
@@ -672,17 +683,17 @@ export default function MerchCampaignPage() {
       )}
       {previewImage && (
         <div
-          className="fixed inset-0 z-50 grid place-items-center bg-black/80 p-4"
+          className="fixed inset-0 z-50 grid place-items-center bg-black/85 p-3 backdrop-blur-sm sm:p-6"
           onClick={() => setPreviewImage(null)}
         >
           <div
-            className="relative flex max-h-[92vh] w-full max-w-5xl items-center justify-center bg-white p-3 shadow-2xl rounded-lg"
+            className="relative flex h-[92vh] w-full max-w-6xl items-center justify-center bg-white p-3 shadow-2xl rounded-lg sm:p-5"
             onClick={(event) => event.stopPropagation()}
           >
             <img
               src={previewImage.url}
               alt={previewImage.name}
-              className="max-h-[calc(92vh-24px)] max-w-full object-contain"
+              className="h-full max-h-full w-full object-contain"
             />
             <button
               type="button"
@@ -737,13 +748,13 @@ function MerchStyleImage({
     images.find((image) => image.side === selectedSide) || images[0];
 
   return (
-    <div className="relative aspect-square bg-[#eef2f0] p-5 md:aspect-auto md:min-h-[460px]">
+    <div className="relative flex min-h-[420px] items-center justify-center bg-[#eef2f0] p-3 sm:min-h-[500px] md:min-h-[560px] lg:p-5">
       {selectedImage ? (
         <>
           <img
             src={selectedImage.url}
             alt={`${style.name} - ${selectedImage.label}`}
-            className="h-full w-full object-contain"
+            className="h-full max-h-[520px] w-full object-contain sm:max-h-[600px]"
           />
           <button
             type="button"
