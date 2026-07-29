@@ -629,7 +629,7 @@ export default function MerchCampaignPage() {
                     {
                       value: "SHIPPING",
                       label: "Chuyển phát",
-                      note: "Theo địa chỉ cung cấp",
+                      note: "Người nhận trả phí",
                     },
                   ].map((option) => (
                     <button
@@ -661,7 +661,7 @@ export default function MerchCampaignPage() {
                     className="mt-1 min-h-24 w-full border bg-white p-3 outline-none focus:ring-2 focus:ring-emerald-600 rounded-lg"
                   />
                   <span className="mt-1 block text-xs text-gray-500">
-                    Địa chỉ ship hàng nên cần chính xác.
+                    Phí chuyển phát sẽ do người nhận chi trả.
                   </span>
                 </label>
               )}
