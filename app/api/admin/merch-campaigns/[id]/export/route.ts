@@ -34,6 +34,10 @@ export async function GET(
       "Tên người mua": order.fullName,
       Email: order.email,
       "Số điện thoại": order.phone,
+      "Cách nhận áo":
+        order.deliveryMethod === "SHIPPING"
+          ? "Chuyển phát - phí do người nhận chi trả"
+          : "Nhận trực tiếp",
       "Địa chỉ nhận hàng": order.shippingAddress,
       "Chi tiết áo": order.items
         .map(

@@ -50,6 +50,7 @@ export default function MerchCampaignPage() {
     fullName: "",
     email: "",
     phone: "",
+    deliveryMethod: "DIRECT",
     shippingAddress: "",
     notes: "",
   });
@@ -115,8 +116,12 @@ export default function MerchCampaignPage() {
   };
 
   const submit = async () => {
-    if (!form.fullName || !form.email || !form.phone || !form.shippingAddress)
-      return toast.error("Vui lòng nhập đầy đủ thông tin nhận hàng");
+    if (!form.fullName || !form.email || !form.phone)
+      return toast.error("Vui lòng nhập đầy đủ tên, email và số điện thoại");
+    if (form.deliveryMethod === "SHIPPING" && !form.shippingAddress)
+      return toast.error(
+        "Vui lòng nhập địa chỉ nhận hàng khi chọn chuyển phát",
+      );
     if (!totalQuantity)
       return toast.error("Vui lòng chọn loại áo, kiểu áo và size");
     setSubmitting(true);
@@ -311,8 +316,18 @@ export default function MerchCampaignPage() {
                 <span>{form.email}</span>
                 <span className="text-gray-500">Số điện thoại</span>
                 <span>{form.phone}</span>
-                <span className="text-gray-500">Địa chỉ</span>
-                <span>{form.shippingAddress}</span>
+                <span className="text-gray-500">Cách nhận áo</span>
+                <span>
+                  {result.order.deliveryMethod === "SHIPPING"
+                    ? "Chuyển phát - phí do người nhận chi trả"
+                    : "Nhận trực tiếp từ Ban tổ chức"}
+                </span>
+                {result.order.deliveryMethod === "SHIPPING" && (
+                  <>
+                    <span className="text-gray-500">Địa chỉ</span>
+                    <span>{result.order.shippingAddress}</span>
+                  </>
+                )}
               </div>
               <div className="border-t pt-3">
                 <p className="font-semibold">Áo đã chọn</p>
@@ -600,16 +615,56 @@ export default function MerchCampaignPage() {
                 value={form.phone}
                 onChange={(e) => setForm({ ...form, phone: e.target.value })}
               />
-              <label className="block text-sm font-medium text-gray-700">
-                Địa chỉ nhận hàng <span className="text-red-500">*</span>
-                <textarea
-                  value={form.shippingAddress}
-                  onChange={(e) =>
-                    setForm({ ...form, shippingAddress: e.target.value })
-                  }
-                  className="mt-1 min-h-24 w-full border bg-white p-3 outline-none focus:ring-2 focus:ring-emerald-600 rounded-lg"
-                />
-              </label>
+              <div>
+                <p className="text-sm font-medium text-gray-700">
+                  Cách nhận áo
+                </p>
+                <div className="mt-2 grid grid-cols-2 gap-2">
+                  {[
+                    {
+                      value: "DIRECT",
+                      label: "Nhận trực tiếp",
+                      note: "Nhận từ Ban tổ chức",
+                    },
+                    {
+                      value: "SHIPPING",
+                      label: "Chuyển phát",
+                      note: "Người nhận trả phí",
+                    },
+                  ].map((option) => (
+                    <button
+                      key={option.value}
+                      type="button"
+                      onClick={() =>
+                        setForm({ ...form, deliveryMethod: option.value })
+                      }
+                      className={`rounded-lg border p-3 text-left transition-all ${form.deliveryMethod === option.value ? "border-emerald-700 bg-emerald-50 text-emerald-900 shadow-sm" : "border-gray-200 bg-white text-gray-700 hover:border-emerald-300"}`}
+                    >
+                      <span className="block text-sm font-semibold">
+                        {option.label}
+                      </span>
+                      <span className="mt-1 block text-xs text-gray-500">
+                        {option.note}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+              {form.deliveryMethod === "SHIPPING" && (
+                <label className="block text-sm font-medium text-gray-700">
+                  Địa chỉ nhận hàng <span className="text-red-500">*</span>
+                  <textarea
+                    value={form.shippingAddress}
+                    onChange={(e) =>
+                      setForm({ ...form, shippingAddress: e.target.value })
+                    }
+                    className="mt-1 min-h-24 w-full border bg-white p-3 outline-none focus:ring-2 focus:ring-emerald-600 rounded-lg"
+                  />
+                  <span className="mt-1 block text-xs text-gray-500">
+                    Phí chuyển phát sẽ do người nhận chi trả.
+                  </span>
+                </label>
+              )}
               <Input
                 label="Ghi chú"
                 value={form.notes}

@@ -29,6 +29,8 @@ export async function POST(
       .trim()
       .toLowerCase();
     const phone = String(body.phone || "").replace(/\D/g, "");
+    const deliveryMethod =
+      body.deliveryMethod === "SHIPPING" ? "SHIPPING" : "DIRECT";
     const shippingAddress = String(body.shippingAddress || "").trim();
     const notes = String(body.notes || "").trim() || null;
     const rawItems = Array.isArray(body.items) ? body.items : [];
@@ -37,12 +39,12 @@ export async function POST(
       !fullName ||
       !EMAIL_RE.test(email) ||
       !PHONE_RE.test(phone) ||
-      !shippingAddress
+      (deliveryMethod === "SHIPPING" && !shippingAddress)
     ) {
       return NextResponse.json(
         {
           error:
-            "Vui lòng nhập đúng họ tên, email, số điện thoại và địa chỉ nhận hàng",
+            "Vui lòng nhập đúng họ tên, email, số điện thoại và địa chỉ khi chọn chuyển phát",
         },
         { status: 400 },
       );
@@ -136,6 +138,7 @@ export async function POST(
             email,
             phone,
             shippingAddress,
+            deliveryMethod,
             notes,
             totalAmount,
             items: {
@@ -207,6 +210,8 @@ export async function POST(
         totalAmount: order.totalAmount,
         paymentStatus: order.paymentStatus,
         fulfillmentStatus: order.fulfillmentStatus,
+        deliveryMethod: order.deliveryMethod,
+        shippingAddress: order.shippingAddress,
         secretCode,
         transferContent,
         items: order.items,

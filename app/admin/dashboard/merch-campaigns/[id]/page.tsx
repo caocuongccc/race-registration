@@ -473,7 +473,9 @@ export default function MerchCampaignDetailPage() {
                 {"Th\u00f4ng tin d\u00e0nh cho ng\u01b0\u1eddi mua"}
                 <textarea
                   className="mt-1 min-h-24 w-full border p-3 rounded-lg"
-                  placeholder={"V\u00ed d\u1ee5: Ti\u1ec1n b\u00e1n \u00e1o sau khi tr\u1eeb chi ph\u00ed s\u1ea3n xu\u1ea5t..."}
+                  placeholder={
+                    "V\u00ed d\u1ee5: Ti\u1ec1n b\u00e1n \u00e1o sau khi tr\u1eeb chi ph\u00ed s\u1ea3n xu\u1ea5t..."
+                  }
                   value={campaign.buyerNote || ""}
                   onChange={(e) =>
                     setCampaign({ ...campaign, buyerNote: e.target.value })
@@ -795,7 +797,7 @@ export default function MerchCampaignDetailPage() {
             </section>
           )}
           <section className="overflow-x-auto border bg-white rounded-lg">
-            <table className="w-full min-w-[1050px] text-sm">
+            <table className="w-full min-w-[1150px] text-sm">
               <thead className="bg-gray-50">
                 <tr>
                   {[
@@ -827,8 +829,22 @@ export default function MerchCampaignDetailPage() {
                       <br />
                       <span className="text-gray-500">{order.email}</span>
                     </td>
+                    <td className="px-4 py-3">
+                      <span className="font-medium">
+                        {order.deliveryMethod === "SHIPPING"
+                          ? "Chuyển phát"
+                          : "Trực tiếp"}
+                      </span>
+                      {order.deliveryMethod === "SHIPPING" && (
+                        <p className="mt-1 text-xs text-gray-500">
+                          Người nhận trả phí
+                        </p>
+                      )}
+                    </td>
                     <td className="max-w-52 px-4 py-3">
-                      {order.shippingAddress}
+                      {order.deliveryMethod === "SHIPPING"
+                        ? order.shippingAddress
+                        : "-"}
                     </td>
                     <td className="px-4 py-3">
                       {order.items.map((i: any) => (

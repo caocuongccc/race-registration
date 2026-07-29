@@ -507,6 +507,7 @@ model MerchOrder {
   email             String
   phone             String
   shippingAddress   String                 @db.Text
+  deliveryMethod    MerchDeliveryMethod    @default(DIRECT)
   notes             String?                @db.Text
   totalAmount       Int
   paymentStatus     PaymentStatus          @default(PENDING)
@@ -666,6 +667,11 @@ enum MerchFulfillmentStatus {
   SHIPPED
   COMPLETED
   CANCELLED
+}
+
+enum MerchDeliveryMethod {
+  DIRECT
+  SHIPPING
 }
 
 enum ImportStatus {
