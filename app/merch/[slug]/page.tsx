@@ -629,7 +629,7 @@ export default function MerchCampaignPage() {
                     {
                       value: "SHIPPING",
                       label: "Chuyển phát",
-                      note: "Nhận qua đường bưu điện theo địa chỉ cung cấp",
+                      note: "Theo địa chỉ cung cấp",
                     },
                   ].map((option) => (
                     <button
