@@ -432,7 +432,7 @@ export default function MerchCampaignPage() {
           <img
             src={campaign.heroImageUrl}
             alt={campaign.name}
-            className="absolute inset-0 h-full w-full object-contain object-center opacity-90"
+            className="absolute inset-0 h-full w-full object-fill object-center opacity-90"
           />
         )}
         {/* <div className="relative mx-auto flex h-full max-w-6xl flex-col justify-end px-5 pb-9">
