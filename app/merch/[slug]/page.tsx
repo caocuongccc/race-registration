@@ -427,12 +427,12 @@ export default function MerchCampaignPage() {
 
   return (
     <main className="min-h-screen bg-[#f7faf8] pb-16">
-      <section className="relative h-[380px] overflow-hidden bg-emerald-950 text-white md:h-[440px]">
+      <section className="relative overflow-hidden bg-emerald-950 text-white">
         {campaign.heroImageUrl && (
           <img
             src={campaign.heroImageUrl}
             alt={campaign.name}
-            className="absolute inset-0 h-full w-full object-fill object-center opacity-90"
+            className="block h-auto w-full opacity-90"
           />
         )}
         {/* <div className="relative mx-auto flex h-full max-w-6xl flex-col justify-end px-5 pb-9">
