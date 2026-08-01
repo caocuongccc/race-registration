@@ -804,6 +804,7 @@ export default function MerchCampaignDetailPage() {
                     "Mã đơn",
                     "Người mua",
                     "Liên hệ",
+                    "Phương thức",
                     "Địa chỉ",
                     "Áo",
                     "Số tiền",
