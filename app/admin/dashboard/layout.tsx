@@ -96,21 +96,22 @@ export default function AdminLayout({
   const { data: session, status } = useSession();
 
   // Sidebar state
-  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
-  const [isMobile, setIsMobile] = useState(false);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [isMobile, setIsMobile] = useState(true);
 
   // Detect mobile
   useEffect(() => {
-    const checkMobile = () => {
-      setIsMobile(window.innerWidth < 1024);
-      if (window.innerWidth < 1024) {
-        setIsSidebarOpen(false); // Auto close on mobile
-      }
+    const media = window.matchMedia("(max-width: 1023px)");
+    const syncViewport = (initial = false) => {
+      setIsMobile(media.matches);
+      if (initial) setIsSidebarOpen(!media.matches);
+      else if (media.matches) setIsSidebarOpen(false);
     };
 
-    checkMobile();
-    window.addEventListener("resize", checkMobile);
-    return () => window.removeEventListener("resize", checkMobile);
+    syncViewport(true);
+    const onChange = () => syncViewport();
+    media.addEventListener("change", onChange);
+    return () => media.removeEventListener("change", onChange);
   }, []);
 
   useEffect(() => {
@@ -136,7 +137,6 @@ export default function AdminLayout({
     ? navigationConfig[session.user.role as keyof typeof navigationConfig] || []
     : [];
 
-
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Mobile Overlay */}
@@ -149,7 +149,7 @@ export default function AdminLayout({
 
       {/* Sidebar */}
       <aside
-        className={`fixed inset-y-0 left-0 bg-white border-r border-gray-200 z-50 transition-all duration-300 ${
+        className={`fixed inset-y-0 left-0 overflow-hidden bg-white border-r border-gray-200 z-50 transition-all duration-300 ${
           isSidebarOpen ? "w-64" : "w-0 lg:w-16"
         }`}
       >

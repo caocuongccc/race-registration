@@ -4,6 +4,7 @@ import { withPrismaRetry } from "@/lib/prisma-retry";
 import { getUserSession } from "@/lib/event-permissions";
 import { encryptBankAccount } from "@/lib/encryption";
 import { getMerchCampaignBankAccount } from "@/lib/merch-bank-account-service";
+import { createMerchReportToken } from "@/lib/merch-report-access";
 
 async function checkAdmin() {
   const user = await getUserSession();
@@ -42,6 +43,11 @@ export async function GET(
         bankAccount: bank?.accountNumber || "",
         bankHolder: bank?.accountName || "",
         bankCode: bank?.bankCode || "",
+        reportPath:
+          "/merch/" +
+          campaign.slug +
+          "/report/" +
+          createMerchReportToken(campaign.id),
       },
     });
   } catch (error: any) {

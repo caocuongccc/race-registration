@@ -11,10 +11,12 @@ import { formatCurrency } from "@/lib/utils";
 import {
   ArrowLeft,
   CheckCircle,
+  ClipboardCopy,
   ChevronLeft,
   ChevronRight,
   Download,
   ExternalLink,
+  FileSpreadsheet,
   Pause,
   Pencil,
   Play,
@@ -244,6 +246,19 @@ export default function MerchCampaignDetailPage() {
     if (confirm("Hủy đơn chờ và trả lại số lượng áo đã giữ?"))
       updateOrder(orderId, { action: "cancel" });
   };
+  const copyReportLink = async () => {
+    if (!campaign?.reportPath) return;
+    const reportUrl = new URL(
+      campaign.reportPath,
+      window.location.origin,
+    ).toString();
+    try {
+      await navigator.clipboard.writeText(reportUrl);
+      toast.success("Đã sao chép link báo cáo");
+    } catch {
+      window.prompt("Sao chép link báo cáo", reportUrl);
+    }
+  };
   const exportExcel = () => {
     window.location.href = "/api/admin/merch-campaigns/" + id + "/export";
   };
@@ -312,6 +327,20 @@ export default function MerchCampaignDetailPage() {
               Xem trang bán
             </Button>
           </Link>
+          {campaign.reportPath && (
+            <>
+              <Link href={campaign.reportPath} target="_blank">
+                <Button variant="outline">
+                  <FileSpreadsheet className="mr-2 h-4 w-4" />
+                  Xem báo cáo
+                </Button>
+              </Link>
+              <Button variant="outline" onClick={copyReportLink}>
+                <ClipboardCopy className="mr-2 h-4 w-4" />
+                Sao chép link
+              </Button>
+            </>
+          )}
         </div>
       </div>
       <div className="flex gap-2 border-b">
