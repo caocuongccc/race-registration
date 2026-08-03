@@ -53,3 +53,10 @@ prisma/seed-hoa-chau-city-trail-2026.ts
 prisma/migrations/
 prisma/migrations/**
 !prisma/kid-run-portal-supabase.sql
+!prisma/kid-run-add-bib-capacity.sql
+!prisma/migrations/
+!prisma/migrations/20260803130000_add_kid_run_bib_capacity/
+!prisma/migrations/20260803130000_add_kid_run_bib_capacity/migration.sql
+!prisma/kid-run-defer-bib-until-grouping.sql
+!prisma/migrations/20260803140000_defer_kid_run_bib_until_grouping/
+!prisma/migrations/20260803140000_defer_kid_run_bib_until_grouping/migration.sql

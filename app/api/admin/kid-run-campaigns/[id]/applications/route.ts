@@ -18,11 +18,15 @@ export async function GET(req: NextRequest, context: { params: Promise<{ id: str
     { email: { contains: search, mode: "insensitive" } }, { phone: { contains: search } },
     { participants: { some: { OR: [{ fullName: { contains: search, mode: "insensitive" } }, { bibNumber: { contains: search, mode: "insensitive" } }] } } },
   ] } : {}) };
-  const [applications, total, summary, shirtCount] = await Promise.all([
+  const [applications, total, summary, shirtCount, participantCount, unassignedCount, issuedBibCount, bibEmailSentCount] = await Promise.all([
     prisma.kidRunFamilyApplication.findMany({ where, skip: (page - 1) * pageSize, take: pageSize, orderBy: { createdAt: "desc" }, include: { participants: { include: { category: true, shirts: true }, orderBy: { createdAt: "asc" } }, shirts: true } }),
     prisma.kidRunFamilyApplication.count({ where }),
     prisma.kidRunFamilyApplication.aggregate({ where: { campaignId: id }, _count: true, _sum: { shirtTotalAmount: true } }),
     prisma.kidRunParticipantShirt.aggregate({ where: { application: { campaignId: id, shirtPaymentStatus: "PAID" } }, _sum: { quantity: true, totalPrice: true } }),
+    prisma.kidRunParticipant.count({ where: { application: { campaignId: id, status: "CONFIRMED" } } }),
+    prisma.kidRunParticipant.count({ where: { application: { campaignId: id, status: "CONFIRMED" }, category: { name: "__UNASSIGNED__" } } }),
+    prisma.kidRunParticipant.count({ where: { application: { campaignId: id, status: "CONFIRMED" }, bibNumber: { not: null } } }),
+    prisma.kidRunEmailLog.count({ where: { application: { campaignId: id }, type: "BIB_ANNOUNCEMENT", status: "SENT" } }),
   ]);
-  return NextResponse.json({ applications, pagination: { page, pageSize, total, totalPages: Math.ceil(total / pageSize) }, summary: { applications: summary._count, selectedShirts: shirtCount._sum.quantity || 0, paidShirtRevenue: shirtCount._sum.totalPrice || 0 } });
+  return NextResponse.json({ applications, pagination: { page, pageSize, total, totalPages: Math.ceil(total / pageSize) }, summary: { applications: summary._count, selectedShirts: shirtCount._sum.quantity || 0, paidShirtRevenue: shirtCount._sum.totalPrice || 0, participants: participantCount, unassigned: unassignedCount, issuedBibs: issuedBibCount, bibEmailsSent: bibEmailSentCount } });
 }

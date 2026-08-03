@@ -2,7 +2,7 @@ CREATE TYPE "KidRunCampaignStatus" AS ENUM ('DRAFT', 'OPEN', 'CLOSED');
 CREATE TYPE "KidRunRegistrationStatus" AS ENUM ('CONFIRMED', 'CANCELLED');
 CREATE TYPE "KidRunPaymentStatus" AS ENUM ('NOT_REQUIRED', 'PENDING', 'PAID', 'FAILED', 'REFUNDED');
 CREATE TYPE "KidRunGender" AS ENUM ('MALE', 'FEMALE');
-CREATE TYPE "KidRunEmailType" AS ENUM ('REGISTRATION_CONFIRMED', 'SHIRT_PAYMENT_CONFIRMED');
+CREATE TYPE "KidRunEmailType" AS ENUM ('REGISTRATION_CONFIRMED', 'BIB_ANNOUNCEMENT', 'SHIRT_PAYMENT_CONFIRMED');
 CREATE TYPE "KidRunEmailStatus" AS ENUM ('PENDING', 'SENT', 'FAILED');
 
 CREATE TABLE "kid_run_campaigns" (
@@ -27,6 +27,8 @@ CREATE TABLE "kid_run_campaigns" (
   "contactEmail" TEXT,
   "contactPhone" TEXT,
   "maxChildrenPerApplication" INTEGER NOT NULL DEFAULT 5,
+  "bibCapacity" INTEGER NOT NULL DEFAULT 150,
+  "remainingBibCount" INTEGER NOT NULL DEFAULT 150,
   "createdById" TEXT NOT NULL,
   "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
   "updatedAt" TIMESTAMP(3) NOT NULL,
@@ -107,7 +109,7 @@ CREATE TABLE "kid_run_participants" (
   "birthYear" INTEGER NOT NULL,
   "gender" "KidRunGender" NOT NULL,
   "schoolClub" TEXT,
-  "bibNumber" TEXT NOT NULL,
+  "bibNumber" TEXT,
   "bibCollectedAt" TIMESTAMP(3),
   "bibCollectedBy" TEXT,
   "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,

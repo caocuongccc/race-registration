@@ -68,7 +68,8 @@ export async function GET(req: Request, context: { params: Promise<{ slug: strin
   const isOpen =
     campaign.isPublished &&
     campaign.status === "OPEN" &&
-    campaign.allowRegistration;
+    campaign.allowRegistration &&
+    campaign.remainingBibCount > 0;
 
   return NextResponse.json({
     campaign: {
@@ -79,10 +80,13 @@ export async function GET(req: Request, context: { params: Promise<{ slug: strin
         ? null
         : previewAllowed && !campaign.isPublished
           ? "Bạn đang xem trước bản nháp. Hãy công khai chương trình để nhận đăng ký."
-          : campaign.status === "CLOSED"
-            ? "Chương trình đã đóng đăng ký."
-            : "Ban tổ chức chưa mở đăng ký.",
+          : campaign.remainingBibCount <= 0
+            ? `Chương trình đã đủ ${campaign.bibCapacity} BIB.`
+            : campaign.status === "CLOSED"
+              ? "Chương trình đã đóng đăng ký."
+              : "Ban tổ chức chưa mở đăng ký.",
       waiver: campaign.waivers[0] || null,
+      waiverId: campaign.waivers[0]?.id || null,
       waivers: undefined,
     },
   });

@@ -572,6 +572,8 @@ model KidRunCampaign {
   contactEmail              String?
   contactPhone              String?
   maxChildrenPerApplication Int                       @default(5)
+  bibCapacity               Int                       @default(150)
+  remainingBibCount         Int                       @default(150)
   createdById               String
   createdAt                 DateTime                  @default(now())
   updatedAt                 DateTime                  @updatedAt
@@ -689,7 +691,7 @@ model KidRunParticipant {
   birthYear      Int
   gender         KidRunGender
   schoolClub     String?
-  bibNumber      String
+  bibNumber      String?
   bibCollectedAt DateTime?
   bibCollectedBy String?
   createdAt      DateTime                 @default(now())
@@ -1002,6 +1004,7 @@ enum KidRunGender {
 
 enum KidRunEmailType {
   REGISTRATION_CONFIRMED
+  BIB_ANNOUNCEMENT
   SHIRT_PAYMENT_CONFIRMED
 }
 

@@ -44,6 +44,11 @@ export async function PUT(req: NextRequest, context: { params: Promise<{ id: str
     const bankData = body.bankAccount && body.bankCode && body.bankHolder ? encryptBankAccount({
       accountNumber: String(body.bankAccount), bankCode: String(body.bankCode), accountName: String(body.bankHolder), bankName: String(body.bankName || body.bankCode),
     }) : null;
+    const registeredBibCount = await prisma.kidRunParticipant.count({
+      where: { application: { campaignId: id, status: "CONFIRMED" } },
+    });
+    const bibCapacity = Math.max(1, Math.min(100000, Number(body.bibCapacity) || 150));
+    const remainingBibCount = Math.max(0, bibCapacity - registeredBibCount);
     const campaign = await prisma.kidRunCampaign.update({
       where: { id },
       data: {
@@ -54,7 +59,6 @@ export async function PUT(req: NextRequest, context: { params: Promise<{ id: str
         location: String(body.location || "").trim(),
         status: body.status,
         isPublished: body.isPublished === true,
-        allowRegistration: body.allowRegistration === true,
         requireOnlinePayment: body.requireOnlinePayment !== false,
         heroImageUrl: String(body.heroImageUrl || "").trim() || null,
         bibPickupNote: String(body.bibPickupNote || "").trim() || null,
@@ -62,6 +66,9 @@ export async function PUT(req: NextRequest, context: { params: Promise<{ id: str
         contactEmail: String(body.contactEmail || "").trim() || null,
         contactPhone: String(body.contactPhone || "").trim() || null,
         maxChildrenPerApplication: Math.max(1, Math.min(10, Number(body.maxChildrenPerApplication) || 5)),
+        bibCapacity,
+        remainingBibCount,
+        allowRegistration: body.allowRegistration === true && remainingBibCount > 0,
         ...(bankData ? {
           bankName: bankData.bankNameEncrypted,
           bankAccount: bankData.accountNumberEncrypted,
@@ -100,14 +107,17 @@ export async function PUT(req: NextRequest, context: { params: Promise<{ id: str
       }
     }
 
+    await prisma.kidRunRaceCategory.upsert({
+      where: { campaignId_name: { campaignId: id, name: "__UNASSIGNED__" } },
+      create: { campaignId: id, name: "__UNASSIGNED__", minBirthYear: 1900, maxBirthYear: 2100, distanceLabel: "BTC phân nhóm sau", bibPrefix: "__TMP__", bibStart: 1, nextBibNumber: 1, sortOrder: -1 },
+      update: { isAvailable: true },
+    });
+
     if (campaign.status === "OPEN" && campaign.allowRegistration) {
-      const [categoryCount, waiverCount] = await Promise.all([
-        prisma.kidRunRaceCategory.count({ where: { campaignId: id, isAvailable: true } }),
-        prisma.kidRunWaiver.count({ where: { campaignId: id, isActive: true } }),
-      ]);
-      if (!categoryCount || !waiverCount) {
+      const waiverCount = await prisma.kidRunWaiver.count({ where: { campaignId: id, isActive: true } });
+      if (!waiverCount) {
         await prisma.kidRunCampaign.update({ where: { id }, data: { allowRegistration: false } });
-        throw new Error("Cần cấu hình ít nhất một nhóm tuổi và một bản miễn trừ trước khi mở đăng ký");
+        throw new Error("Cần cấu hình một bản miễn trừ trước khi mở đăng ký");
       }
     }
     return NextResponse.json({ success: true });
