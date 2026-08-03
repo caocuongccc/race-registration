@@ -1,0 +1,882 @@
+"use client";
+
+import { useEffect, useMemo, useState } from "react";
+import { useParams, useSearchParams } from "next/navigation";
+import {
+  Baby,
+  CheckCircle2,
+  ChevronDown,
+  Mail,
+  Plus,
+  QrCode,
+  Shirt,
+  Trash2,
+  Users,
+} from "lucide-react";
+
+const money = (value: number) =>
+  new Intl.NumberFormat("vi-VN").format(value) + " đ";
+const uid = () => Math.random().toString(36).slice(2);
+const emptyChild = () => ({
+  key: uid(),
+  fullName: "",
+  dateOfBirth: "",
+  gender: "",
+  schoolClub: "",
+  shirtVariantId: "",
+});
+
+export default function KidRunRegistrationPage() {
+  const { slug } = useParams<{ slug: string }>();
+  const searchParams = useSearchParams();
+  const preview = searchParams.get("preview") === "1";
+  const [campaign, setCampaign] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState("");
+  const [result, setResult] = useState<any>(null);
+  const [waiverOpen, setWaiverOpen] = useState(false);
+  const [waiverViewed, setWaiverViewed] = useState(false);
+  const [descriptionExpanded, setDescriptionExpanded] = useState(false);
+  const [shirtPreviewOpen, setShirtPreviewOpen] = useState(false);
+  const [additionalShirts, setAdditionalShirts] = useState<
+    Array<{ key: string; variantId: string; quantity: number }>
+  >([]);
+  const [form, setForm] = useState({
+    guardianName: "",
+    email: "",
+    phone: "",
+    notes: "",
+    waiverAccepted: false,
+    mediaConsent: false,
+  });
+  const [children, setChildren] = useState([emptyChild()]);
+
+  useEffect(() => {
+    fetch(`/api/kid-run-campaigns/${slug}${preview ? "?preview=1" : ""}`)
+      .then(async (res) => {
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error);
+        setCampaign(data.campaign);
+      })
+      .catch((err) => setError(err.message))
+      .finally(() => setLoading(false));
+  }, [slug, preview]);
+
+  useEffect(() => {
+    if (!result || result.application.shirtPaymentStatus !== "PENDING") return;
+    const timer = window.setInterval(async () => {
+      const res = await fetch(
+        `/api/kid-run-applications/${result.application.publicCode}/status`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ secretCode: result.secretCode }),
+        },
+      );
+      if (!res.ok) return;
+      const status = await res.json();
+      if (status.shirtPaymentStatus === "PAID") {
+        setResult((current: any) => ({
+          ...current,
+          application: {
+            ...current.application,
+            shirtPaymentStatus: "PAID",
+            shirtPaymentDate: status.shirtPaymentDate,
+          },
+        }));
+      }
+    }, 10000);
+    return () => window.clearInterval(timer);
+  }, [
+    result?.application?.publicCode,
+    result?.application?.shirtPaymentStatus,
+    result?.secretCode,
+  ]);
+  const categoryFor = (date: string) => {
+    const year = Number(date.slice(0, 4));
+    return campaign?.categories?.find(
+      (c: any) => year >= c.minBirthYear && year <= c.maxBirthYear,
+    );
+  };
+
+  const variantOptions = useMemo(
+    () =>
+      (campaign?.shirtStyles || []).flatMap((style: any) =>
+        style.variants.map((variant: any) => ({
+          id: variant.id,
+          styleId: style.id,
+          category: style.category,
+          label: `${style.name} - ${style.category === "MALE" ? "Nam" : style.category === "FEMALE" ? "Nữ" : "Trẻ em"} - ${style.type === "SHORT_SLEEVE" ? "T-shirt" : "Singlet"} - Size ${variant.size}`,
+          price: style.price,
+        })),
+      ),
+    [campaign],
+  );
+
+  const childShirtOptions = variantOptions.filter(
+    (option: any) => option.category === "KID",
+  );
+  const adultShirtOptions = variantOptions.filter(
+    (option: any) => option.category !== "KID",
+  );
+
+  const additionalShirtTotal = additionalShirts.reduce(
+    (sum, item) =>
+      sum +
+      (variantOptions.find((option: any) => option.id === item.variantId)
+        ?.price || 0) *
+        item.quantity,
+    0,
+  );
+  const shirtTotal = 0 + additionalShirtTotal; //childShirtTotal
+
+  const updateChild = (key: string, field: string, value: string) =>
+    setChildren((current) =>
+      current.map((child) =>
+        child.key === key ? { ...child, [field]: value } : child,
+      ),
+    );
+
+  const submit = async (event: React.FormEvent) => {
+    event.preventDefault();
+    setError("");
+    setSubmitting(true);
+    try {
+      const res = await fetch(`/api/kid-run-campaigns/${slug}/applications`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ...form,
+          waiverId: campaign.waiver?.id,
+          waiverViewed,
+          children: children.map(({ key: _key, ...child }) => child),
+          additionalShirts: additionalShirts
+            .filter((item) => item.variantId && item.quantity > 0)
+            .map(({ variantId, quantity }) => ({ variantId, quantity })),
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      setResult(data);
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    } catch (err: any) {
+      setError(err.message || "Không thể gửi đăng ký");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  if (loading)
+    return (
+      <div className="min-h-screen grid place-items-center bg-slate-50">
+        <div className="h-10 w-10 animate-spin rounded-full border-4 border-emerald-600 border-t-transparent" />
+      </div>
+    );
+  if (!campaign)
+    return (
+      <div className="min-h-screen grid place-items-center p-6 text-red-600">
+        {error || "Không tìm thấy chương trình"}
+      </div>
+    );
+
+  if (result) {
+    return (
+      <main className="min-h-screen bg-slate-50 px-4 py-8 text-slate-900">
+        <section className="mx-auto max-w-2xl rounded-lg border bg-white p-6 shadow-sm">
+          <CheckCircle2 className="h-12 w-12 text-emerald-600" />
+          <h1 className="mt-4 text-2xl font-bold">Đăng ký chạy thành công</h1>
+          <p className="mt-2 text-slate-600">
+            Mã hồ sơ <strong>{result.application.publicCode}</strong>. Email BIB
+            và QR nhận BIB chung đã được gửi đến {result.application.email}.
+          </p>
+          <div className="mt-6 space-y-3">
+            {result.application.participants.map(
+              (participant: any, index: number) => (
+                <div
+                  key={participant.id}
+                  className="rounded-md border border-slate-200 p-4"
+                >
+                  <div className="font-bold text-emerald-800">
+                    BIB {index + 1}: {participant.bibNumber}
+                  </div>
+                  <div className="mt-1">{participant.fullName}</div>
+                  <div className="text-sm text-slate-600">
+                    {participant.category.name} ·{" "}
+                    {participant.category.distanceLabel} · sinh năm{" "}
+                    {participant.birthYear}
+                  </div>
+                </div>
+              ),
+            )}
+          </div>
+          <div className="mt-6 rounded-md border border-blue-200 bg-blue-50 p-4">
+            <div className="text-sm text-blue-800">Mã bí mật tra cứu hồ sơ</div>
+            <div className="mt-1 text-3xl font-bold tracking-[0.2em] text-blue-950">
+              {result.secretCode}
+            </div>
+          </div>
+          {result.application.shirtTotalAmount > 0 && (
+            <div className="mt-6 border-t pt-6">
+              <h2 className="text-lg font-bold">
+                Thanh toán áo: {money(result.application.shirtTotalAmount)}
+              </h2>
+              {result.application.shirtPaymentStatus === "PAID" && (
+                <div className="mt-3 flex items-center gap-2 rounded-md bg-emerald-50 p-4 font-bold text-emerald-800">
+                  <CheckCircle2 className="h-5 w-5" />
+                  Đã nhận thanh toán áo
+                </div>
+              )}
+              <p className="mt-2 rounded-md bg-amber-50 p-3 text-sm text-amber-900">
+                BIB đã được xác nhận. Áo chỉ được ghi nhận sản xuất sau khi có
+                email xác nhận thanh toán thành công.
+              </p>
+              {result.application.shirtPaymentStatus ===
+              "PAID" ? null : result.payment ? (
+                <div className="mt-4 text-center">
+                  <img
+                    src={result.payment.qrPaymentUrl}
+                    alt="QR thanh toán áo"
+                    className="mx-auto w-72 max-w-full border"
+                  />
+                  <dl className="mt-4 grid grid-cols-[120px_1fr] gap-2 text-left text-sm">
+                    <dt>Ngân hàng</dt>
+                    <dd className="font-semibold">
+                      {result.payment.bankInfo.bankName}
+                    </dd>
+                    <dt>Số tài khoản</dt>
+                    <dd className="font-semibold">
+                      {result.payment.bankInfo.accountNumber}
+                    </dd>
+                    <dt>Chủ tài khoản</dt>
+                    <dd className="font-semibold">
+                      {result.payment.bankInfo.accountName}
+                    </dd>
+                    <dt>Nội dung</dt>
+                    <dd className="font-bold text-red-600">
+                      {result.payment.transferContent}
+                    </dd>
+                  </dl>
+                  <p className="mt-4 border-l-4 border-amber-500 bg-amber-50 p-3 text-left text-sm">
+                    Không thay đổi nội dung chuyển khoản để hệ thống tự động
+                    nhận diện.
+                  </p>
+                </div>
+              ) : (
+                <p className="mt-3 text-red-600">
+                  BTC chưa cấu hình tài khoản nhận tiền áo. Vui lòng liên hệ
+                  BTC; đăng ký chạy và BIB vẫn có hiệu lực.
+                </p>
+              )}
+            </div>
+          )}
+        </section>
+      </main>
+    );
+  }
+
+  return (
+    <main className="min-h-screen bg-slate-50 text-slate-900">
+      {campaign.heroImageUrl && (
+        <div className="bg-emerald-950">
+          <img
+            src={campaign.heroImageUrl}
+            alt={campaign.name}
+            className="mx-auto block h-auto max-h-[520px] w-full object-contain"
+          />
+        </div>
+      )}
+      <div className="mx-auto max-w-5xl px-4 py-8">
+        <header className="mb-8">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <p className="text-sm font-semibold uppercase text-emerald-700">
+              Đăng ký Kid Run
+            </p>
+            <a
+              href={`/kid-run/${slug}/lookup`}
+              className="inline-flex items-center gap-2 rounded-md border border-blue-600 px-4 py-2 text-sm font-semibold text-blue-700"
+            >
+              <QrCode className="h-4 w-4" />
+              Tra cứu hồ sơ
+            </a>
+          </div>
+          <h1 className="mt-1 text-3xl font-bold">{campaign.name}</h1>
+          <p className="mt-2 text-slate-600">
+            {new Date(campaign.eventDate).toLocaleDateString("vi-VN", {
+              timeZone: "Asia/Ho_Chi_Minh",
+            })}{" "}
+            · {campaign.location}
+          </p>
+          {campaign.description && (
+            <div className="mt-4">
+              <div
+                className={`relative whitespace-pre-line leading-7 text-slate-700 ${descriptionExpanded ? "" : "max-h-28 overflow-hidden"}`}
+              >
+                {campaign.description}
+                {!descriptionExpanded && (
+                  <div className="pointer-events-none absolute inset-x-0 bottom-0 h-12 bg-gradient-to-t from-slate-50 to-transparent" />
+                )}
+              </div>
+              <button
+                type="button"
+                onClick={() => setDescriptionExpanded((value) => !value)}
+                className="mt-2 text-sm font-semibold text-emerald-700 hover:underline"
+              >
+                {descriptionExpanded
+                  ? "Thu gọn nội dung"
+                  : "Xem đầy đủ nội dung"}
+              </button>
+            </div>
+          )}
+        </header>
+        {!campaign.isOpen && (
+          <div className="mb-6 rounded-md border border-amber-300 bg-amber-50 p-4 text-amber-900">
+            {campaign.closedReason}
+          </div>
+        )}
+        {campaign.shirtStyles?.length > 0 && (
+          <section className="mb-6 rounded-lg border border-emerald-200 bg-emerald-50 p-4">
+            <div className="flex items-start gap-3">
+              <Shirt className="mt-0.5 h-5 w-5 shrink-0 text-emerald-700" />
+              <div>
+                <h2 className="font-bold text-emerald-950">
+                  Áo sự kiện tự nguyện
+                </h2>
+                <p className="mt-1 text-sm text-emerald-900">
+                  Có mẫu trẻ em
+                  {adultShirtOptions.length > 0 ? " và người lớn" : ""}. Sau khi
+                  chọn áo và size, bạn có thể xem lại mẫu cùng bảng size.
+                </p>
+              </div>
+            </div>
+          </section>
+        )}
+        <form onSubmit={submit} className="space-y-6">
+          <section className="rounded-lg border bg-white p-5 shadow-sm">
+            <div className="flex items-center gap-2">
+              <Users className="h-5 w-5" />
+              <h2 className="text-xl font-bold">
+                Thông tin phụ huynh/người giám hộ
+              </h2>
+            </div>
+            <div className="mt-4 grid gap-4 md:grid-cols-2">
+              <Field
+                label="Họ và tên phụ huynh"
+                required
+                value={form.guardianName}
+                onChange={(v) => setForm({ ...form, guardianName: v })}
+              />
+              <Field
+                label="Email nhận BIB"
+                required
+                type="email"
+                value={form.email}
+                onChange={(v) => setForm({ ...form, email: v })}
+              />
+              <Field
+                label="Số điện thoại liên hệ"
+                required
+                type="tel"
+                value={form.phone}
+                onChange={(v) => setForm({ ...form, phone: v })}
+              />
+              <Field
+                label="Ghi chú"
+                value={form.notes}
+                onChange={(v) => setForm({ ...form, notes: v })}
+              />
+            </div>
+          </section>
+
+          <section className="space-y-4">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div className="flex items-center gap-2">
+                <Baby className="h-5 w-5" />
+                <h2 className="text-xl font-bold">Thông tin các bé</h2>
+              </div>
+              <button
+                type="button"
+                disabled={children.length >= campaign.maxChildrenPerApplication}
+                onClick={() => setChildren([...children, emptyChild()])}
+                className="inline-flex items-center gap-2 rounded-md border border-emerald-700 px-4 py-2 text-sm font-semibold text-emerald-800 disabled:opacity-40"
+              >
+                <Plus className="h-4 w-4" />
+                Thêm bé
+              </button>
+            </div>
+            <p className="text-sm text-slate-600">
+              Nhập đầy đủ ngày sinh; BTC sử dụng năm sinh để tự động chia nhóm
+              tuổi.
+            </p>
+            {children.map((child, index) => {
+              const category = categoryFor(child.dateOfBirth);
+              return (
+                <article
+                  key={child.key}
+                  className="rounded-lg border bg-white p-5 shadow-sm"
+                >
+                  <div className="flex items-center justify-between">
+                    <h3 className="font-bold">Bé {index + 1}</h3>
+                    {children.length > 1 && (
+                      <button
+                        type="button"
+                        title="Xóa bé"
+                        onClick={() =>
+                          setChildren(
+                            children.filter((c) => c.key !== child.key),
+                          )
+                        }
+                        className="p-2 text-red-600"
+                      >
+                        <Trash2 className="h-5 w-5" />
+                      </button>
+                    )}
+                  </div>
+                  <div className="mt-4 grid gap-4 md:grid-cols-2">
+                    <Field
+                      label="Họ và tên bé"
+                      required
+                      value={child.fullName}
+                      onChange={(v) => updateChild(child.key, "fullName", v)}
+                    />
+                    <Field
+                      label="Ngày tháng năm sinh"
+                      required
+                      type="date"
+                      value={child.dateOfBirth}
+                      onChange={(v) => updateChild(child.key, "dateOfBirth", v)}
+                    />
+                    <label className="text-sm font-medium">
+                      Giới tính <span className="text-red-500">*</span>
+                      <select
+                        required
+                        value={child.gender}
+                        onChange={(e) =>
+                          updateChild(child.key, "gender", e.target.value)
+                        }
+                        className="mt-1 h-11 w-full rounded-md border border-slate-300 bg-white px-3"
+                      >
+                        <option value="">Chọn giới tính</option>
+                        <option value="MALE">Nam</option>
+                        <option value="FEMALE">Nữ</option>
+                      </select>
+                    </label>
+                    <Field
+                      label="Trường/lớp hoặc CLB"
+                      value={child.schoolClub}
+                      onChange={(v) => updateChild(child.key, "schoolClub", v)}
+                    />
+                  </div>
+                  {child.dateOfBirth && (
+                    <div
+                      className={`mt-4 rounded-md p-3 text-sm ${category ? "bg-emerald-50 text-emerald-900" : "bg-red-50 text-red-700"}`}
+                    >
+                      {category ? (
+                        <>
+                          Nhóm tuổi: <strong>{category.name}</strong> ·{" "}
+                          {category.distanceLabel}
+                        </>
+                      ) : (
+                        "Năm sinh chưa thuộc nhóm tuổi của chương trình."
+                      )}
+                    </div>
+                  )}
+                  {childShirtOptions.length > 0 && (
+                    <div className="mt-5 border-t pt-4">
+                      <label className="block w-full max-w-xl text-sm font-medium">
+                        Áo tự nguyện cho bé
+                        <select
+                          value={child.shirtVariantId}
+                          onChange={(e) =>
+                            updateChild(
+                              child.key,
+                              "shirtVariantId",
+                              e.target.value,
+                            )
+                          }
+                          className="mt-1 h-10 w-full rounded-md border border-slate-300 bg-white px-3 text-sm"
+                        >
+                          <option value="">Không đăng ký áo</option>
+                          {childShirtOptions.map((option: any) => (
+                            <option key={option.id} value={option.id}>
+                              {option.label} - {money(option.price)}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+                      {child.shirtVariantId && (
+                        <div className="mt-3 max-w-xl space-y-3">
+                          <button
+                            type="button"
+                            onClick={() => setShirtPreviewOpen(true)}
+                            className="inline-flex h-10 items-center gap-2 rounded-md border border-emerald-700 bg-white px-4 text-sm font-semibold text-emerald-800"
+                          >
+                            <Shirt className="h-4 w-4" />
+                            Xem mẫu & bảng size
+                          </button>
+                          <div className="rounded-md border border-amber-300 bg-amber-50 p-3 text-sm leading-6 text-amber-900">
+                            <strong>Đăng ký áo là tự nguyện.</strong> Đăng ký
+                            chạy hoàn toàn miễn phí và BIB được cấp ngay. Áo chỉ
+                            được ghi nhận sau khi BTC nhận thanh toán và gửi
+                            email xác nhận thành công.
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </article>
+              );
+            })}
+          </section>
+
+          {adultShirtOptions.length > 0 && (
+            <section className="rounded-lg border bg-white p-5 shadow-sm">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <h2 className="font-bold">
+                    Áo mua thêm cho phụ huynh/gia đình
+                  </h2>
+                  <p className="mt-1 text-sm text-slate-600">
+                    Có thể thêm nhiều loại áo, size và số lượng trong cùng hồ
+                    sơ.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() =>
+                    setAdditionalShirts((items) => [
+                      ...items,
+                      { key: uid(), variantId: "", quantity: 1 },
+                    ])
+                  }
+                  className="inline-flex h-10 items-center gap-2 rounded-md border border-emerald-700 px-4 text-sm font-semibold text-emerald-800"
+                >
+                  <Plus className="h-4 w-4" />
+                  Thêm áo người lớn
+                </button>
+              </div>
+              {additionalShirts.length > 0 && (
+                <div className="mt-4 space-y-3">
+                  {additionalShirts.map((item) => (
+                    <div
+                      key={item.key}
+                      className="flex flex-wrap items-end gap-3 rounded-md bg-slate-50 p-3"
+                    >
+                      <label className="min-w-[240px] flex-1 text-sm font-medium">
+                        Mẫu, loại và size
+                        <select
+                          value={item.variantId}
+                          onChange={(e) =>
+                            setAdditionalShirts((items) =>
+                              items.map((current) =>
+                                current.key === item.key
+                                  ? { ...current, variantId: e.target.value }
+                                  : current,
+                              ),
+                            )
+                          }
+                          className="mt-1 h-10 w-full rounded-md border border-slate-300 bg-white px-3 text-sm"
+                        >
+                          <option value="">Chọn áo</option>
+                          {adultShirtOptions.map((option: any) => (
+                            <option key={option.id} value={option.id}>
+                              {option.label} - {money(option.price)}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+                      <label className="w-24 text-sm font-medium">
+                        Số lượng
+                        <select
+                          value={item.quantity}
+                          onChange={(e) =>
+                            setAdditionalShirts((items) =>
+                              items.map((current) =>
+                                current.key === item.key
+                                  ? {
+                                      ...current,
+                                      quantity: Number(e.target.value),
+                                    }
+                                  : current,
+                              ),
+                            )
+                          }
+                          className="mt-1 h-10 w-full rounded-md border border-slate-300 bg-white px-2"
+                        >
+                          {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((quantity) => (
+                            <option key={quantity} value={quantity}>
+                              {quantity}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+                      <button
+                        type="button"
+                        title="Xóa áo"
+                        onClick={() =>
+                          setAdditionalShirts((items) =>
+                            items.filter((current) => current.key !== item.key),
+                          )
+                        }
+                        className="grid h-10 w-10 place-items-center rounded-md border border-red-200 text-red-600"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+              {additionalShirts.some((item) => item.variantId) && (
+                <div className="mt-4 space-y-3 border-t pt-4">
+                  <button
+                    type="button"
+                    onClick={() => setShirtPreviewOpen(true)}
+                    className="inline-flex h-10 items-center gap-2 rounded-md border border-emerald-700 bg-white px-4 text-sm font-semibold text-emerald-800"
+                  >
+                    <Shirt className="h-4 w-4" />
+                    Xem mẫu & bảng size
+                  </button>
+                  <div className="rounded-md border border-amber-300 bg-amber-50 p-3 text-sm leading-6 text-amber-900">
+                    <strong>Đăng ký áo là tự nguyện.</strong> Áo chỉ được ghi
+                    nhận sau khi BTC nhận thanh toán và gửi email xác nhận thành
+                    công.
+                    <div className="mt-1 font-bold">
+                      Tiền áo người lớn: {money(additionalShirtTotal)}
+                    </div>
+                  </div>
+                </div>
+              )}
+            </section>
+          )}
+
+          <section className="rounded-lg border bg-white p-5 shadow-sm">
+            <h2 className="text-xl font-bold">Miễn trừ trách nhiệm</h2>
+            <button
+              type="button"
+              onClick={() => {
+                setWaiverOpen(true);
+                setWaiverViewed(true);
+              }}
+              className="mt-4 inline-flex items-center gap-2 rounded-md border border-blue-600 px-4 py-2 font-semibold text-blue-700"
+            >
+              <ChevronDown className="h-4 w-4" />
+              Xem điều khoản
+            </button>
+            <label
+              className={`mt-4 flex gap-3 rounded-md border p-4 ${!waiverViewed ? "cursor-not-allowed bg-slate-100 text-slate-400" : "cursor-pointer"}`}
+            >
+              <input
+                type="checkbox"
+                disabled={!waiverViewed}
+                checked={form.waiverAccepted}
+                onChange={(e) =>
+                  setForm({ ...form, waiverAccepted: e.target.checked })
+                }
+                className="mt-1 h-4 w-4"
+              />
+              <span>
+                Tôi là phụ huynh/người giám hộ, đã đọc và đồng ý điều khoản cho
+                tất cả các bé trong hồ sơ.
+              </span>
+            </label>
+            <label className="mt-3 flex cursor-pointer gap-3 rounded-md border p-4">
+              <input
+                type="checkbox"
+                checked={form.mediaConsent}
+                onChange={(e) =>
+                  setForm({ ...form, mediaConsent: e.target.checked })
+                }
+                className="mt-1 h-4 w-4"
+              />
+              <span>
+                Tôi đồng ý để BTC sử dụng hình ảnh/video của chương trình cho
+                mục đích truyền thông.
+              </span>
+            </label>
+          </section>
+
+          {error && (
+            <div className="rounded-md border border-red-300 bg-red-50 p-4 text-red-700">
+              {error}
+            </div>
+          )}
+          <button
+            disabled={!campaign.isOpen || !form.waiverAccepted || submitting}
+            className="flex h-12 w-full items-center justify-center gap-2 rounded-md bg-emerald-700 px-5 font-bold text-white disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {submitting ? (
+              <>
+                <span className="h-5 w-5 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                Đang thực hiện...
+              </>
+            ) : (
+              <>
+                <Mail className="h-5 w-5" />
+                Xác nhận đăng ký
+              </>
+            )}
+          </button>
+        </form>
+      </div>
+
+      {shirtPreviewOpen && (
+        <div
+          className="fixed inset-0 z-50 grid place-items-center bg-black/65 p-4"
+          onClick={() => setShirtPreviewOpen(false)}
+        >
+          <div
+            className="max-h-[90vh] w-full max-w-5xl overflow-hidden rounded-lg bg-white shadow-2xl"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="flex items-center justify-between border-b p-4">
+              <div>
+                <h2 className="text-lg font-bold">Mẫu áo và bảng size</h2>
+                <p className="text-sm text-slate-500">
+                  Kiểm tra đúng loại áo và size trước khi đăng ký.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShirtPreviewOpen(false)}
+                className="rounded-md border px-3 py-2 text-sm font-semibold"
+              >
+                Đóng
+              </button>
+            </div>
+            <div className="max-h-[75vh] overflow-y-auto p-4">
+              <div className="grid gap-5 md:grid-cols-2">
+                {campaign.shirtStyles.map((style: any) => (
+                  <article
+                    key={style.id}
+                    className="overflow-hidden rounded-lg border"
+                  >
+                    <div className="grid bg-slate-100 sm:grid-cols-2">
+                      {style.frontImageUrl ? (
+                        <img
+                          src={style.frontImageUrl}
+                          alt={`${style.name} mặt trước`}
+                          className="aspect-square h-full w-full object-contain"
+                        />
+                      ) : (
+                        <div className="grid aspect-square place-items-center text-slate-400">
+                          Chưa có ảnh mặt trước
+                        </div>
+                      )}
+                      {style.backImageUrl ? (
+                        <img
+                          src={style.backImageUrl}
+                          alt={`${style.name} mặt sau`}
+                          className="aspect-square h-full w-full object-contain"
+                        />
+                      ) : (
+                        <div className="grid aspect-square place-items-center text-slate-400">
+                          Chưa có ảnh mặt sau
+                        </div>
+                      )}
+                    </div>
+                    <div className="p-4">
+                      <div className="flex items-start justify-between gap-3">
+                        <div>
+                          <h3 className="font-bold">{style.name}</h3>
+                          <p className="text-sm text-slate-500">
+                            {style.category === "MALE"
+                              ? "Nam"
+                              : style.category === "FEMALE"
+                                ? "Nữ"
+                                : "Trẻ em"}{" "}
+                            ·{" "}
+                            {style.type === "SHORT_SLEEVE"
+                              ? "T-shirt"
+                              : "Singlet"}
+                          </p>
+                        </div>
+                        <strong className="whitespace-nowrap text-emerald-700">
+                          {money(style.price)}
+                        </strong>
+                      </div>
+                      <p className="mt-3 text-sm">
+                        <strong>Size:</strong>{" "}
+                        {style.variants
+                          .map((variant: any) => variant.size)
+                          .join(", ")}
+                      </p>
+                      {style.sizeGuideImageUrl && (
+                        <img
+                          src={style.sizeGuideImageUrl}
+                          alt={`Bảng size ${style.name}`}
+                          className="mt-4 max-h-[520px] w-full rounded-md border object-contain"
+                        />
+                      )}
+                    </div>
+                  </article>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {waiverOpen && (
+        <div
+          className="fixed inset-0 z-50 grid place-items-center bg-black/60 p-4"
+          onClick={() => setWaiverOpen(false)}
+        >
+          <div
+            className="max-h-[85vh] w-full max-w-2xl overflow-hidden rounded-lg bg-white shadow-xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between border-b p-4">
+              <h2 className="font-bold">{campaign.waiver?.title}</h2>
+              <button
+                type="button"
+                onClick={() => setWaiverOpen(false)}
+                className="rounded-md border px-3 py-1"
+              >
+                Đóng
+              </button>
+            </div>
+            <div className="max-h-[65vh] overflow-y-auto whitespace-pre-line p-5 leading-7">
+              {campaign.waiver?.content}
+            </div>
+            <div className="border-t p-4">
+              <button
+                type="button"
+                onClick={() => setWaiverOpen(false)}
+                className="w-full rounded-md bg-emerald-700 py-3 font-bold text-white"
+              >
+                Tôi đã đọc điều khoản
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </main>
+  );
+}
+
+function Field({
+  label,
+  value,
+  onChange,
+  type = "text",
+  required = false,
+}: {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  type?: string;
+  required?: boolean;
+}) {
+  return (
+    <label className="text-sm font-medium">
+      {label} {required && <span className="text-red-500">*</span>}
+      <input
+        type={type}
+        required={required}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        className="mt-1 h-11 w-full rounded-md border border-slate-300 px-3 outline-none focus:border-emerald-600 focus:ring-2 focus:ring-emerald-100"
+      />
+    </label>
+  );
+}

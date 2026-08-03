@@ -99,3 +99,8 @@ export function extractMerchOrderCodeFromTransferContent(
   if (!content) return null;
   return content.match(/\b(TTE[A-Z0-9]{8,20})\b/i)?.[1]?.toUpperCase() || null;
 }
+
+export function extractKidRunCodeFromTransferContent(content?: string | null): string | null {
+  if (!content) return null;
+  return content.match(/\\b(KID[A-Z0-9]{10})\\b/i)?.[1]?.toUpperCase() || null;
+}

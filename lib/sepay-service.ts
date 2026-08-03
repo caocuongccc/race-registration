@@ -1,6 +1,7 @@
 // lib/sepay-service.ts - CORRECT SEPAY IMPLEMENTATION
 import {
   extractMerchOrderCodeFromTransferContent,
+  extractKidRunCodeFromTransferContent,
   extractRegistrationIdFromTransferContent,
   extractShirtOrderIdFromTransferContent,
   isVietinBank,
@@ -182,7 +183,7 @@ export interface SepayWebhookData {
 
 export function parseSepayWebhook(webhookData: any): {
   orderCode: string | null;
-  orderType: "REGISTRATION" | "SHIRT_ORDER" | "MERCH_ORDER";
+  orderType: "REGISTRATION" | "SHIRT_ORDER" | "MERCH_ORDER" | "KID_RUN";
   amount: number;
   transactionId: string;
   transactionDate: string;
@@ -194,10 +195,13 @@ export function parseSepayWebhook(webhookData: any): {
   const shirtOrderCode =
     extractShirtOrderIdFromTransferContent(webhookData.code) ||
     extractShirtOrderIdFromTransferContent(content);
+  const kidRunCode =
+    extractKidRunCodeFromTransferContent(webhookData.code) ||
+    extractKidRunCodeFromTransferContent(content);
   const merchOrderCode =
     extractMerchOrderCodeFromTransferContent(webhookData.code) ||
     extractMerchOrderCodeFromTransferContent(content);
-  let orderCode = merchOrderCode || shirtOrderCode ||
+  let orderCode = kidRunCode || merchOrderCode || shirtOrderCode ||
     extractRegistrationIdFromTransferContent(webhookData.code) ||
     extractRegistrationIdFromTransferContent(content);
 

@@ -8,19 +8,21 @@ datasource db {
 }
 
 model User {
-  id                 String          @id @default(cuid())
-  email              String          @unique
-  password           String
-  name               String?
-  role               UserRole        @default(ADMIN)
-  createdAt          DateTime        @default(now())
-  updatedAt          DateTime        @updatedAt
-  eventUsers         EventUser[]
-  events             Event[]
-  importBatches      ImportBatch[]
-  registrations      Registration[]
-  merchCampaigns     MerchCampaign[]
-  racePacksCollected Registration[]  @relation("RacePackCollector")
+  id                  String               @id @default(cuid())
+  email               String               @unique
+  password            String
+  name                String?
+  role                UserRole             @default(ADMIN)
+  createdAt           DateTime             @default(now())
+  updatedAt           DateTime             @updatedAt
+  eventUsers          EventUser[]
+  events              Event[]
+  importBatches       ImportBatch[]
+  registrations       Registration[]
+  merchCampaigns      MerchCampaign[]
+  kidRunCampaigns     KidRunCampaign[]
+  kidRunCampaignUsers KidRunCampaignUser[]
+  racePacksCollected  Registration[]       @relation("RacePackCollector")
 
   @@map("users")
 }
@@ -548,6 +550,306 @@ model MerchOrderItem {
   @@map("merch_order_items")
 }
 
+model KidRunCampaign {
+  id                        String                    @id @default(cuid())
+  name                      String
+  slug                      String                    @unique
+  description               String?                   @db.Text
+  eventDate                 DateTime
+  location                  String
+  status                    KidRunCampaignStatus      @default(DRAFT)
+  isPublished               Boolean                   @default(false)
+  allowRegistration         Boolean                   @default(false)
+  requireOnlinePayment      Boolean                   @default(true)
+  bankName                  String?                   @db.Text
+  bankAccount               String?                   @db.Text
+  bankHolder                String?                   @db.Text
+  bankCode                  String?                   @db.Text
+  heroImageUrl              String?
+  heroCloudinaryPublicId    String?
+  bibPickupNote             String?                   @db.Text
+  shirtBuyerNote            String?                   @db.Text
+  contactEmail              String?
+  contactPhone              String?
+  maxChildrenPerApplication Int                       @default(5)
+  createdById               String
+  createdAt                 DateTime                  @default(now())
+  updatedAt                 DateTime                  @updatedAt
+  createdBy                 User                      @relation(fields: [createdById], references: [id])
+  images                    KidRunCampaignImage[]
+  categories                KidRunRaceCategory[]
+  waivers                   KidRunWaiver[]
+  applications              KidRunFamilyApplication[]
+  shirtStyles               KidRunShirtStyle[]
+  webhookLogs               KidRunWebhookLog[]
+  users                     KidRunCampaignUser[]
+
+  @@index([status, isPublished])
+  @@map("kid_run_campaigns")
+}
+
+model KidRunCampaignImage {
+  id                 String         @id @default(cuid())
+  campaignId         String
+  imageUrl           String
+  cloudinaryPublicId String?
+  caption            String?
+  sortOrder          Int            @default(0)
+  createdAt          DateTime       @default(now())
+  campaign           KidRunCampaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+
+  @@index([campaignId, sortOrder])
+  @@map("kid_run_campaign_images")
+}
+
+model KidRunRaceCategory {
+  id            String              @id @default(cuid())
+  campaignId    String
+  name          String
+  minBirthYear  Int
+  maxBirthYear  Int
+  distanceLabel String
+  bibPrefix     String
+  bibStart      Int                 @default(1)
+  nextBibNumber Int                 @default(1)
+  isAvailable   Boolean             @default(true)
+  sortOrder     Int                 @default(0)
+  createdAt     DateTime            @default(now())
+  updatedAt     DateTime            @updatedAt
+  campaign      KidRunCampaign      @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  participants  KidRunParticipant[]
+
+  @@unique([campaignId, name])
+  @@unique([campaignId, bibPrefix])
+  @@index([campaignId, isAvailable])
+  @@map("kid_run_race_categories")
+}
+
+model KidRunWaiver {
+  id           String                    @id @default(cuid())
+  campaignId   String
+  title        String
+  content      String                    @db.Text
+  version      String
+  isActive     Boolean                   @default(true)
+  createdAt    DateTime                  @default(now())
+  updatedAt    DateTime                  @updatedAt
+  campaign     KidRunCampaign            @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  applications KidRunFamilyApplication[]
+
+  @@unique([campaignId, version])
+  @@index([campaignId, isActive])
+  @@map("kid_run_waivers")
+}
+
+model KidRunFamilyApplication {
+  id                 String                   @id @default(cuid())
+  campaignId         String
+  publicCode         String                   @unique
+  secretCodeHash     String
+  guardianName       String
+  email              String
+  phone              String
+  notes              String?                  @db.Text
+  status             KidRunRegistrationStatus @default(CONFIRMED)
+  bibQrToken         String                   @unique
+  waiverId           String
+  waiverVersion      String
+  waiverAcceptedAt   DateTime
+  waiverAcceptedIp   String?
+  waiverUserAgent    String?
+  mediaConsent       Boolean                  @default(false)
+  shirtTotalAmount   Int                      @default(0)
+  shirtPaymentStatus KidRunPaymentStatus      @default(NOT_REQUIRED)
+  shirtPaymentDate   DateTime?
+  createdAt          DateTime                 @default(now())
+  updatedAt          DateTime                 @updatedAt
+  campaign           KidRunCampaign           @relation(fields: [campaignId], references: [id], onDelete: Restrict)
+  waiver             KidRunWaiver             @relation(fields: [waiverId], references: [id], onDelete: Restrict)
+  participants       KidRunParticipant[]
+  shirts             KidRunParticipantShirt[]
+  payments           KidRunPayment[]
+  checkinLogs        KidRunCheckinLog[]
+  emailLogs          KidRunEmailLog[]
+  webhookLogs        KidRunWebhookLog[]
+
+  @@index([campaignId, createdAt])
+  @@index([campaignId, shirtPaymentStatus])
+  @@index([email])
+  @@index([phone])
+  @@map("kid_run_family_applications")
+}
+
+model KidRunParticipant {
+  id             String                   @id @default(cuid())
+  applicationId  String
+  categoryId     String
+  fullName       String
+  dateOfBirth    DateTime                 @db.Date
+  birthYear      Int
+  gender         KidRunGender
+  schoolClub     String?
+  bibNumber      String
+  bibCollectedAt DateTime?
+  bibCollectedBy String?
+  createdAt      DateTime                 @default(now())
+  updatedAt      DateTime                 @updatedAt
+  application    KidRunFamilyApplication  @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  category       KidRunRaceCategory       @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  shirts         KidRunParticipantShirt[]
+  checkinLogs    KidRunCheckinLog[]
+
+  @@unique([categoryId, bibNumber])
+  @@index([applicationId])
+  @@index([categoryId])
+  @@map("kid_run_participants")
+}
+
+model KidRunShirtStyle {
+  id                      String                   @id @default(cuid())
+  campaignId              String
+  name                    String
+  category                ShirtCategory
+  type                    ShirtType
+  price                   Int
+  frontImageUrl           String?
+  frontCloudinaryPublicId String?
+  backImageUrl            String?
+  backCloudinaryPublicId  String?
+  sizeGuideImageUrl       String?
+  isAvailable             Boolean                  @default(true)
+  sortOrder               Int                      @default(0)
+  createdAt               DateTime                 @default(now())
+  updatedAt               DateTime                 @updatedAt
+  campaign                KidRunCampaign           @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  variants                KidRunShirtVariant[]
+  participantShirts       KidRunParticipantShirt[]
+
+  @@unique([campaignId, name, category, type])
+  @@index([campaignId, isAvailable])
+  @@map("kid_run_shirt_styles")
+}
+
+model KidRunShirtVariant {
+  id                String                   @id @default(cuid())
+  styleId           String
+  size              ShirtSize
+  isAvailable       Boolean                  @default(true)
+  sortOrder         Int                      @default(0)
+  createdAt         DateTime                 @default(now())
+  updatedAt         DateTime                 @updatedAt
+  style             KidRunShirtStyle         @relation(fields: [styleId], references: [id], onDelete: Cascade)
+  participantShirts KidRunParticipantShirt[]
+
+  @@unique([styleId, size])
+  @@map("kid_run_shirt_variants")
+}
+
+model KidRunParticipantShirt {
+  id            String                  @id @default(cuid())
+  applicationId String
+  participantId String
+  styleId       String
+  variantId     String
+  styleName     String
+  category      ShirtCategory
+  type          ShirtType
+  size          ShirtSize
+  quantity      Int                     @default(1)
+  unitPrice     Int
+  totalPrice    Int
+  createdAt     DateTime                @default(now())
+  application   KidRunFamilyApplication @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  participant   KidRunParticipant       @relation(fields: [participantId], references: [id], onDelete: Cascade)
+  style         KidRunShirtStyle        @relation(fields: [styleId], references: [id], onDelete: Restrict)
+  variant       KidRunShirtVariant      @relation(fields: [variantId], references: [id], onDelete: Restrict)
+
+  @@index([applicationId])
+  @@index([participantId])
+  @@map("kid_run_participant_shirts")
+}
+
+model KidRunPayment {
+  id            String                  @id @default(cuid())
+  applicationId String
+  transactionId String?                 @unique
+  amount        Int
+  status        KidRunPaymentStatus     @default(PENDING)
+  paymentMethod String?
+  webhookData   Json?
+  createdAt     DateTime                @default(now())
+  updatedAt     DateTime                @updatedAt
+  application   KidRunFamilyApplication @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+
+  @@index([applicationId, status])
+  @@map("kid_run_payments")
+}
+
+model KidRunCheckinLog {
+  id            String                  @id @default(cuid())
+  applicationId String
+  participantId String?
+  action        String
+  performedBy   String?
+  createdAt     DateTime                @default(now())
+  application   KidRunFamilyApplication @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  participant   KidRunParticipant?      @relation(fields: [participantId], references: [id], onDelete: SetNull)
+
+  @@index([applicationId, createdAt])
+  @@map("kid_run_checkin_logs")
+}
+
+model KidRunEmailLog {
+  id             String                  @id @default(cuid())
+  applicationId  String
+  type           KidRunEmailType
+  recipientEmail String
+  subject        String?
+  status         KidRunEmailStatus       @default(PENDING)
+  provider       String?
+  errorMessage   String?
+  sentAt         DateTime?
+  createdAt      DateTime                @default(now())
+  application    KidRunFamilyApplication @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+
+  @@index([applicationId, type])
+  @@map("kid_run_email_logs")
+}
+
+model KidRunWebhookLog {
+  id            String                   @id @default(cuid())
+  campaignId    String?
+  applicationId String?
+  provider      String                   @default("sepay")
+  event         String
+  transactionId String?
+  payload       Json
+  status        String
+  errorMessage  String?
+  retryCount    Int                      @default(0)
+  nextRetryAt   DateTime?
+  createdAt     DateTime                 @default(now())
+  updatedAt     DateTime                 @updatedAt
+  campaign      KidRunCampaign?          @relation(fields: [campaignId], references: [id], onDelete: SetNull)
+  application   KidRunFamilyApplication? @relation(fields: [applicationId], references: [id], onDelete: SetNull)
+
+  @@index([status, nextRetryAt])
+  @@map("kid_run_webhook_logs")
+}
+
+model KidRunCampaignUser {
+  id         String         @id @default(cuid())
+  campaignId String
+  userId     String
+  createdAt  DateTime       @default(now())
+  campaign   KidRunCampaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  user       User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([campaignId, userId])
+  @@index([userId])
+  @@map("kid_run_campaign_users")
+}
+
 model EventUser {
   id        String        @id @default(dbgenerated("(gen_random_uuid())::text"))
   eventId   String
@@ -672,6 +974,41 @@ enum MerchFulfillmentStatus {
 enum MerchDeliveryMethod {
   DIRECT
   SHIPPING
+}
+
+enum KidRunCampaignStatus {
+  DRAFT
+  OPEN
+  CLOSED
+}
+
+enum KidRunRegistrationStatus {
+  CONFIRMED
+  CANCELLED
+}
+
+enum KidRunPaymentStatus {
+  NOT_REQUIRED
+  PENDING
+  PAID
+  FAILED
+  REFUNDED
+}
+
+enum KidRunGender {
+  MALE
+  FEMALE
+}
+
+enum KidRunEmailType {
+  REGISTRATION_CONFIRMED
+  SHIRT_PAYMENT_CONFIRMED
+}
+
+enum KidRunEmailStatus {
+  PENDING
+  SENT
+  FAILED
 }
 
 enum ImportStatus {

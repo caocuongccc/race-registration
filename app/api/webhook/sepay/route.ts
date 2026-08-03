@@ -13,6 +13,8 @@ import { getInitialWebhookRetryAt } from "@/lib/sepay-webhook-retry";
 import { confirmMerchOrderPayment } from "@/lib/merch-order-service";
 import { MerchOrderEmail } from "@/emails/merch-order-email";
 import { getMerchCampaignBankAccount } from "@/lib/merch-bank-account-service";
+import { confirmKidRunShirtPayment, getKidRunBankAccount } from "@/lib/kid-run-service";
+import { sendKidRunShirtPaymentEmail } from "@/lib/kid-run-email";
 
 /**
  * Generate BIB number
@@ -478,6 +480,44 @@ async function processMerchOrderPaymentConfirmation(
 
   return { success: true, merchOrderId: order.id, eventId: null };
 }
+async function processKidRunPaymentConfirmation(
+  publicCode: string,
+  transactionId: string,
+  amount: number,
+  webhookData: any,
+) {
+  const current = await prisma.kidRunFamilyApplication.findUnique({
+    where: { publicCode: publicCode.toUpperCase() },
+    include: { campaign: true },
+  });
+  if (!current) throw new Error("Kid Run application not found: " + publicCode);
+  if (current.shirtPaymentStatus === "PAID") {
+    return { success: true, message: "Already paid", kidRunApplicationId: current.id, eventId: null };
+  }
+  try {
+    const bank = await getKidRunBankAccount(current.campaignId);
+    const receivedAccounts = [webhookData.subAccount, webhookData.accountNumber]
+      .filter(Boolean)
+      .map((value) => String(value).replace(/\s/g, ""));
+    if (bank && receivedAccounts.length > 0 && !receivedAccounts.includes(bank.accountNumber.replace(/\s/g, ""))) {
+      throw new Error("Kid Run payment account does not match campaign " + current.campaignId);
+    }
+    const application = await confirmKidRunShirtPayment({ publicCode, transactionId, amount, paymentMethod: "sepay_transfer", webhookData });
+    await prisma.kidRunWebhookLog.create({
+      data: { campaignId: current.campaignId, applicationId: current.id, event: "payment.processed", transactionId, payload: webhookData, status: "SUCCESS" },
+    });
+    after(async () => {
+      try { await sendKidRunShirtPaymentEmail(application.id); }
+      catch (error) { console.error("Kid Run paid email failed:", error); }
+    });
+    return { success: true, kidRunApplicationId: application.id, eventId: null };
+  } catch (error) {
+    await prisma.kidRunWebhookLog.create({
+      data: { campaignId: current.campaignId, applicationId: current.id, event: "payment.error", transactionId, payload: webhookData, status: "FAILED", errorMessage: (error as Error).message },
+    });
+    throw error;
+  }
+}
 /**
  * SePay Webhook Handler
  * Receives bank transaction notifications from SePay
@@ -543,26 +583,33 @@ export async function POST(req: NextRequest) {
 
     // Process payment
     const result =
-      orderType === "MERCH_ORDER"
-        ? await processMerchOrderPaymentConfirmation(
+      orderType === "KID_RUN"
+        ? await processKidRunPaymentConfirmation(
             orderCode,
             transactionId,
             amount,
             webhookData,
           )
-        : orderType === "SHIRT_ORDER"
-          ? await processShirtOrderPaymentConfirmation(
+        : orderType === "MERCH_ORDER"
+          ? await processMerchOrderPaymentConfirmation(
               orderCode,
               transactionId,
               amount,
               webhookData,
             )
-          : await processPaymentConfirmation(
-              orderCode,
-              transactionId,
-              amount,
-              webhookData,
-            );
+          : orderType === "SHIRT_ORDER"
+            ? await processShirtOrderPaymentConfirmation(
+                orderCode,
+                transactionId,
+                amount,
+                webhookData,
+              )
+            : await processPaymentConfirmation(
+                orderCode,
+                transactionId,
+                amount,
+                webhookData,
+              );
 
     console.log(`✅ Payment processed:`, result);
     console.log("=".repeat(60) + "\n");
@@ -584,6 +631,7 @@ export async function POST(req: NextRequest) {
       bibNumber: "bibNumber" in result ? result.bibNumber : undefined,
       shirtOrderId: "shirtOrderId" in result ? result.shirtOrderId : undefined,
       merchOrderId: "merchOrderId" in result ? result.merchOrderId : undefined,
+      kidRunApplicationId: "kidRunApplicationId" in result ? result.kidRunApplicationId : undefined,
     });
   } catch (error) {
     console.error("❌ Webhook error:", error);

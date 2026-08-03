@@ -22,6 +22,7 @@ import {
   Wrench,
   KeyRound,
   Gift,
+  Baby,
 } from "lucide-react";
 import { useEffect, useState } from "react";
 
@@ -34,6 +35,7 @@ const navigationConfig = {
       href: "/admin/dashboard/merch-campaigns",
       icon: Gift,
     },
+    { name: "Kid Run", href: "/admin/dashboard/kid-run", icon: Baby },
     { name: "Đăng ký", href: "/admin/dashboard/registrations", icon: Users },
     { name: "Số BIB", href: "/admin/dashboard/bibs", icon: Award }, // NEW
     {
@@ -78,6 +80,7 @@ const navigationConfig = {
     // { name: "Thống kê", href: "/admin/dashboard/statistics", icon: BarChart3 },
   ],
   MEMBER: [
+    { name: "Kid Run", href: "/admin/dashboard/kid-run", icon: Baby },
     {
       name: "Cổng bán áo",
       href: "/admin/dashboard/merch-campaigns",
@@ -120,7 +123,7 @@ export default function AdminLayout({
       router.replace("/admin/dashboard/merch-campaigns");
       return;
     }
-    if (!pathname.startsWith("/admin/dashboard/merch-campaigns")) {
+    if (!pathname.startsWith("/admin/dashboard/merch-campaigns") && !pathname.startsWith("/admin/dashboard/kid-run")) {
       router.replace("/member");
     }
   }, [status, session, pathname, router]);
