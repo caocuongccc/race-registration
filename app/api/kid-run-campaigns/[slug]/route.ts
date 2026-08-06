@@ -24,18 +24,33 @@ async function canPreviewCampaign(campaignId: string) {
   }
 }
 
-export async function GET(req: Request, context: { params: Promise<{ slug: string }> }) {
+export async function GET(
+  req: Request,
+  context: { params: Promise<{ slug: string }> },
+) {
   const { slug } = await context.params;
   const campaign = await prisma.kidRunCampaign.findUnique({
     where: { slug },
     include: {
       images: { orderBy: { sortOrder: "asc" } },
-      categories: { where: { isAvailable: true }, orderBy: { sortOrder: "asc" } },
-      waivers: { where: { isActive: true }, orderBy: { createdAt: "desc" }, take: 1 },
+      categories: {
+        where: { isAvailable: true },
+        orderBy: { sortOrder: "asc" },
+      },
+      waivers: {
+        where: { isActive: true },
+        orderBy: { createdAt: "desc" },
+        take: 1,
+      },
       shirtStyles: {
         where: { isAvailable: true },
         orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
-        include: { variants: { where: { isAvailable: true }, orderBy: { sortOrder: "asc" } } },
+        include: {
+          variants: {
+            where: { isAvailable: true },
+            orderBy: { sortOrder: "asc" },
+          },
+        },
       },
     },
   });
@@ -65,23 +80,37 @@ export async function GET(req: Request, context: { params: Promise<{ slug: strin
     bankCode: _bankCode,
     ...publicCampaign
   } = campaign;
+  const activeCategories = campaign.categories.filter(
+    (category) => category.name !== "__UNASSIGNED__",
+  );
+  const bibCapacity = activeCategories.reduce(
+    (sum, category) => sum + category.bibCapacity,
+    0,
+  );
+  const remainingBibCount = activeCategories.reduce(
+    (sum, category) => sum + category.remainingBibCount,
+    0,
+  );
   const isOpen =
     campaign.isPublished &&
     campaign.status === "OPEN" &&
     campaign.allowRegistration &&
-    campaign.remainingBibCount > 0;
+    remainingBibCount > 0;
 
   return NextResponse.json({
     campaign: {
       ...publicCampaign,
+      categories: activeCategories,
+      bibCapacity,
+      remainingBibCount,
       isOpen,
       isPreview: previewAllowed,
       closedReason: isOpen
         ? null
         : previewAllowed && !campaign.isPublished
           ? "Bạn đang xem trước bản nháp. Hãy công khai chương trình để nhận đăng ký."
-          : campaign.remainingBibCount <= 0
-            ? `Chương trình đã đủ ${campaign.bibCapacity} BIB.`
+          : remainingBibCount <= 0
+            ? `Chương trình đã đủ ${bibCapacity} BIB.`
             : campaign.status === "CLOSED"
               ? "Chương trình đã đóng đăng ký."
               : "Ban tổ chức chưa mở đăng ký.",

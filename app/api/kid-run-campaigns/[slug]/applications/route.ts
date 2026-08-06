@@ -2,6 +2,7 @@ import { after, NextRequest, NextResponse } from "next/server";
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { generateSepayQR } from "@/lib/sepay-service";
+import { generateQRBuffer } from "@/lib/qr-inline";
 import {
   buildKidRunTransferContent,
   createKidRunPublicCode,
@@ -95,19 +96,16 @@ export async function POST(
         { status: 400 },
       );
     }
-    if (campaign.remainingBibCount < children.length) {
-      return NextResponse.json(
-        {
-          error: `Chỉ còn ${campaign.remainingBibCount} BIB, không đủ cho ${children.length} bé trong hồ sơ này`,
-        },
-        { status: 409 },
-      );
-    }
     const waiver = campaign.waivers[0];
     const submittedWaiverId = String(body.waiverId || "");
     const waiverAccepted = body.waiverAccepted === true;
     const waiverViewed = body.waiverViewed === true;
-    if (!waiver || submittedWaiverId !== waiver.id || !waiverAccepted || !waiverViewed) {
+    if (
+      !waiver ||
+      submittedWaiverId !== waiver.id ||
+      !waiverAccepted ||
+      !waiverViewed
+    ) {
       return NextResponse.json(
         { error: "Vui lòng xem và đồng ý điều khoản miễn trừ trách nhiệm" },
         { status: 400 },
@@ -145,6 +143,41 @@ export async function POST(
           : null,
       };
     });
+
+    const eventYear = campaign.eventDate.getUTCFullYear();
+    const activeCategories = campaign.categories.filter(
+      (category) => category.name !== "__UNASSIGNED__",
+    );
+    const childrenWithCategories = resolvedChildren.map((child, index) => {
+      const age = eventYear - child.birthYear;
+      const matches = activeCategories.filter(
+        (category) =>
+          child.birthYear >= category.minBirthYear &&
+          child.birthYear <= category.maxBirthYear,
+      );
+      if (matches.length !== 1)
+        throw new Error(
+          `Bé ${index + 1} (${age} tuổi) không thuộc đúng một nhóm tuổi đang mở`,
+        );
+      return { ...child, age, category: matches[0] };
+    });
+    const categoryRequests = new Map<
+      string,
+      { count: number; category: (typeof activeCategories)[number] }
+    >();
+    for (const child of childrenWithCategories) {
+      const current = categoryRequests.get(child.category.id);
+      categoryRequests.set(child.category.id, {
+        count: (current?.count || 0) + 1,
+        category: child.category,
+      });
+    }
+    for (const { count, category } of categoryRequests.values()) {
+      if (category.remainingBibCount < count)
+        throw new Error(
+          `Nhóm ${category.name} chỉ còn ${category.remainingBibCount} BIB`,
+        );
+    }
 
     const additionalByVariant = new Map<string, number>();
     for (const item of additionalShirtInputs) {
@@ -223,41 +256,37 @@ export async function POST(
 
     const applicationId = await prisma.$transaction(
       async (tx) => {
-        const reservation = await tx.$queryRaw<
-          Array<{ remaining: number }>
-        >(Prisma.sql`
-        UPDATE "kid_run_campaigns"
-        SET
-          "remainingBibCount" = "remainingBibCount" - ${children.length},
-          "allowRegistration" = CASE WHEN "remainingBibCount" - ${children.length} > 0 THEN "allowRegistration" ELSE false END,
-          "updatedAt" = NOW()
-        WHERE "id" = ${campaign.id}
-          AND "remainingBibCount" >= ${children.length}
-        RETURNING "remainingBibCount" AS "remaining"
-      `);
-        if (!reservation[0])
-          throw new Error("Số lượng BIB còn lại không đủ cho hồ sơ này");
+        const bibAllocations = new Map<
+          string,
+          { next: number; prefix: string }
+        >();
+        for (const { count, category } of categoryRequests.values()) {
+          const rows = await tx.$queryRaw<
+            Array<{ startNumber: number }>
+          >(Prisma.sql`
+            UPDATE "kid_run_race_categories"
+            SET "remainingBibCount" = "remainingBibCount" - ${count},
+                "nextBibNumber" = "nextBibNumber" + ${count},
+                "updatedAt" = NOW()
+            WHERE "id" = ${category.id}
+              AND "isAvailable" = true
+              AND "remainingBibCount" >= ${count}
+            RETURNING "nextBibNumber" - ${count} AS "startNumber"
+          `);
+          if (!rows[0])
+            throw new Error(`Nhóm ${category.name} không còn đủ BIB`);
+          bibAllocations.set(category.id, {
+            next: Number(rows[0].startNumber),
+            prefix: category.bibPrefix,
+          });
+        }
 
-        const pendingCategory = await tx.kidRunRaceCategory.upsert({
-          where: {
-            campaignId_name: {
-              campaignId: campaign.id,
-              name: "__UNASSIGNED__",
-            },
-          },
-          create: {
-            campaignId: campaign.id,
-            name: "__UNASSIGNED__",
-            minBirthYear: 1900,
-            maxBirthYear: 2100,
-            distanceLabel: "BTC phân nhóm sau",
-            bibPrefix: "__TMP__",
-            bibStart: 1,
-            nextBibNumber: 1,
-            sortOrder: -1,
-          },
-          update: { isAvailable: true },
-        });
+        await tx.$executeRaw(Prisma.sql`
+          UPDATE "kid_run_campaigns"
+          SET "remainingBibCount" = GREATEST(0, "remainingBibCount" - ${children.length}),
+              "updatedAt" = NOW()
+          WHERE "id" = ${campaign.id}
+        `);
 
         const application = await tx.kidRunFamilyApplication.create({
           data: {
@@ -282,17 +311,19 @@ export async function POST(
         });
 
         let firstParticipantId: string | null = null;
-        for (const child of resolvedChildren) {
+        for (const child of childrenWithCategories) {
+          const bibAllocation = bibAllocations.get(child.category.id)!;
+          const bibNumber = `${bibAllocation.prefix}${String(bibAllocation.next++).padStart(4, "0")}`;
           const participant = await tx.kidRunParticipant.create({
             data: {
               applicationId: application.id,
-              categoryId: pendingCategory.id,
+              categoryId: child.category.id,
               fullName: child.fullName,
               dateOfBirth: child.dateOfBirth,
               birthYear: child.birthYear,
               gender: child.gender,
               schoolClub: child.schoolClub,
-              bibNumber: null,
+              bibNumber,
             },
           });
           if (!firstParticipantId) firstParticipantId = participant.id;
@@ -374,9 +405,13 @@ export async function POST(
       }
     }
 
+    const appUrl =
+      process.env.NEXT_PUBLIC_APP_URL || "https://dangkygiaichay.vercel.app";
+    const bibQrCodeDataUrl = `data:image/png;base64,${(await generateQRBuffer(`${appUrl}/admin/dashboard/kid-run/checkin/${bibQrToken}`)).toString("base64")}`;
+
     after(async () => {
       try {
-        await sendKidRunRegistrationEmail(applicationId, secretCode);
+        await sendKidRunRegistrationEmail(applicationId, secretCode, payment);
       } catch (error) {
         console.error("Kid Run registration email failed:", error);
       }
@@ -394,6 +429,7 @@ export async function POST(
       application: publicApplication,
       secretCode,
       payment,
+      bibQrCodeDataUrl,
     });
   } catch (error: any) {
     console.error("Create Kid Run application error:", error);

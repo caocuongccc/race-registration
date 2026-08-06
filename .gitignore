@@ -60,3 +60,7 @@ prisma/migrations/**
 !prisma/kid-run-defer-bib-until-grouping.sql
 !prisma/migrations/20260803140000_defer_kid_run_bib_until_grouping/
 !prisma/migrations/20260803140000_defer_kid_run_bib_until_grouping/migration.sql
+
+!prisma/kid-run-configure-age-groups-2026.sql
+!prisma/migrations/20260806090000_add_kid_run_category_bib_quota/
+!prisma/migrations/20260806090000_add_kid_run_category_bib_quota/migration.sql

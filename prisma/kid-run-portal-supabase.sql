@@ -56,6 +56,8 @@ CREATE TABLE "kid_run_race_categories" (
   "bibPrefix" TEXT NOT NULL,
   "bibStart" INTEGER NOT NULL DEFAULT 1,
   "nextBibNumber" INTEGER NOT NULL DEFAULT 1,
+  "bibCapacity" INTEGER NOT NULL DEFAULT 50,
+  "remainingBibCount" INTEGER NOT NULL DEFAULT 50,
   "isAvailable" BOOLEAN NOT NULL DEFAULT true,
   "sortOrder" INTEGER NOT NULL DEFAULT 0,
   "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,

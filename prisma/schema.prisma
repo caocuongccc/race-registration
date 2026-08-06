@@ -605,21 +605,23 @@ model KidRunCampaignImage {
 }
 
 model KidRunRaceCategory {
-  id            String              @id @default(cuid())
-  campaignId    String
-  name          String
-  minBirthYear  Int
-  maxBirthYear  Int
-  distanceLabel String
-  bibPrefix     String
-  bibStart      Int                 @default(1)
-  nextBibNumber Int                 @default(1)
-  isAvailable   Boolean             @default(true)
-  sortOrder     Int                 @default(0)
-  createdAt     DateTime            @default(now())
-  updatedAt     DateTime            @updatedAt
-  campaign      KidRunCampaign      @relation(fields: [campaignId], references: [id], onDelete: Cascade)
-  participants  KidRunParticipant[]
+  id                String              @id @default(cuid())
+  campaignId        String
+  name              String
+  minBirthYear      Int
+  maxBirthYear      Int
+  distanceLabel     String
+  bibPrefix         String
+  bibStart          Int                 @default(1)
+  nextBibNumber     Int                 @default(1)
+  bibCapacity       Int                 @default(50)
+  remainingBibCount Int                 @default(50)
+  isAvailable       Boolean             @default(true)
+  sortOrder         Int                 @default(0)
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
+  campaign          KidRunCampaign      @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  participants      KidRunParticipant[]
 
   @@unique([campaignId, name])
   @@unique([campaignId, bibPrefix])

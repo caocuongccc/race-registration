@@ -144,6 +144,18 @@ export default function KidRunRegistrationPage() {
   );
   const shirtTotal = childShirtTotal + additionalShirtTotal;
 
+  const getCategoryForDate = (dateText: string) => {
+    const birthYear = Number(dateText?.slice(0, 4));
+    if (!birthYear) return null;
+    return (
+      (campaign?.categories || []).find(
+        (category: any) =>
+          birthYear >= category.minBirthYear &&
+          birthYear <= category.maxBirthYear,
+      ) || null
+    );
+  };
+
   const openShirtPreview = (variantId?: string) => {
     const styleIndex = (campaign?.shirtStyles || []).findIndex((style: any) =>
       style.variants?.some((variant: any) => variant.id === variantId),
@@ -214,7 +226,7 @@ export default function KidRunRegistrationPage() {
           <p className="mt-2 text-slate-600">
             Mã hồ sơ <strong>{result.application.publicCode}</strong> đã được
             ghi nhận. Email xác nhận hồ sơ đã gửi đến {result.application.email}
-            . BIB và QR nhận BIB sẽ được gửi sau khi BTC xếp nhóm tuổi.
+            . BIB và QR nhận BIB đã được cấp và gửi trong email xác nhận.
           </p>
           <div className="mt-6 space-y-3">
             {result.application.participants.map(
@@ -227,13 +239,31 @@ export default function KidRunRegistrationPage() {
                     Bé {index + 1}: {participant.fullName}
                   </div>
                   <div className="mt-1 text-sm text-slate-600">
-                    Sinh năm {participant.birthYear} · Chờ BTC xếp nhóm và cấp
-                    BIB
+                    Sinh năm {participant.birthYear} ·{" "}
+                    {participant.category.name}
+                  </div>
+                  <div className="mt-2 text-lg font-extrabold text-blue-700">
+                    BIB {participant.bibNumber}
                   </div>
                 </div>
               ),
             )}
           </div>
+          {result.bibQrCodeDataUrl && (
+            <div className="mt-6 rounded-md border border-emerald-200 bg-emerald-50 p-4 text-center">
+              <div className="font-bold text-emerald-900">
+                QR nhận BIB chung cho gia đình
+              </div>
+              <img
+                src={result.bibQrCodeDataUrl}
+                alt="QR nhận BIB"
+                className="mx-auto mt-3 w-64 max-w-full border bg-white"
+              />
+              <p className="mt-2 text-sm text-emerald-800">
+                BTC quét một mã này để nhận toàn bộ BIB trong hồ sơ.
+              </p>
+            </div>
+          )}
           <div className="mt-6 rounded-md border border-blue-200 bg-blue-50 p-4">
             <div className="text-sm text-blue-800">Mã bí mật tra cứu hồ sơ</div>
             <div className="mt-1 text-3xl font-bold tracking-[0.2em] text-blue-950">
@@ -452,6 +482,11 @@ export default function KidRunRegistrationPage() {
               sau khi chốt danh sách.
             </p>
             {children.map((child, index) => {
+              const childCategory = getCategoryForDate(child.dateOfBirth);
+              const childAge = child.dateOfBirth
+                ? new Date(campaign.eventDate).getUTCFullYear() -
+                  Number(child.dateOfBirth.slice(0, 4))
+                : null;
               return (
                 <article
                   key={child.key}
@@ -509,12 +544,25 @@ export default function KidRunRegistrationPage() {
                       onChange={(v) => updateChild(child.key, "schoolClub", v)}
                     />
                   </div>
-                  {child.dateOfBirth && (
-                    <div className="mt-4 rounded-md bg-blue-50 p-3 text-sm text-blue-800">
-                      BTC sẽ căn cứ năm sinh để phân nhóm tuổi sau khi chốt danh
-                      sách đăng ký.
-                    </div>
-                  )}
+                  {child.dateOfBirth &&
+                    (childCategory ? (
+                      <div
+                        className={`mt-4 flex items-center justify-between gap-3 rounded-md border p-3 text-sm ${childCategory.remainingBibCount > 0 ? "border-blue-200 bg-blue-50 text-blue-900" : "border-red-200 bg-red-50 text-red-800"}`}
+                      >
+                        <span>
+                          <strong>{childCategory.name}</strong> · {childAge}{" "}
+                          tuổi · {childCategory.distanceLabel}
+                        </span>
+                        <strong className="whitespace-nowrap">
+                          Còn {childCategory.remainingBibCount}/
+                          {childCategory.bibCapacity} BIB
+                        </strong>
+                      </div>
+                    ) : (
+                      <div className="mt-4 rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-800">
+                        Năm sinh không thuộc nhóm tuổi 3–12 đang mở đăng ký.
+                      </div>
+                    ))}
                   {childShirtOptions.length > 0 && (
                     <div className="mt-5 border-t pt-4">
                       <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_auto] md:items-end">
