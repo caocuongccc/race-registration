@@ -338,9 +338,9 @@ export default function KidRunRegistrationPage() {
       <img
         src={campaign.heroImageUrl}
         alt={campaign.name}
-        className="block h-auto w-full"
+        className="mx-auto block max-h-[180px] w-full max-w-6xl bg-white object-contain px-3 py-2 sm:max-h-[220px] lg:max-h-[260px]"
       />
-      <div className="mx-auto max-w-5xl px-4 py-8">
+      <div className="mx-auto max-w-5xl px-4 py-6 sm:py-8">
         <header className="mb-8">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <p className="text-sm font-semibold uppercase text-emerald-700">
@@ -348,7 +348,7 @@ export default function KidRunRegistrationPage() {
             </p>
             <a
               href={`/kid-run/${slug}/lookup`}
-              className="inline-flex items-center gap-2 rounded-md border border-blue-600 px-4 py-2 text-sm font-semibold text-blue-700"
+              className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-blue-200 bg-white px-4 py-2 text-sm font-semibold text-blue-700 shadow-sm transition hover:border-blue-400 hover:bg-blue-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
             >
               <QrCode className="h-4 w-4" />
               Tra cứu hồ sơ
@@ -494,7 +494,7 @@ export default function KidRunRegistrationPage() {
           </section>
         )}
         <form onSubmit={submit} className="space-y-6">
-          <section className="rounded-lg border bg-white p-5 shadow-sm">
+          <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
             <div className="flex items-center gap-2">
               <Users className="h-5 w-5" />
               <h2 className="text-xl font-bold">
@@ -565,7 +565,7 @@ export default function KidRunRegistrationPage() {
               return (
                 <article
                   key={child.key}
-                  className="rounded-lg border bg-white p-5 shadow-sm"
+                  className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6"
                 >
                   <div className="flex items-center justify-between">
                     <h3 className="font-bold">Bé {index + 1}</h3>
@@ -706,7 +706,7 @@ export default function KidRunRegistrationPage() {
           </section>
 
           {adultShirtOptions.length > 0 && (
-            <section className="rounded-lg border bg-white p-5 shadow-sm">
+            <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div>
                   <h2 className="font-bold">
@@ -856,7 +856,7 @@ export default function KidRunRegistrationPage() {
             </section>
           )}
 
-          <section className="rounded-lg border bg-white p-5 shadow-sm">
+          <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
             <h2 className="text-xl font-bold">
               Điều khoản & xác nhận của phụ huynh
             </h2>
@@ -911,7 +911,7 @@ export default function KidRunRegistrationPage() {
           )}
           <button
             disabled={!campaign.isOpen || !form.waiverAccepted || submitting}
-            className="sticky bottom-3 z-20 flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-emerald-700 px-5 font-bold text-white shadow-lg disabled:cursor-not-allowed disabled:opacity-50 sm:static sm:shadow-none"
+            className="sticky bottom-3 z-20 flex min-h-12 w-full items-center justify-center gap-2 rounded-xl border-4 border-white bg-emerald-700 px-5 font-bold text-white shadow-xl transition hover:bg-emerald-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 disabled:cursor-not-allowed disabled:opacity-50 sm:static sm:border-0 sm:shadow-sm"
           >
             {submitting ? (
               <>
