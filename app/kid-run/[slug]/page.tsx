@@ -6,10 +6,14 @@ import {
   Baby,
   CheckCircle2,
   ChevronDown,
+  Gift,
+  Heart,
   Mail,
+  PiggyBank,
   Plus,
   QrCode,
   Shirt,
+  Ticket,
   Trash2,
   Users,
 } from "lucide-react";
@@ -331,15 +335,11 @@ export default function KidRunRegistrationPage() {
 
   return (
     <main className="min-h-screen bg-slate-50 text-slate-900">
-      {campaign.heroImageUrl && (
-        <div className="bg-emerald-950">
-          <img
-            src={campaign.heroImageUrl}
-            alt={campaign.name}
-            className="mx-auto block h-auto max-h-[520px] w-full object-contain"
-          />
-        </div>
-      )}
+      <img
+        src={campaign.heroImageUrl}
+        alt={campaign.name}
+        className="block h-auto w-full"
+      />
       <div className="mx-auto max-w-5xl px-4 py-8">
         <header className="mb-8">
           <div className="flex flex-wrap items-center justify-between gap-3">
@@ -361,20 +361,55 @@ export default function KidRunRegistrationPage() {
             })}{" "}
             · {campaign.location}
           </p>
-          <div className="mt-4 flex items-center justify-between gap-4 rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 shadow-sm">
-            <div>
-              <p className="text-sm font-semibold text-blue-900">
-                Số bib còn lại
-              </p>
-              <p className="text-xs text-blue-700">
-                Mỗi bé đăng ký tương ứng 1 BIB
-              </p>
+          <div className="mt-4 rounded-2xl border border-blue-200 bg-blue-50 p-4 shadow-sm">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div className="flex items-start gap-3">
+                <div className="rounded-xl bg-white p-2 text-blue-700 ring-1 ring-blue-100">
+                  <Ticket className="h-5 w-5" />
+                </div>
+                <div>
+                  <p className="font-bold text-blue-950">
+                    BIB chạy hoàn toàn miễn phí
+                  </p>
+                  <p className="mt-1 text-sm text-blue-800">
+                    {campaign.categories?.length || 4} nhóm tuổi ·{" "}
+                    {campaign.categories?.[0]?.bibCapacity || 50} BIB/nhóm · Hệ
+                    thống tự phân nhóm theo năm sinh
+                  </p>
+                </div>
+              </div>
+              <div className="text-right">
+                <div className="text-xs font-semibold uppercase tracking-wide text-blue-700">
+                  Còn lại
+                </div>
+                <strong className="whitespace-nowrap text-2xl font-extrabold text-blue-900">
+                  {campaign.remainingBibCount}/{campaign.bibCapacity} BIB
+                </strong>
+              </div>
             </div>
-            <strong className="whitespace-nowrap text-xl font-extrabold text-blue-800">
-              Còn {campaign.remainingBibCount}/{campaign.bibCapacity} BIB
-            </strong>
+            {campaign.categories?.length > 0 && (
+              <div className="mt-4 grid grid-cols-2 gap-2 md:grid-cols-4">
+                {campaign.categories.map((category: any) => (
+                  <div
+                    key={category.id}
+                    className="rounded-xl border border-blue-100 bg-white px-3 py-2"
+                  >
+                    <div className="text-sm font-semibold text-slate-900">
+                      {category.name}
+                    </div>
+                    <div
+                      className={`mt-0.5 text-xs font-semibold ${category.remainingBibCount > 0 ? "text-blue-700" : "text-red-600"}`}
+                    >
+                      {category.remainingBibCount > 0
+                        ? `Còn ${category.remainingBibCount}/${category.bibCapacity}`
+                        : "Đã đủ BIB"}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
-          {campaign.description && (
+          {/* {campaign.description && (
             <div className="mt-4">
               <div
                 className={`relative whitespace-pre-line leading-7 text-slate-700 ${descriptionExpanded ? "" : "max-h-28 overflow-hidden"}`}
@@ -394,25 +429,65 @@ export default function KidRunRegistrationPage() {
                   : "Xem đầy đủ nội dung"}
               </button>
             </div>
-          )}
+          )} */}
         </header>
         {!campaign.isOpen && (
           <div className="mb-6 rounded-md border border-amber-300 bg-amber-50 p-4 text-amber-900">
             {campaign.closedReason}
           </div>
         )}
+        <section className="mb-6 overflow-hidden rounded-2xl border border-amber-200 bg-amber-50">
+          <div className="grid gap-0 md:grid-cols-2">
+            <div className="p-5">
+              <div className="flex items-start gap-3">
+                <div className="rounded-xl bg-white p-2 text-amber-700 ring-1 ring-amber-200">
+                  <PiggyBank className="h-6 w-6" />
+                </div>
+                <div>
+                  <h2 className="text-lg font-bold text-amber-950">
+                    Heo đất yêu thương
+                  </h2>
+                  <p className="mt-1 text-sm leading-6 text-amber-900">
+                    BIB không thu phí. Sau khi hoàn thành đường chạy, mỗi bé sẽ
+                    tự tay bỏ một khoản tiền tiết kiệm của mình vào heo đất
+                    Trung Thu Cho Em.
+                  </p>
+                </div>
+              </div>
+            </div>
+            <div className="border-t border-amber-200 bg-white/60 p-5 md:border-l md:border-t-0">
+              <div className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-3 text-sm text-slate-700">
+                <Heart className="mt-0.5 h-5 w-5 text-rose-600" />
+                <p>
+                  <strong className="text-slate-900">Cuối buổi:</strong> heo đất
+                  được mở và kiểm đếm để ghi nhận số tiền gây quỹ.
+                </p>
+                <Gift className="mt-0.5 h-5 w-5 text-emerald-700" />
+                <p>
+                  <strong className="text-slate-900">Đầu tháng 9:</strong> số
+                  tiền được nhập vào quỹ Trung Thu Cho Em để chuẩn bị các phần
+                  quà trao tặng.
+                </p>
+              </div>
+            </div>
+          </div>
+        </section>
+
         {campaign.shirtStyles?.length > 0 && (
-          <section className="mb-6 rounded-lg border border-emerald-200 bg-emerald-50 p-4">
+          <section className="mb-6 rounded-2xl border border-emerald-200 bg-emerald-50 p-4">
             <div className="flex items-start gap-3">
               <Shirt className="mt-0.5 h-5 w-5 shrink-0 text-emerald-700" />
               <div>
                 <h2 className="font-bold text-emerald-950">
-                  Áo sự kiện tự nguyện
+                  Áo TTCE Kid — mua thêm, không bắt buộc
                 </h2>
-                <p className="mt-1 text-sm text-emerald-900">
-                  Có mẫu trẻ em
-                  {adultShirtOptions.length > 0 ? " và người lớn" : ""}. Sau khi
-                  chọn áo và size, bạn có thể xem lại mẫu cùng bảng size.
+                <p className="mt-1 text-sm leading-6 text-emerald-900">
+                  Đăng ký chạy và BIB hoàn toàn miễn phí. Phụ huynh có thể đặt
+                  thêm áo TTCE phiên bản Kid
+                  {adultShirtOptions.length > 0
+                    ? " hoặc áo người lớn cho gia đình"
+                    : ""}{" "}
+                  nếu có nhu cầu.
                 </p>
               </div>
             </div>
@@ -478,8 +553,8 @@ export default function KidRunRegistrationPage() {
               </button>
             </div>
             <p className="text-sm text-slate-600">
-              Nhập chính xác ngày sinh; BTC sẽ dùng năm sinh để phân nhóm tuổi
-              sau khi chốt danh sách.
+              Nhập chính xác ngày sinh. Hệ thống sẽ tự phân nhóm tuổi và kiểm
+              tra số BIB còn lại ngay khi bạn chọn ngày sinh.
             </p>
             {children.map((child, index) => {
               const childCategory = getCategoryForDate(child.dateOfBirth);
@@ -550,24 +625,34 @@ export default function KidRunRegistrationPage() {
                         className={`mt-4 flex items-center justify-between gap-3 rounded-md border p-3 text-sm ${childCategory.remainingBibCount > 0 ? "border-blue-200 bg-blue-50 text-blue-900" : "border-red-200 bg-red-50 text-red-800"}`}
                       >
                         <span>
-                          <strong>{childCategory.name}</strong> · {childAge}{" "}
-                          tuổi · {childCategory.distanceLabel}
+                          <strong>✓ {childCategory.name}</strong> · {childAge}{" "}
+                          tuổi
+                          {childCategory.distanceLabel
+                            ? ` · ${childCategory.distanceLabel}`
+                            : ""}
+                          <span className="ml-1 text-xs opacity-80">
+                            (tự động phân theo năm sinh)
+                          </span>
                         </span>
                         <strong className="whitespace-nowrap">
-                          Còn {childCategory.remainingBibCount}/
-                          {childCategory.bibCapacity} BIB
+                          {childCategory.remainingBibCount > 0
+                            ? `Còn ${childCategory.remainingBibCount}/${childCategory.bibCapacity} BIB`
+                            : "Đã đủ BIB"}
                         </strong>
                       </div>
                     ) : (
                       <div className="mt-4 rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-800">
-                        Năm sinh không thuộc nhóm tuổi 3–12 đang mở đăng ký.
+                        <strong>
+                          Độ tuổi của bé chưa phù hợp với chương trình.
+                        </strong>{" "}
+                        Kid Run hiện mở đăng ký cho các bé thuộc nhóm tuổi 3–12.
                       </div>
                     ))}
                   {childShirtOptions.length > 0 && (
                     <div className="mt-5 border-t pt-4">
                       <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_auto] md:items-end">
                         <label className="block text-sm font-medium">
-                          Áo tự nguyện cho bé
+                          Áo TTCE Kid cho bé (không bắt buộc)
                           <select
                             value={child.shirtVariantId}
                             onChange={(e) =>
@@ -579,7 +664,7 @@ export default function KidRunRegistrationPage() {
                             }
                             className="mt-1 h-10 w-full rounded-md border border-slate-300 bg-white px-3 text-sm"
                           >
-                            <option value="">Không đăng ký áo</option>
+                            <option value="">Không mua áo</option>
                             {childShirtOptions.map((option: any) => (
                               <option key={option.id} value={option.id}>
                                 {option.label} - {money(option.price)}
@@ -601,10 +686,13 @@ export default function KidRunRegistrationPage() {
                       </div>
                       {child.shirtVariantId && (
                         <div className="mt-3 w-full rounded-md border border-amber-300 bg-amber-50 p-3 text-sm leading-6 text-amber-900">
-                          <strong>Đăng ký áo là tự nguyện.</strong> Đăng ký chạy
-                          hoàn toàn miễn phí. BIB sẽ được cấp sau khi BTC xếp
-                          nhóm. Áo chỉ được ghi nhận sau khi BTC nhận thanh toán
-                          và gửi email xác nhận thành công.
+                          <strong>
+                            Áo là sản phẩm mua thêm, không phải phí tham gia.
+                          </strong>{" "}
+                          Đăng ký chạy và BIB hoàn toàn miễn phí. Nhóm tuổi/BIB
+                          được hệ thống xác định theo năm sinh; áo chỉ được ghi
+                          nhận sản xuất sau khi BTC nhận thanh toán và gửi email
+                          xác nhận.
                           <span className="ml-1 font-bold">
                             Tổng tiền áo đang chọn: {money(shirtTotal)}
                           </span>
@@ -745,8 +833,33 @@ export default function KidRunRegistrationPage() {
             </section>
           )}
 
+          {shirtTotal > 0 && (
+            <section className="rounded-2xl border border-emerald-200 bg-emerald-50 p-5">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <h2 className="font-bold text-emerald-950">
+                    Tóm tắt áo đã chọn
+                  </h2>
+                  <p className="mt-1 text-sm text-emerald-800">
+                    BIB vẫn miễn phí; số tiền dưới đây chỉ là tiền áo mua thêm.
+                  </p>
+                </div>
+                <div className="text-right">
+                  <div className="text-xs font-semibold uppercase tracking-wide text-emerald-700">
+                    Tiền áo
+                  </div>
+                  <div className="text-2xl font-extrabold text-emerald-950">
+                    {money(shirtTotal)}
+                  </div>
+                </div>
+              </div>
+            </section>
+          )}
+
           <section className="rounded-lg border bg-white p-5 shadow-sm">
-            <h2 className="text-xl font-bold">Miễn trừ trách nhiệm</h2>
+            <h2 className="text-xl font-bold">
+              Điều khoản & xác nhận của phụ huynh
+            </h2>
             <button
               type="button"
               onClick={() => {
@@ -771,8 +884,8 @@ export default function KidRunRegistrationPage() {
                 className="mt-1 h-4 w-4"
               />
               <span>
-                Tôi là phụ huynh/người giám hộ, đã đọc và đồng ý điều khoản cho
-                tất cả các bé trong hồ sơ.
+                Tôi là phụ huynh/người giám hộ, đã đọc và đồng ý điều khoản tham
+                gia cho tất cả các bé trong hồ sơ.
               </span>
             </label>
             <label className="mt-3 flex cursor-pointer gap-3 rounded-md border p-4">
@@ -798,7 +911,7 @@ export default function KidRunRegistrationPage() {
           )}
           <button
             disabled={!campaign.isOpen || !form.waiverAccepted || submitting}
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-md bg-emerald-700 px-5 font-bold text-white disabled:cursor-not-allowed disabled:opacity-50"
+            className="sticky bottom-3 z-20 flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-emerald-700 px-5 font-bold text-white shadow-lg disabled:cursor-not-allowed disabled:opacity-50 sm:static sm:shadow-none"
           >
             {submitting ? (
               <>
@@ -808,7 +921,7 @@ export default function KidRunRegistrationPage() {
             ) : (
               <>
                 <Mail className="h-5 w-5" />
-                Xác nhận đăng ký
+                Đăng ký BIB miễn phí
               </>
             )}
           </button>
