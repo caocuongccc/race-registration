@@ -47,7 +47,7 @@ export async function sendKidRunRegistrationEmail(
   const qrCode = hasBib
     ? `data:image/png;base64,${(await generateQRBuffer(`${appUrl}/admin/dashboard/kid-run/checkin/${application.bibQrToken}`)).toString("base64")}`
     : undefined;
-  const subject = `Đã nhận đăng ký Kid Run - ${application.campaign.name} - ${application.publicCode}`;
+  const subject = `Đã nhận đăng ký Mid-Autumn Kids Runs - ${application.campaign.name} - ${application.publicCode}`;
   const result = await sendEmailGmailFirst({
     to: application.email,
     subject,

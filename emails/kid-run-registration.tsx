@@ -31,8 +31,8 @@ export function KidRunRegistrationEmail({
   const title = paid
     ? "Đã xác nhận thanh toán áo"
     : bibIssued
-      ? "Thông báo số BIB Kid Run"
-      : "Đã nhận hồ sơ Kid Run";
+      ? "Thông báo số BIB Mid-Autumn Kids Runs"
+      : "Đã nhận hồ sơ Mid-Autumn Kids Runs";
   return (
     <Html>
       <Head />
