@@ -375,10 +375,22 @@ export default function KidRunRegistrationPage() {
           </div>
           <h1 className="mt-1 text-3xl font-bold">{campaign.name}</h1>
           <p className="mt-2 text-slate-600">
+            {new Date(campaign.eventDate)
+              .toLocaleTimeString("vi-VN", {
+                hour: "2-digit",
+                minute: "2-digit",
+                hour12: false,
+                timeZone: "UTC",
+              })
+              .replace(/^0/, "")}{" "}
+            ngày{" "}
             {new Date(campaign.eventDate).toLocaleDateString("vi-VN", {
-              timeZone: "Asia/Ho_Chi_Minh",
+              day: "2-digit",
+              month: "2-digit",
+              year: "numeric",
+              timeZone: "UTC",
             })}{" "}
-            · {campaign.location}
+            - {campaign.location}
           </p>
           <div className="mt-4 rounded-2xl border border-blue-200 bg-blue-50 p-4 shadow-sm">
             <div className="flex flex-wrap items-center justify-between gap-3">
