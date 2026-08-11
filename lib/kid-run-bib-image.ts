@@ -1,16 +1,13 @@
 import path from "path";
-import { readFileSync } from "fs";
 import sharp from "sharp";
 
-const montserratFont = readFileSync(
-  path.resolve(
-    process.cwd(),
-    "public",
-    "fonts",
-    "montserrat",
-    "Montserrat-Variable.ttf",
-  ),
-).toString("base64");
+const montserratFontPath = path.resolve(
+  process.cwd(),
+  "public",
+  "fonts",
+  "montserrat",
+  "Montserrat-Variable.ttf",
+);
 
 type BibCategory = {
   bibTemplateUrl?: string | null;
@@ -53,25 +50,48 @@ export async function generateKidRunBibImage(participant: BibParticipant) {
   const templateUrl = participant.category.bibTemplateUrl;
   if (!templateUrl) throw new Error("Nhóm tuổi chưa có template BIB");
 
-  const color = participant.category.bibTextColor || "#0f4e1e";
+  const configuredColor = participant.category.bibTextColor || "#0f4e1e";
+  const color = /^#[0-9a-f]{6}$/i.test(configuredColor)
+    ? configuredColor
+    : "#0f4e1e";
   const bibFontSize = participant.category.bibNumberFontSize || 245;
   const nameFontSize = participant.category.bibNameFontSize || 42;
   const bibNumber = escapeXml(participant.bibNumber);
   const fullName = escapeXml(participant.fullName.trim().toLocaleUpperCase("vi-VN"));
-  const overlay = Buffer.from(`
-    <svg width="1200" height="846" xmlns="http://www.w3.org/2000/svg">
-      <style>
-        @font-face { font-family: MontserratBib; src: url("data:font/ttf;base64,${montserratFont}") format("truetype"); font-weight: 100 900; }
-        .bib { font-family: MontserratBib, Arial, DejaVu Sans, sans-serif; font-size: ${bibFontSize}px; font-weight: 800; }
-        .name { font-family: MontserratBib, Arial, DejaVu Sans, sans-serif; font-size: ${nameFontSize}px; font-weight: 700; letter-spacing: 1px; }
-      </style>
-      <text x="600" y="475" text-anchor="middle" dominant-baseline="middle" fill="${color}" class="bib">${bibNumber}</text>
-      <text x="600" y="610" text-anchor="middle" dominant-baseline="middle" fill="${color}" class="name">${fullName}</text>
-    </svg>
-  `);
+  const renderText = async (
+    text: string,
+    fontSize: number,
+    fontWeight: number,
+    centerY: number,
+  ) => {
+    const { data, info } = await sharp({
+      text: {
+        text: `<span foreground="${color}" font_weight="${fontWeight}">${text}</span>`,
+        font: `Montserrat ${fontSize}`,
+        fontfile: montserratFontPath,
+        width: 1100,
+        align: "center",
+        rgba: true,
+        dpi: 72,
+      },
+    })
+      .png()
+      .toBuffer({ resolveWithObject: true });
+
+    return {
+      input: data,
+      left: Math.round((1200 - info.width) / 2),
+      top: Math.round(centerY - info.height / 2),
+    };
+  };
+
+  const overlays = await Promise.all([
+    renderText(bibNumber, bibFontSize, 800, 475),
+    renderText(fullName, nameFontSize, 700, 610),
+  ]);
 
   return sharp(resolveTemplate(templateUrl))
-    .composite([{ input: overlay, top: 0, left: 0 }])
+    .composite(overlays)
     .png({ compressionLevel: 9, adaptiveFiltering: true })
     .toBuffer();
 }

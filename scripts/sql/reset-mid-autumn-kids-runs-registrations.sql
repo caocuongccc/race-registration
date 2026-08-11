@@ -31,6 +31,11 @@ FROM "kid_run_campaigns"
 WHERE "slug" = 'ttce-kid-run-2026'
   AND "name" = 'Mid-Autumn Kids Runs';
 
+-- Chan dang ky/webhook moi chen vao trong luc reset.
+-- LOCK tu dong duoc tha khi COMMIT hoac ROLLBACK.
+LOCK TABLE "kid_run_family_applications" IN SHARE ROW EXCLUSIVE MODE;
+LOCK TABLE "kid_run_webhook_logs" IN SHARE ROW EXCLUSIVE MODE;
+
 -- Xoa webhook truoc vi khoa ngoai cua bang nay dung ON DELETE SET NULL.
 DELETE FROM "kid_run_webhook_logs" webhook
 WHERE webhook."campaignId" IN (
@@ -48,6 +53,12 @@ WHERE webhook."campaignId" IN (
 -- checkin_log va email_log se duoc xoa theo ON DELETE CASCADE.
 DELETE FROM "kid_run_family_applications"
 WHERE "campaignId" IN (
+  SELECT "id" FROM "target_kid_run_campaign"
+);
+
+-- Quet lai webhook sau khi xoa application de khong con log giao dich mo coi.
+DELETE FROM "kid_run_webhook_logs" webhook
+WHERE webhook."campaignId" IN (
   SELECT "id" FROM "target_kid_run_campaign"
 );
 
@@ -86,17 +97,23 @@ WHERE campaign."id" = totals."campaignId";
 
 -- Chan COMMIT neu van con ho so hoac webhook cua campaign dich.
 DO $$
+DECLARE
+  application_count INTEGER;
+  webhook_count INTEGER;
 BEGIN
-  IF EXISTS (
-    SELECT 1
-    FROM "kid_run_family_applications"
-    WHERE "campaignId" IN (SELECT "id" FROM "target_kid_run_campaign")
-  ) OR EXISTS (
-    SELECT 1
-    FROM "kid_run_webhook_logs"
-    WHERE "campaignId" IN (SELECT "id" FROM "target_kid_run_campaign")
-  ) THEN
-    RAISE EXCEPTION 'Xoa chua sach; transaction da bi huy.';
+  SELECT COUNT(*) INTO application_count
+  FROM "kid_run_family_applications"
+  WHERE "campaignId" IN (SELECT "id" FROM "target_kid_run_campaign");
+
+  SELECT COUNT(*) INTO webhook_count
+  FROM "kid_run_webhook_logs"
+  WHERE "campaignId" IN (SELECT "id" FROM "target_kid_run_campaign");
+
+  IF application_count > 0 OR webhook_count > 0 THEN
+    RAISE EXCEPTION
+      'Xoa chua sach: con % application va % webhook; transaction da bi huy.',
+      application_count,
+      webhook_count;
   END IF;
 END $$;
 
