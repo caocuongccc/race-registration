@@ -1,5 +1,9 @@
 import path from "path";
+import { readFileSync } from "fs";
 import sharp from "sharp";
+
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const opentype: any = require("opentype.js");
 
 const montserratFontPath = path.resolve(
   process.cwd(),
@@ -7,6 +11,13 @@ const montserratFontPath = path.resolve(
   "fonts",
   "montserrat",
   "Montserrat-Variable.ttf",
+);
+const montserratFontBuffer = readFileSync(montserratFontPath);
+const montserratFont = opentype.parse(
+  montserratFontBuffer.buffer.slice(
+    montserratFontBuffer.byteOffset,
+    montserratFontBuffer.byteOffset + montserratFontBuffer.byteLength,
+  ),
 );
 
 type BibCategory = {
@@ -22,15 +33,6 @@ type BibParticipant = {
   bibNumber?: string | null;
   category: BibCategory;
 };
-
-function escapeXml(value: string) {
-  return value
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&apos;");
-}
 
 function resolveTemplate(templateUrl: string) {
   const templateRoot = path.resolve(process.cwd(), "public", "template");
@@ -56,42 +58,37 @@ export async function generateKidRunBibImage(participant: BibParticipant) {
     : "#0f4e1e";
   const bibFontSize = participant.category.bibNumberFontSize || 245;
   const nameFontSize = participant.category.bibNameFontSize || 42;
-  const bibNumber = escapeXml(participant.bibNumber);
-  const fullName = escapeXml(participant.fullName.trim().toLocaleUpperCase("vi-VN"));
-  const renderText = async (
+  const bibNumber = participant.bibNumber;
+  const fullName = participant.fullName.trim().toLocaleUpperCase("vi-VN");
+  const renderTextPath = (
     text: string,
     fontSize: number,
     fontWeight: number,
     centerY: number,
   ) => {
-    const { data, info } = await sharp({
-      text: {
-        text: `<span foreground="${color}" font_weight="${fontWeight}">${text}</span>`,
-        font: `Montserrat ${fontSize}`,
-        fontfile: montserratFontPath,
-        width: 1100,
-        align: "center",
-        rgba: true,
-        dpi: 72,
-      },
-    })
-      .png()
-      .toBuffer({ resolveWithObject: true });
-
-    return {
-      input: data,
-      left: Math.round((1200 - info.width) / 2),
-      top: Math.round(centerY - info.height / 2),
-    };
+    montserratFont.variation?.set({ wght: fontWeight });
+    const initialPath = montserratFont.getPath(text, 0, 0, fontSize);
+    const bounds = initialPath.getBoundingBox();
+    const x = 600 - (bounds.x1 + bounds.x2) / 2;
+    const y = centerY - (bounds.y1 + bounds.y2) / 2;
+    return montserratFont.getPath(text, x, y, fontSize).toPathData({
+      decimalPlaces: 2,
+      optimize: true,
+      flipY: false,
+    });
   };
 
-  const overlays = await Promise.all([
-    renderText(bibNumber, bibFontSize, 800, 475),
-    renderText(fullName, nameFontSize, 700, 610),
-  ]);
+  const bibPath = renderTextPath(bibNumber, bibFontSize, 800, 475);
+  const namePath = renderTextPath(fullName, nameFontSize, 700, 610);
+  const overlay = Buffer.from(`
+    <svg width="1200" height="846" xmlns="http://www.w3.org/2000/svg">
+      <path d="${bibPath}" fill="${color}" />
+      <path d="${namePath}" fill="${color}" />
+    </svg>
+  `);
 
   return sharp(resolveTemplate(templateUrl))
-    .composite(overlays)
+    .composite([{ input: overlay, top: 0, left: 0 }])
     .png({ compressionLevel: 9, adaptiveFiltering: true })
     .toBuffer();
 }
@@ -106,7 +103,10 @@ export async function generateKidRunBibAttachments(
 ) {
   return Promise.all(
     participants
-      .filter((participant) => participant.bibNumber && participant.category.bibTemplateUrl)
+      .filter(
+        (participant) =>
+          participant.bibNumber && participant.category.bibTemplateUrl,
+      )
       .map(async (participant) => {
         const buffer = await generateKidRunBibImage(participant);
         return {
