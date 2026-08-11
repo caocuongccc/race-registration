@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { generateQRBuffer } from "@/lib/qr-inline";
 import { sendEmailGmailFirst } from "@/lib/email-service-gmail-first";
 import { KidRunRegistrationEmail } from "@/emails/kid-run-registration";
+import { generateKidRunBibAttachments } from "@/lib/kid-run-bib-image";
 
 const appUrl =
   process.env.NEXT_PUBLIC_APP_URL || "https://dangkygiaichay.vercel.app";
@@ -39,6 +40,7 @@ export async function sendKidRunRegistrationEmail(
   applicationId: string,
   secretCode?: string,
   payment?: any,
+  existingBibAttachments?: any[],
 ) {
   const application = await loadApplication(applicationId);
   const hasBib =
@@ -47,6 +49,9 @@ export async function sendKidRunRegistrationEmail(
   const qrCode = hasBib
     ? `data:image/png;base64,${(await generateQRBuffer(`${appUrl}/admin/dashboard/kid-run/checkin/${application.bibQrToken}`)).toString("base64")}`
     : undefined;
+  const bibAttachments =
+    existingBibAttachments ??
+    (hasBib ? await generateKidRunBibAttachments(application.participants) : []);
   const subject = `Đã nhận đăng ký Mid-Autumn Kids Runs - ${application.campaign.name} - ${application.publicCode}`;
   const result = await sendEmailGmailFirst({
     to: application.email,
@@ -60,6 +65,7 @@ export async function sendKidRunRegistrationEmail(
     fromName: application.campaign.name,
     fromEmail: application.campaign.contactEmail || process.env.FROM_EMAIL,
     qrCode,
+    attachments: bibAttachments,
   });
   await logResult(
     applicationId,
@@ -84,6 +90,9 @@ export async function sendKidRunBibEmail(applicationId: string) {
     `${appUrl}/admin/dashboard/kid-run/checkin/${application.bibQrToken}`,
   );
   const qrCode = `data:image/png;base64,${qrBuffer.toString("base64")}`;
+  const bibAttachments = await generateKidRunBibAttachments(
+    application.participants,
+  );
   const result = await sendEmailGmailFirst({
     to: application.email,
     subject,
@@ -94,6 +103,7 @@ export async function sendKidRunBibEmail(applicationId: string) {
     fromName: application.campaign.name,
     fromEmail: application.campaign.contactEmail || process.env.FROM_EMAIL,
     qrCode,
+    attachments: bibAttachments,
   });
   await logResult(
     applicationId,

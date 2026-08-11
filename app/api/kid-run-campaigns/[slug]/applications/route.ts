@@ -12,6 +12,7 @@ import {
   hashKidRunSecretCode,
 } from "@/lib/kid-run-service";
 import { sendKidRunRegistrationEmail } from "@/lib/kid-run-email";
+import { generateKidRunBibDataUrl } from "@/lib/kid-run-bib-image";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const PHONE_RE = /^0\d{9}$/;
@@ -22,6 +23,7 @@ type ChildInput = {
   gender?: string;
   schoolClub?: string;
   shirtVariantId?: string | null;
+  shirtQuantity?: number;
 };
 
 type AdditionalShirtInput = {
@@ -141,6 +143,9 @@ export async function POST(
         shirtVariantId: child.shirtVariantId
           ? String(child.shirtVariantId)
           : null,
+        shirtQuantity: child.shirtVariantId
+          ? Math.min(10, Math.max(1, Number(child.shirtQuantity) || 1))
+          : 0,
       };
     });
 
@@ -239,7 +244,7 @@ export async function POST(
       if (variant && variant.style.category !== "KID") {
         throw new Error("Áo chọn trong thông tin bé phải là mẫu trẻ em");
       }
-      return sum + (variant?.style.price || 0);
+      return sum + (variant?.style.price || 0) * child.shirtQuantity;
     }, 0);
     const additionalShirtAmount = additionalShirts.reduce((sum, item) => {
       const variant = variantMap.get(item.variantId)!;
@@ -258,7 +263,7 @@ export async function POST(
       async (tx) => {
         const bibAllocations = new Map<
           string,
-          { next: number; prefix: string }
+          { next: number; prefix: string; digits: number }
         >();
         for (const { count, category } of categoryRequests.values()) {
           const rows = await tx.$queryRaw<
@@ -278,6 +283,7 @@ export async function POST(
           bibAllocations.set(category.id, {
             next: Number(rows[0].startNumber),
             prefix: category.bibPrefix,
+            digits: category.bibNumberDigits,
           });
         }
 
@@ -313,7 +319,7 @@ export async function POST(
         let firstParticipantId: string | null = null;
         for (const child of childrenWithCategories) {
           const bibAllocation = bibAllocations.get(child.category.id)!;
-          const bibNumber = `${bibAllocation.prefix}${String(bibAllocation.next++).padStart(4, "0")}`;
+          const bibNumber = `${bibAllocation.prefix}${String(bibAllocation.next++).padStart(bibAllocation.digits, "0")}`;
           const participant = await tx.kidRunParticipant.create({
             data: {
               applicationId: application.id,
@@ -339,8 +345,9 @@ export async function POST(
                 category: variant.style.category,
                 type: variant.style.type,
                 size: variant.size,
+                quantity: child.shirtQuantity,
                 unitPrice: variant.style.price,
-                totalPrice: variant.style.price,
+                totalPrice: variant.style.price * child.shirtQuantity,
               },
             });
           }
@@ -408,10 +415,42 @@ export async function POST(
     const appUrl =
       process.env.NEXT_PUBLIC_APP_URL || "https://dangkygiaichay.vercel.app";
     const bibQrCodeDataUrl = `data:image/png;base64,${(await generateQRBuffer(`${appUrl}/admin/dashboard/kid-run/checkin/${bibQrToken}`)).toString("base64")}`;
+    const bibImageDataUrls: Record<string, string> = {};
+    await Promise.all(
+      application.participants.map(async (participant) => {
+        try {
+          bibImageDataUrls[participant.id] =
+            await generateKidRunBibDataUrl(participant);
+        } catch (error) {
+          console.error("Generate Kid Run BIB image failed:", error);
+        }
+      }),
+    );
+
+    const bibEmailAttachments = application.participants.flatMap(
+      (participant) => {
+        const dataUrl = bibImageDataUrls[participant.id];
+        if (!dataUrl) return [];
+        return [
+          {
+            filename: `bib-${participant.bibNumber}-${participant.id}.png`,
+            content: dataUrl.split("base64,")[1],
+            encoding: "base64",
+            cid: `kidbib-${participant.id}`,
+            contentType: "image/png",
+          },
+        ];
+      },
+    );
 
     after(async () => {
       try {
-        await sendKidRunRegistrationEmail(applicationId, secretCode, payment);
+        await sendKidRunRegistrationEmail(
+          applicationId,
+          secretCode,
+          payment,
+          bibEmailAttachments,
+        );
       } catch (error) {
         console.error("Kid Run registration email failed:", error);
       }
@@ -430,6 +469,7 @@ export async function POST(
       secretCode,
       payment,
       bibQrCodeDataUrl,
+      bibImageDataUrls,
     });
   } catch (error: any) {
     console.error("Create Kid Run application error:", error);

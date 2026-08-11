@@ -9,6 +9,7 @@ import {
   Gift,
   Heart,
   Mail,
+  Minus,
   PiggyBank,
   Plus,
   QrCode,
@@ -17,6 +18,7 @@ import {
   Trash2,
   Users,
 } from "lucide-react";
+import { KID_RUN_SCHOOL_CLUB_OPTIONS } from "@/lib/kid-run-school-club-options";
 
 const money = (value: number) =>
   new Intl.NumberFormat("vi-VN").format(value) + " đ";
@@ -28,6 +30,7 @@ const emptyChild = () => ({
   gender: "",
   schoolClub: "",
   shirtVariantId: "",
+  shirtQuantity: 1,
 });
 
 export default function KidRunRegistrationPage() {
@@ -117,6 +120,8 @@ export default function KidRunRegistrationPage() {
           id: variant.id,
           styleId: style.id,
           category: style.category,
+          styleName: style.name,
+          size: variant.size,
           label: `${style.name} - ${style.category === "MALE" ? "Nam" : style.category === "FEMALE" ? "Nữ" : "Trẻ em"} - ${style.type === "SHORT_SLEEVE" ? "T-shirt" : "Singlet"} - Size ${variant.size}`,
           price: style.price,
         })),
@@ -135,7 +140,8 @@ export default function KidRunRegistrationPage() {
     (sum, child) =>
       sum +
       (variantOptions.find((option: any) => option.id === child.shirtVariantId)
-        ?.price || 0),
+        ?.price || 0) *
+        child.shirtQuantity,
     0,
   );
   const additionalShirtTotal = additionalShirts.reduce(
@@ -188,12 +194,52 @@ export default function KidRunRegistrationPage() {
     setShirtPreviewOpen(true);
   };
 
-  const updateChild = (key: string, field: string, value: string) =>
+  const updateChild = (key: string, field: string, value: string | number) =>
     setChildren((current) =>
       current.map((child) =>
         child.key === key ? { ...child, [field]: value } : child,
       ),
     );
+  const changeChildShirtQuantity = (
+    childKey: string,
+    variantId: string,
+    delta: number,
+  ) =>
+    setChildren((current) =>
+      current.map((child) => {
+        if (child.key !== childKey) return child;
+        const currentQuantity =
+          child.shirtVariantId === variantId ? child.shirtQuantity : 0;
+        const nextQuantity = Math.max(0, Math.min(5, currentQuantity + delta));
+        return {
+          ...child,
+          shirtVariantId: nextQuantity > 0 ? variantId : "",
+          shirtQuantity: nextQuantity > 0 ? nextQuantity : 1,
+        };
+      }),
+    );
+
+  const getAdditionalShirtQuantity = (variantId: string) =>
+    additionalShirts.find((item) => item.variantId === variantId)?.quantity ||
+    0;
+
+  const changeAdditionalShirtQuantity = (variantId: string, delta: number) =>
+    setAdditionalShirts((current) => {
+      const quantity =
+        current.find((item) => item.variantId === variantId)?.quantity || 0;
+      const nextQuantity = Math.max(0, Math.min(10, quantity + delta));
+      if (nextQuantity === 0) {
+        return current.filter((item) => item.variantId !== variantId);
+      }
+      if (quantity === 0) {
+        return [...current, { key: uid(), variantId, quantity: nextQuantity }];
+      }
+      return current.map((item) =>
+        item.variantId === variantId
+          ? { ...item, quantity: nextQuantity }
+          : item,
+      );
+    });
 
   const submit = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -243,51 +289,151 @@ export default function KidRunRegistrationPage() {
   if (result) {
     return (
       <main className="min-h-screen bg-slate-50 px-4 py-8 text-slate-900">
-        <section className="mx-auto max-w-2xl rounded-lg border bg-white p-6 shadow-sm">
-          <CheckCircle2 className="h-12 w-12 text-emerald-600" />
-          <h1 className="mt-4 text-2xl font-bold">Đăng ký chạy thành công</h1>
-          <p className="mt-2 text-slate-600">
-            Mã hồ sơ <strong>{result.application.publicCode}</strong> đã được
-            ghi nhận. Email xác nhận hồ sơ đã gửi đến {result.application.email}
-            . BIB và QR nhận BIB đã được cấp và gửi trong email xác nhận.
-          </p>
-          <div className="mt-6 space-y-3">
-            {result.application.participants.map(
-              (participant: any, index: number) => (
-                <div
-                  key={participant.id}
-                  className="rounded-md border border-slate-200 p-4"
-                >
-                  <div className="font-bold text-emerald-800">
-                    Bé {index + 1}: {participant.fullName}
-                  </div>
-                  <div className="mt-1 text-sm text-slate-600">
-                    Sinh năm {participant.birthYear} ·{" "}
-                    {participant.category.name}
-                  </div>
-                  <div className="mt-2 text-lg font-extrabold text-blue-700">
-                    BIB {participant.bibNumber}
-                  </div>
-                </div>
-              ),
-            )}
-          </div>
-          {result.bibQrCodeDataUrl && (
-            <div className="mt-6 rounded-md border border-emerald-200 bg-emerald-50 p-4 text-center">
-              <div className="font-bold text-emerald-900">
-                QR nhận BIB chung cho gia đình
+        <section className="mx-auto max-w-4xl rounded-2xl border bg-white p-4 shadow-sm sm:p-6">
+          <header className="rounded-2xl bg-emerald-50 p-5 sm:p-6">
+            <div className="flex items-start gap-3">
+              <span className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-white text-emerald-600 shadow-sm ring-1 ring-emerald-200">
+                <CheckCircle2 className="h-7 w-7" />
+              </span>
+              <div>
+                <h1 className="text-2xl font-extrabold text-emerald-950">
+                  Đăng ký chạy thành công
+                </h1>
+                <p className="mt-1 text-sm leading-6 text-emerald-800">
+                  Thông tin BIB đã được cấp và gửi tới email đăng ký. Vui lòng
+                  lưu ảnh BIB và QR nhận BIB bên dưới.
+                </p>
               </div>
+            </div>
+            <dl className="mt-5 grid gap-3 rounded-xl bg-white p-4 text-sm shadow-sm sm:grid-cols-2">
+              <div>
+                <dt className="text-slate-500">Phụ huynh/người giám hộ</dt>
+                <dd className="mt-0.5 font-bold text-slate-900">
+                  {result.application.guardianName}
+                </dd>
+              </div>
+              <div>
+                <dt className="text-slate-500">Số điện thoại</dt>
+                <dd className="mt-0.5 font-semibold text-slate-900">
+                  {result.application.phone}
+                </dd>
+              </div>
+              <div>
+                <dt className="text-slate-500">Email nhận thông tin</dt>
+                <dd className="mt-0.5 break-all font-semibold text-slate-900">
+                  {result.application.email}
+                </dd>
+              </div>
+              <div>
+                <dt className="text-slate-500">Mua kèm áo</dt>
+                <dd
+                  className={`mt-0.5 font-bold ${
+                    result.application.shirtTotalAmount > 0
+                      ? "text-emerald-700"
+                      : "text-slate-700"
+                  }`}
+                >
+                  {result.application.shirtTotalAmount > 0 ? "Có" : "Không"}
+                </dd>
+              </div>
+            </dl>
+          </header>
+
+          <section className="mt-6">
+            <div className="mb-3">
+              <h2 className="text-lg font-bold text-slate-900">
+                Ảnh BIB của các bé
+              </h2>
+              <p className="mt-1 text-sm text-slate-500">
+                Tải và lưu ảnh tương ứng với từng bé.
+              </p>
+            </div>
+            <div className="space-y-4">
+              {result.application.participants.map((participant: any) => (
+                <article
+                  key={participant.id}
+                  className="overflow-hidden rounded-2xl border border-slate-200 bg-slate-50 p-3 shadow-sm"
+                >
+                  {result.bibImageDataUrls?.[participant.id] ? (
+                    <>
+                      <img
+                        src={result.bibImageDataUrls[participant.id]}
+                        alt={`BIB ${participant.bibNumber} - ${participant.fullName}`}
+                        className="w-full rounded-xl border border-slate-200 bg-white"
+                      />
+                      <div className="flex justify-center py-3">
+                        <a
+                          href={result.bibImageDataUrls[participant.id]}
+                          download={`BIB-${participant.bibNumber}.png`}
+                          className="inline-flex min-h-10 items-center justify-center rounded-full bg-blue-700 px-5 text-sm font-bold text-white transition hover:bg-blue-800"
+                        >
+                          Tải ảnh BIB
+                        </a>
+                      </div>
+                    </>
+                  ) : (
+                    <p className="p-4 text-center text-sm text-slate-500">
+                      Ảnh BIB đang được xử lý. Số BIB: {participant.bibNumber}
+                    </p>
+                  )}
+                </article>
+              ))}
+            </div>
+          </section>
+
+          <section className="mt-6 overflow-hidden rounded-2xl border border-slate-200">
+            <div className="border-b border-slate-200 bg-slate-50 px-4 py-3">
+              <h2 className="font-bold text-slate-900">Danh sách các bé</h2>
+            </div>
+            <div>
+              <table className="w-full table-fixed text-left text-xs sm:text-sm">
+                <thead className="bg-white text-[10px] uppercase tracking-wide text-slate-500 sm:text-xs">
+                  <tr>
+                    <th className="w-[28%] px-2 py-3 sm:px-4">Họ và tên</th>
+                    <th className="w-[14%] px-2 py-3 sm:px-4">Năm sinh</th>
+                    <th className="w-[18%] px-2 py-3 sm:px-4">Nhóm tuổi</th>
+                    <th className="w-[22%] px-2 py-3 sm:px-4">Trường/CLB</th>
+                    <th className="w-[18%] px-2 py-3 text-right sm:px-4">Số BIB</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-200 bg-white">
+                  {result.application.participants.map((participant: any) => (
+                    <tr key={participant.id} className="hover:bg-slate-50">
+                      <td className="break-words px-2 py-3 font-semibold text-slate-900 sm:px-4">
+                        {participant.fullName}
+                      </td>
+                      <td className="break-words px-2 py-3 text-slate-600 sm:px-4">
+                        {participant.birthYear}
+                      </td>
+                      <td className="break-words px-2 py-3 text-slate-600 sm:px-4">
+                        {participant.category.name}
+                      </td>
+                      <td className="break-words px-2 py-3 text-slate-600 sm:px-4">
+                        {participant.schoolClub || "—"}
+                      </td>
+                      <td className="px-2 py-3 text-right text-base font-extrabold text-blue-700 sm:px-4 sm:text-lg">
+                        {participant.bibNumber}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </section>
+          {result.bibQrCodeDataUrl && (
+            <div className="mt-6 rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-center">
+              <div className="font-bold text-emerald-900">QR nhận BIB</div>
               <img
                 src={result.bibQrCodeDataUrl}
                 alt="QR nhận BIB"
                 className="mx-auto mt-3 w-64 max-w-full border bg-white"
               />
               <p className="mt-2 text-sm text-emerald-800">
-                BTC quét một mã này để nhận toàn bộ BIB trong hồ sơ.
+                Xuất trình mã QR này để nhận toàn bộ BIB của gia đình.
               </p>
             </div>
           )}
-          <div className="mt-6 rounded-md border border-blue-200 bg-blue-50 p-4">
+          <div className="mt-6 rounded-xl border border-blue-200 bg-blue-50 p-4">
             <div className="text-sm text-blue-800">Mã bí mật tra cứu hồ sơ</div>
             <div className="mt-1 text-3xl font-bold tracking-[0.2em] text-blue-950">
               {result.secretCode}
@@ -573,6 +719,196 @@ export default function KidRunRegistrationPage() {
                 onChange={(v) => setForm({ ...form, notes: v })}
               />
             </div>
+
+            {campaign.shirtStyles?.length > 0 && (
+              <div className="mt-6 border-t border-slate-200 pt-5">
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <Shirt className="h-5 w-5 text-emerald-700" />
+                      <h3 className="font-bold text-slate-900">
+                        Đăng ký thêm áo TTCE
+                      </h3>
+                    </div>
+                    <p className="mt-1 text-sm text-slate-600">
+                      Không bắt buộc. Chọn mẫu/size rồi chọn số lượng cần mua.
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => openShirtPreview()}
+                    className="inline-flex h-10 items-center gap-2 rounded-lg border border-emerald-700 bg-white px-4 text-sm font-semibold text-emerald-800"
+                  >
+                    <Shirt className="h-4 w-4" />
+                    Xem mẫu & bảng size
+                  </button>
+                </div>
+
+                {childShirtOptions.length > 0 && (
+                  <div className="mt-4 space-y-3">
+                    <div>
+                      <p className="text-sm font-bold text-slate-800">
+                        Áo cho bé
+                      </p>
+                      <p className="mt-0.5 text-xs text-slate-500">
+                        Mỗi bé chọn một size; dùng nút +/− để chỉnh số lượng.
+                      </p>
+                    </div>
+                    {children.map((child, index) => (
+                      <article
+                        key={`shirt-${child.key}`}
+                        className="rounded-xl border border-slate-200 bg-white p-3"
+                      >
+                        <div className="flex items-center justify-between gap-3">
+                          {/* <strong className="text-sm text-slate-900">
+                            {child.fullName.trim() || `Bé ${index + 1}`}
+                          </strong> */}
+                          {child.shirtVariantId && (
+                            <span className="text-xs font-semibold text-emerald-700">
+                              {money(
+                                (childShirtOptions.find(
+                                  (option: any) =>
+                                    option.id === child.shirtVariantId,
+                                )?.price || 0) * child.shirtQuantity,
+                              )}
+                            </span>
+                          )}
+                        </div>
+                        <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                          {childShirtOptions.map((option: any) => {
+                            const quantity =
+                              child.shirtVariantId === option.id
+                                ? child.shirtQuantity
+                                : 0;
+                            return (
+                              <div
+                                key={option.id}
+                                className={`flex min-h-14 items-center justify-between gap-2 rounded-lg border px-3 py-2 transition ${quantity > 0 ? "border-emerald-400 bg-emerald-50" : "border-slate-200 bg-slate-50"}`}
+                              >
+                                <div className="min-w-0">
+                                  <span className="block text-sm font-semibold text-slate-900">
+                                    Size {option.size}
+                                  </span>
+                                  <span className="block truncate text-[11px] text-slate-500">
+                                    {option.styleName} · {money(option.price)}
+                                  </span>
+                                </div>
+                                <div className="flex h-9 shrink-0 items-center rounded-md border border-slate-300 bg-white shadow-sm">
+                                  <button
+                                    type="button"
+                                    aria-label={`Giảm size ${option.size}`}
+                                    disabled={quantity === 0}
+                                    onClick={() =>
+                                      changeChildShirtQuantity(
+                                        child.key,
+                                        option.id,
+                                        -1,
+                                      )
+                                    }
+                                    className="grid h-full w-8 place-items-center text-slate-600 disabled:opacity-30"
+                                  >
+                                    <Minus className="h-4 w-4" />
+                                  </button>
+                                  <span className="w-7 text-center text-sm font-bold">
+                                    {quantity}
+                                  </span>
+                                  <button
+                                    type="button"
+                                    aria-label={`Tăng size ${option.size}`}
+                                    disabled={quantity >= 5}
+                                    onClick={() =>
+                                      changeChildShirtQuantity(
+                                        child.key,
+                                        option.id,
+                                        1,
+                                      )
+                                    }
+                                    className="grid h-full w-8 place-items-center text-slate-600 disabled:opacity-30"
+                                  >
+                                    <Plus className="h-4 w-4" />
+                                  </button>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </article>
+                    ))}
+                  </div>
+                )}
+
+                {adultShirtOptions.length > 0 && (
+                  <div className="mt-5 border-t border-slate-200 pt-4">
+                    <div>
+                      <p className="text-sm font-bold text-slate-800">
+                        Áo cho phụ huynh/gia đình
+                      </p>
+                      <p className="mt-0.5 text-xs text-slate-500">
+                        Có thể chọn nhiều mẫu và size.
+                      </p>
+                    </div>
+                    <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                      {adultShirtOptions.map((option: any) => {
+                        const quantity = getAdditionalShirtQuantity(option.id);
+                        return (
+                          <div
+                            key={option.id}
+                            className={`flex min-h-14 items-center justify-between gap-2 rounded-lg border px-3 py-2 transition ${quantity > 0 ? "border-emerald-400 bg-emerald-50" : "border-slate-200 bg-slate-50"}`}
+                          >
+                            <div className="min-w-0">
+                              <span className="block text-sm font-semibold text-slate-900">
+                                Size {option.size}
+                              </span>
+                              <span className="block truncate text-[11px] text-slate-500">
+                                {option.styleName} · {money(option.price)}
+                              </span>
+                            </div>
+                            <div className="flex h-9 shrink-0 items-center rounded-md border border-slate-300 bg-white shadow-sm">
+                              <button
+                                type="button"
+                                aria-label={`Giảm size ${option.size}`}
+                                disabled={quantity === 0}
+                                onClick={() =>
+                                  changeAdditionalShirtQuantity(option.id, -1)
+                                }
+                                className="grid h-full w-8 place-items-center text-slate-600 disabled:opacity-30"
+                              >
+                                <Minus className="h-4 w-4" />
+                              </button>
+                              <span className="w-7 text-center text-sm font-bold">
+                                {quantity}
+                              </span>
+                              <button
+                                type="button"
+                                aria-label={`Tăng size ${option.size}`}
+                                disabled={quantity >= 10}
+                                onClick={() =>
+                                  changeAdditionalShirtQuantity(option.id, 1)
+                                }
+                                className="grid h-full w-8 place-items-center text-slate-600 disabled:opacity-30"
+                              >
+                                <Plus className="h-4 w-4" />
+                              </button>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
+                {shirtTotal > 0 && (
+                  <div className="mt-4 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-emerald-200 bg-emerald-50 p-4">
+                    <span className="text-sm text-emerald-900">
+                      BIB vẫn hoàn toàn miễn phí; đây chỉ là tiền áo mua thêm.
+                    </span>
+                    <strong className="text-xl text-emerald-950">
+                      {money(shirtTotal)}
+                    </strong>
+                  </div>
+                )}
+              </div>
+            )}
           </section>
 
           <section className="space-y-4">
@@ -658,11 +994,22 @@ export default function KidRunRegistrationPage() {
                         <option value="FEMALE">Nữ</option>
                       </select>
                     </label>
-                    <Field
-                      label="Trường/lớp hoặc CLB"
-                      value={child.schoolClub}
-                      onChange={(v) => updateChild(child.key, "schoolClub", v)}
-                    />
+                    <label className="text-sm font-medium">
+                      Trường/lớp hoặc CLB
+                      <input
+                        list="kid-run-school-club-options"
+                        value={child.schoolClub}
+                        onChange={(event) =>
+                          updateChild(
+                            child.key,
+                            "schoolClub",
+                            event.target.value,
+                          )
+                        }
+                        placeholder="Chọn hoặc nhập tên trường/CLB"
+                        className="mt-1 h-11 w-full rounded-md border border-slate-300 px-3 outline-none focus:border-emerald-600 focus:ring-2 focus:ring-emerald-100"
+                      />
+                    </label>
                   </div>
                   {child.dateOfBirth &&
                     (childCategory ? (
@@ -694,190 +1041,10 @@ export default function KidRunRegistrationPage() {
                         nhóm tuổi 3–12.
                       </div>
                     ))}
-                  {childShirtOptions.length > 0 && (
-                    <div className="mt-5 border-t pt-4">
-                      <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_auto] md:items-end">
-                        <label className="block text-sm font-medium">
-                          Áo TTCE Kids cho bé (không bắt buộc)
-                          <select
-                            value={child.shirtVariantId}
-                            onChange={(e) =>
-                              updateChild(
-                                child.key,
-                                "shirtVariantId",
-                                e.target.value,
-                              )
-                            }
-                            className="mt-1 h-10 w-full rounded-md border border-slate-300 bg-white px-3 text-sm"
-                          >
-                            <option value="">Không mua áo</option>
-                            {childShirtOptions.map((option: any) => (
-                              <option key={option.id} value={option.id}>
-                                {option.label} - {money(option.price)}
-                              </option>
-                            ))}
-                          </select>
-                        </label>
-                        {child.shirtVariantId && (
-                          <button
-                            type="button"
-                            onClick={() =>
-                              openShirtPreview(child.shirtVariantId)
-                            }
-                            className="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-emerald-700 bg-white px-4 text-sm font-semibold text-emerald-800"
-                          >
-                            <Shirt className="h-4 w-4" /> Xem mẫu & bảng size
-                          </button>
-                        )}
-                      </div>
-                      {child.shirtVariantId && (
-                        <div className="mt-3 w-full rounded-md border border-amber-300 bg-amber-50 p-3 text-sm leading-6 text-amber-900">
-                          <strong>
-                            Áo là sản phẩm mua thêm, không phải phí tham gia.
-                          </strong>{" "}
-                          Đăng ký chạy và BIB hoàn toàn miễn phí. Nhóm tuổi/BIB
-                          được hệ thống xác định theo năm sinh; áo chỉ được ghi
-                          nhận sản xuất sau khi BTC nhận thanh toán và gửi email
-                          xác nhận.
-                          <span className="ml-1 font-bold">
-                            Tổng tiền áo đang chọn: {money(shirtTotal)}
-                          </span>
-                        </div>
-                      )}
-                    </div>
-                  )}
                 </article>
               );
             })}
           </section>
-
-          {adultShirtOptions.length > 0 && (
-            <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <div>
-                  <h2 className="font-bold">
-                    Áo mua thêm cho phụ huynh/gia đình
-                  </h2>
-                  <p className="mt-1 text-sm text-slate-600">
-                    Có thể thêm nhiều loại áo, size và số lượng trong cùng hồ
-                    sơ.
-                  </p>
-                </div>
-                <button
-                  type="button"
-                  onClick={() =>
-                    setAdditionalShirts((items) => [
-                      ...items,
-                      { key: uid(), variantId: "", quantity: 1 },
-                    ])
-                  }
-                  className="inline-flex h-10 items-center gap-2 rounded-md border border-emerald-700 px-4 text-sm font-semibold text-emerald-800"
-                >
-                  <Plus className="h-4 w-4" />
-                  Thêm áo người lớn
-                </button>
-              </div>
-              {additionalShirts.length > 0 && (
-                <div className="mt-4 space-y-3">
-                  {additionalShirts.map((item) => (
-                    <div
-                      key={item.key}
-                      className="flex flex-wrap items-end gap-3 rounded-md bg-slate-50 p-3"
-                    >
-                      <label className="min-w-[240px] flex-1 text-sm font-medium">
-                        Mẫu, loại và size
-                        <select
-                          value={item.variantId}
-                          onChange={(e) =>
-                            setAdditionalShirts((items) =>
-                              items.map((current) =>
-                                current.key === item.key
-                                  ? { ...current, variantId: e.target.value }
-                                  : current,
-                              ),
-                            )
-                          }
-                          className="mt-1 h-10 w-full rounded-md border border-slate-300 bg-white px-3 text-sm"
-                        >
-                          <option value="">Chọn áo</option>
-                          {adultShirtOptions.map((option: any) => (
-                            <option key={option.id} value={option.id}>
-                              {option.label} - {money(option.price)}
-                            </option>
-                          ))}
-                        </select>
-                      </label>
-                      <label className="w-24 text-sm font-medium">
-                        Số lượng
-                        <select
-                          value={item.quantity}
-                          onChange={(e) =>
-                            setAdditionalShirts((items) =>
-                              items.map((current) =>
-                                current.key === item.key
-                                  ? {
-                                      ...current,
-                                      quantity: Number(e.target.value),
-                                    }
-                                  : current,
-                              ),
-                            )
-                          }
-                          className="mt-1 h-10 w-full rounded-md border border-slate-300 bg-white px-2"
-                        >
-                          {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((quantity) => (
-                            <option key={quantity} value={quantity}>
-                              {quantity}
-                            </option>
-                          ))}
-                        </select>
-                      </label>
-                      <button
-                        type="button"
-                        title="Xóa áo"
-                        onClick={() =>
-                          setAdditionalShirts((items) =>
-                            items.filter((current) => current.key !== item.key),
-                          )
-                        }
-                        className="grid h-10 w-10 place-items-center rounded-md border border-red-200 text-red-600"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              )}
-              {additionalShirts.some((item) => item.variantId) && (
-                <div className="mt-4 space-y-3 border-t pt-4">
-                  <button
-                    type="button"
-                    onClick={() =>
-                      openShirtPreview(
-                        adultShirtOptions.find((option: any) =>
-                          additionalShirts.some(
-                            (item) => item.variantId === option.id,
-                          ),
-                        )?.id,
-                      )
-                    }
-                    className="inline-flex h-10 items-center gap-2 rounded-md border border-emerald-700 bg-white px-4 text-sm font-semibold text-emerald-800"
-                  >
-                    <Shirt className="h-4 w-4" />
-                    Xem mẫu & bảng size
-                  </button>
-                  <div className="rounded-md border border-amber-300 bg-amber-50 p-3 text-sm leading-6 text-amber-900">
-                    <strong>Đăng ký áo là tự nguyện.</strong> Áo chỉ được ghi
-                    nhận sau khi BTC nhận thanh toán và gửi email xác nhận thành
-                    công.
-                    <div className="mt-1 font-bold">
-                      Tiền áo người lớn: {money(additionalShirtTotal)}
-                    </div>
-                  </div>
-                </div>
-              )}
-            </section>
-          )}
 
           {shirtTotal > 0 && (
             <section className="rounded-2xl border border-emerald-200 bg-emerald-50 p-5">
@@ -974,6 +1141,13 @@ export default function KidRunRegistrationPage() {
         </form>
       </div>
 
+      <datalist id="kid-run-school-club-options">
+        {KID_RUN_SCHOOL_CLUB_OPTIONS.map((option) => (
+          <option key={option.value} value={option.value}>
+            {option.label}
+          </option>
+        ))}
+      </datalist>
       {shirtPreviewOpen &&
         (() => {
           const style = campaign.shirtStyles?.[shirtPreviewIndex];
@@ -1121,7 +1295,7 @@ export default function KidRunRegistrationPage() {
                 }}
                 className="w-full rounded-md bg-emerald-700 py-3 font-bold text-white"
               >
-                Tôi đã đọc điều khoản
+                Tôi đã đọc điều khoản và đồng ý với tất cả các điều khoản trên.
               </button>
             </div>
           </div>

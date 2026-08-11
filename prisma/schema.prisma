@@ -614,8 +614,13 @@ model KidRunRaceCategory {
   bibPrefix         String
   bibStart          Int                 @default(1)
   nextBibNumber     Int                 @default(1)
+  bibNumberDigits   Int                 @default(4)
   bibCapacity       Int                 @default(50)
   remainingBibCount Int                 @default(50)
+  bibTemplateUrl    String?
+  bibTextColor      String?
+  bibNumberFontSize Int                 @default(245)
+  bibNameFontSize   Int                 @default(42)
   isAvailable       Boolean             @default(true)
   sortOrder         Int                 @default(0)
   createdAt         DateTime            @default(now())
@@ -624,7 +629,7 @@ model KidRunRaceCategory {
   participants      KidRunParticipant[]
 
   @@unique([campaignId, name])
-  @@unique([campaignId, bibPrefix])
+  @@index([campaignId, bibPrefix])
   @@index([campaignId, isAvailable])
   @@map("kid_run_race_categories")
 }

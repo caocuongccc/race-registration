@@ -31,7 +31,7 @@ export function KidRunRegistrationEmail({
   const title = paid
     ? "Đã xác nhận thanh toán áo"
     : bibIssued
-      ? "Thông báo số BIB Mid-Autumn Kids Runs"
+      ? "Đăng ký chạy thành công"
       : "Đã nhận hồ sơ Mid-Autumn Kids Runs";
   return (
     <Html>
@@ -40,6 +40,24 @@ export function KidRunRegistrationEmail({
         <Container style={container}>
           <Text style={titleStyle}>{title}</Text>
           <Text style={subtitle}>{campaign.name}</Text>
+          {!paid && (
+            <Section style={registrationBox}>
+              <Text style={registrationHeading}>Thông tin người đăng ký</Text>
+              <Text style={summaryLine}>
+                Phụ huynh/người giám hộ: <strong>{application.guardianName}</strong>
+              </Text>
+              <Text style={summaryLine}>
+                Số điện thoại: <strong>{application.phone}</strong>
+              </Text>
+              <Text style={summaryLine}>
+                Email: <strong>{application.email}</strong>
+              </Text>
+              <Text style={summaryLine}>
+                Mua kèm áo: {" "}
+                <strong>{application.shirtTotalAmount > 0 ? "Có" : "Không"}</strong>
+              </Text>
+            </Section>
+          )}
           {!paid && !bibIssued && (
             <Section style={pendingBox}>
               <Text style={{ marginTop: 0 }}>
@@ -55,17 +73,27 @@ export function KidRunRegistrationEmail({
             </Section>
           )}
           {!paid && bibIssued && (
-            <Text>
-              Hồ sơ <strong>{application.publicCode}</strong> đã được cấp BIB.
-              Dưới đây là toàn bộ BIB của gia đình.
-            </Text>
+            <Section style={introBox}>
+              <Text style={{ margin: 0, color: "#166534" }}>
+                Thông tin BIB đã được cấp. Vui lòng lưu ảnh BIB và QR nhận BIB
+                bên dưới.
+              </Text>
+            </Section>
           )}
           {!paid &&
             application.participants?.map((participant: any, index: number) => (
               <Section key={participant.id} style={bibBox}>
+                {bibIssued && (
+                  <Img
+                    src={`cid:kidbib-${participant.id}`}
+                    width="580"
+                    alt={`BIB ${participant.bibNumber} - ${participant.fullName}`}
+                    style={{ width: "100%", height: "auto", marginBottom: "12px" }}
+                  />
+                )}
                 <Text style={bibTitle}>
                   {bibIssued
-                    ? `BIB ${index + 1}: ${participant.bibNumber}`
+                    ? `${participant.fullName} · BIB ${participant.bibNumber}`
                     : `Bé ${index + 1}: ${participant.fullName}`}
                 </Text>
                 {bibIssued && (
@@ -84,7 +112,7 @@ export function KidRunRegistrationEmail({
           {!paid && bibIssued && (
             <Section style={qrBox}>
               <Text style={{ fontWeight: 700, marginTop: 0 }}>
-                Một QR nhận BIB cho cả gia đình
+                QR nhận BIB
               </Text>
               <Img
                 src="cid:qrcheckin"
@@ -94,7 +122,7 @@ export function KidRunRegistrationEmail({
                 style={{ margin: "0 auto" }}
               />
               <Text style={{ color: "#475569", fontSize: "13px" }}>
-                BTC quét mã này để xem và bàn giao toàn bộ BIB trong hồ sơ.
+                Xuất trình mã QR này để nhận toàn bộ BIB của gia đình.
               </Text>
             </Section>
           )}
@@ -203,6 +231,30 @@ const titleStyle = {
   margin: "0 0 8px",
 };
 const subtitle = { color: "#475569", marginTop: 0 };
+const registrationBox = {
+  backgroundColor: "#f8fafc",
+  border: "1px solid #e2e8f0",
+  borderRadius: "12px",
+  padding: "16px",
+  margin: "16px 0",
+};
+const registrationHeading = {
+  color: "#0f172a",
+  fontWeight: 700,
+  margin: "0 0 10px",
+};
+const summaryLine = {
+  color: "#475569",
+  fontSize: "14px",
+  margin: "5px 0",
+};
+const introBox = {
+  backgroundColor: "#f0fdf4",
+  border: "1px solid #bbf7d0",
+  borderRadius: "12px",
+  padding: "14px",
+  margin: "16px 0",
+};
 const pendingBox = {
   backgroundColor: "#eff6ff",
   border: "1px solid #bfdbfe",

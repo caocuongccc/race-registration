@@ -61,7 +61,7 @@ export async function POST(
           );
           const startNumber = Number(allocation[0].startNumber);
           await tx.$executeRaw(
-            Prisma.sql`WITH numbered AS (SELECT participant."id", ROW_NUMBER() OVER (ORDER BY participant."createdAt", participant."id") - 1 AS offset FROM "kid_run_participants" participant INNER JOIN "kid_run_family_applications" application ON application."id" = participant."applicationId" WHERE participant."categoryId" = ${category.id} AND participant."bibNumber" IS NULL AND application."status" = 'CONFIRMED') UPDATE "kid_run_participants" participant SET "bibNumber" = ${category.bibPrefix} || LPAD((${startNumber} + numbered.offset)::TEXT, 4, '0'), "updatedAt" = NOW() FROM numbered WHERE participant."id" = numbered."id"`,
+            Prisma.sql`WITH numbered AS (SELECT participant."id", ROW_NUMBER() OVER (ORDER BY participant."createdAt", participant."id") - 1 AS offset FROM "kid_run_participants" participant INNER JOIN "kid_run_family_applications" application ON application."id" = participant."applicationId" WHERE participant."categoryId" = ${category.id} AND participant."bibNumber" IS NULL AND application."status" = 'CONFIRMED') UPDATE "kid_run_participants" participant SET "bibNumber" = ${category.bibPrefix} || LPAD((${startNumber} + numbered.offset)::TEXT, ${category.bibNumberDigits}, '0'), "updatedAt" = NOW() FROM numbered WHERE participant."id" = numbered."id"`,
           );
           issuedCount += count;
         }

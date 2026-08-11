@@ -65,3 +65,7 @@ prisma/migrations/**
 !prisma/kid-run-configure-age-groups-2026.sql
 !prisma/migrations/20260806090000_add_kid_run_category_bib_quota/
 !prisma/migrations/20260806090000_add_kid_run_category_bib_quota/migration.sql
+!prisma/migrations/20260811090000_add_kid_run_bib_templates/
+!prisma/migrations/20260811090000_add_kid_run_bib_templates/migration.sql
+!prisma/migrations/20260811110000_update_kid_run_bib_typography/
+!prisma/migrations/20260811110000_update_kid_run_bib_typography/migration.sql

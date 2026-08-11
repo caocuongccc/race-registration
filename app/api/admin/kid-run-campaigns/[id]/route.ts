@@ -140,6 +140,11 @@ export async function PUT(
             .trim()
             .toUpperCase(),
           bibStart: Number(item.bibStart) || 1,
+          bibNumberDigits: Math.max(1, Number(item.bibNumberDigits) || 4),
+          bibTemplateUrl: String(item.bibTemplateUrl || "").trim() || null,
+          bibTextColor: String(item.bibTextColor || "").trim() || null,
+          bibNumberFontSize: Math.max(1, Number(item.bibNumberFontSize) || 245),
+          bibNameFontSize: Math.max(1, Number(item.bibNameFontSize) || 42),
           bibCapacity: categoryBibCapacity,
           remainingBibCount: Math.max(
             0,
