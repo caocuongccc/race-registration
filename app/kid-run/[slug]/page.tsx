@@ -166,10 +166,30 @@ export default function KidRunRegistrationPage() {
     );
   };
 
+  const activeBirthYears = (campaign?.categories || [])
+    .filter((category: any) => category.name !== "__UNASSIGNED__")
+    .flatMap((category: any) => [category.minBirthYear, category.maxBirthYear]);
+  const minimumBirthYear = Math.min(...activeBirthYears);
+  const maximumBirthYear = Math.max(...activeBirthYears);
+  const minimumBirthDate = Number.isFinite(minimumBirthYear)
+    ? `${minimumBirthYear}-01-01`
+    : undefined;
+  const maximumBirthDate = Number.isFinite(maximumBirthYear)
+    ? `${maximumBirthYear}-12-31`
+    : undefined;
+
+  const emailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim());
+  const phoneValid = /^0\d{9}$/.test(form.phone.replace(/\D/g, ""));
+  const requiredFormStarted =
+    Boolean(form.guardianName.trim() || form.email.trim() || form.phone.trim()) ||
+    children.some((child) =>
+      Boolean(child.fullName.trim() || child.dateOfBirth || child.gender),
+    );
+
   const requiredInformationComplete =
     form.guardianName.trim().length > 0 &&
-    /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim()) &&
-    /^0\d{9}$/.test(form.phone.replace(/\D/g, "")) &&
+    emailValid &&
+    phoneValid &&
     children.length > 0 &&
     children.every((child) => {
       const category = getCategoryForDate(child.dateOfBirth);
@@ -390,10 +410,14 @@ export default function KidRunRegistrationPage() {
                 <thead className="bg-white text-[10px] uppercase tracking-wide text-slate-500 sm:text-xs">
                   <tr>
                     <th className="w-[28%] px-2 py-3 sm:px-4">Họ và tên</th>
-                    <th className="w-[14%] px-2 py-3 sm:px-4">Năm sinh</th>
+                    <th className="w-[14%] px-2 py-3 sm:px-4">
+                      Năm sinh / giới tính
+                    </th>
                     <th className="w-[18%] px-2 py-3 sm:px-4">Nhóm tuổi</th>
                     <th className="w-[22%] px-2 py-3 sm:px-4">Trường/CLB</th>
-                    <th className="w-[18%] px-2 py-3 text-right sm:px-4">Số BIB</th>
+                    <th className="w-[18%] px-2 py-3 text-right sm:px-4">
+                      Số BIB
+                    </th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-200 bg-white">
@@ -403,7 +427,14 @@ export default function KidRunRegistrationPage() {
                         {participant.fullName}
                       </td>
                       <td className="break-words px-2 py-3 text-slate-600 sm:px-4">
-                        {participant.birthYear}
+                        <div>{participant.birthYear}</div>
+                        <div className="mt-0.5 text-[11px] sm:text-xs">
+                          {participant.gender === "MALE"
+                            ? "Nam"
+                            : participant.gender === "FEMALE"
+                              ? "Nữ"
+                              : "—"}
+                        </div>
                       </td>
                       <td className="break-words px-2 py-3 text-slate-600 sm:px-4">
                         {participant.category.name}
@@ -696,6 +727,12 @@ export default function KidRunRegistrationPage() {
               <Field
                 label="Họ và tên phụ huynh"
                 required
+                invalid={requiredFormStarted && !form.guardianName.trim()}
+                error={
+                  requiredFormStarted && !form.guardianName.trim()
+                    ? "Vui lòng nhập thông tin."
+                    : undefined
+                }
                 value={form.guardianName}
                 onChange={(v) => setForm({ ...form, guardianName: v })}
               />
@@ -703,6 +740,14 @@ export default function KidRunRegistrationPage() {
                 label="Email nhận BIB"
                 required
                 type="email"
+                invalid={requiredFormStarted && !emailValid}
+                error={
+                  requiredFormStarted && !form.email.trim()
+                    ? "Vui lòng nhập thông tin."
+                    : Boolean(form.email.trim()) && !emailValid
+                      ? "Định dạng email chưa đúng. Vui lòng kiểm tra lại."
+                      : undefined
+                }
                 value={form.email}
                 onChange={(v) => setForm({ ...form, email: v })}
               />
@@ -710,6 +755,14 @@ export default function KidRunRegistrationPage() {
                 label="Số điện thoại liên hệ"
                 required
                 type="tel"
+                invalid={requiredFormStarted && !phoneValid}
+                error={
+                  requiredFormStarted && !form.phone.trim()
+                    ? "Vui lòng nhập thông tin."
+                    : Boolean(form.phone.trim()) && !phoneValid
+                      ? "Số điện thoại phải có 10 chữ số và bắt đầu bằng số 0"
+                      : undefined
+                }
                 value={form.phone}
                 onChange={(v) => setForm({ ...form, phone: v })}
               />
@@ -969,6 +1022,12 @@ export default function KidRunRegistrationPage() {
                     <Field
                       label="Họ và tên bé"
                       required
+                      invalid={requiredFormStarted && !child.fullName.trim()}
+                      error={
+                        requiredFormStarted && !child.fullName.trim()
+                          ? "Vui lòng nhập thông tin."
+                          : undefined
+                      }
                       value={child.fullName}
                       onChange={(v) => updateChild(child.key, "fullName", v)}
                     />
@@ -976,6 +1035,18 @@ export default function KidRunRegistrationPage() {
                       label="Ngày tháng năm sinh"
                       required
                       type="date"
+                      min={minimumBirthDate}
+                      max={maximumBirthDate}
+                      pickerOnlyOnMobile
+                      invalid={
+                        requiredFormStarted &&
+                        !getCategoryForDate(child.dateOfBirth)
+                      }
+                      error={
+                        requiredFormStarted && !child.dateOfBirth
+                          ? "Vui lòng nhập thông tin."
+                          : undefined
+                      }
                       value={child.dateOfBirth}
                       onChange={(v) => updateChild(child.key, "dateOfBirth", v)}
                     />
@@ -987,12 +1058,17 @@ export default function KidRunRegistrationPage() {
                         onChange={(e) =>
                           updateChild(child.key, "gender", e.target.value)
                         }
-                        className="mt-1 h-11 w-full rounded-md border border-slate-300 bg-white px-3"
+                        className={`mt-1 h-11 w-full rounded-md border bg-white px-3 outline-none focus:ring-2 ${requiredFormStarted && !child.gender ? "border-red-500 focus:border-red-500 focus:ring-red-100" : "border-slate-300 focus:border-emerald-600 focus:ring-emerald-100"}`}
                       >
                         <option value="">Chọn giới tính</option>
                         <option value="MALE">Nam</option>
                         <option value="FEMALE">Nữ</option>
                       </select>
+                      {requiredFormStarted && !child.gender && (
+                        <span className="mt-1 block text-xs text-red-600">
+                          Vui lòng nhập thông tin.
+                        </span>
+                      )}
                     </label>
                     <label className="text-sm font-medium">
                       Trường/lớp hoặc CLB
@@ -1038,7 +1114,7 @@ export default function KidRunRegistrationPage() {
                           Độ tuổi của bé chưa phù hợp với chương trình.
                         </strong>{" "}
                         Mid-Autumn Kids Runs hiện mở đăng ký cho các bé thuộc
-                        nhóm tuổi 3–12.
+                        nhóm tuổi 5–12.
                       </div>
                     ))}
                 </article>
@@ -1138,6 +1214,26 @@ export default function KidRunRegistrationPage() {
               </>
             )}
           </button>
+          {!registrationReady && campaign?.isOpen && (
+            <div
+              className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm leading-6 text-amber-900"
+              role="status"
+              aria-live="polite"
+            >
+              <div className="font-bold">Cần hoàn tất trước khi đăng ký:</div>
+              {!requiredInformationComplete && (
+                <div>
+                  • Nhập đầy đủ các thông tin bắt buộc của phụ huynh và của bé.
+                </div>
+              )}
+              {(!waiverViewed || !form.waiverAccepted) && (
+                <div>
+                  • Bấm “Đọc điều khoản”, đọc nội dung và chọn đồng ý ở cuối cửa
+                  sổ.
+                </div>
+              )}
+            </div>
+          )}
         </form>
       </div>
 
@@ -1148,6 +1244,28 @@ export default function KidRunRegistrationPage() {
           </option>
         ))}
       </datalist>
+      {submitting && (
+        <div
+          className="fixed inset-0 z-[100] grid place-items-center bg-slate-950/65 p-5 backdrop-blur-sm"
+          role="status"
+          aria-live="assertive"
+          aria-label="Hệ thống đang xử lý đăng ký"
+        >
+          <div className="w-full max-w-sm rounded-2xl bg-white p-6 text-center shadow-2xl">
+            <div className="mx-auto h-14 w-14 animate-spin rounded-full border-4 border-emerald-100 border-t-emerald-700" />
+            <h2 className="mt-5 text-xl font-extrabold text-slate-900">
+              Đang xử lý đăng ký
+            </h2>
+            <p className="mt-2 text-sm leading-6 text-slate-600">
+              Hệ thống đang kiểm tra nhóm tuổi, cấp số BIB và chuẩn bị email xác
+              nhận.
+            </p>
+            <p className="mt-3 text-xs font-semibold text-emerald-700">
+              Vui lòng không đóng hoặc tải lại trang.
+            </p>
+          </div>
+        </div>
+      )}
       {shirtPreviewOpen &&
         (() => {
           const style = campaign.shirtStyles?.[shirtPreviewIndex];
@@ -1311,23 +1429,52 @@ function Field({
   onChange,
   type = "text",
   required = false,
+  min,
+  max,
+  pickerOnlyOnMobile = false,
+  invalid = false,
+  error,
 }: {
   label: string;
   value: string;
   onChange: (value: string) => void;
   type?: string;
   required?: boolean;
+  min?: string;
+  max?: string;
+  pickerOnlyOnMobile?: boolean;
+  invalid?: boolean;
+  error?: string;
 }) {
+  const isMobilePointer = () =>
+    pickerOnlyOnMobile && window.matchMedia("(pointer: coarse)").matches;
+  const openDatePicker = (input: HTMLInputElement) => {
+    if (!isMobilePointer()) return;
+    input.showPicker?.();
+  };
+
   return (
     <label className="text-sm font-medium">
       {label} {required && <span className="text-red-500">*</span>}
       <input
         type={type}
         required={required}
+        min={min}
+        max={max}
+        inputMode={pickerOnlyOnMobile ? "none" : undefined}
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="mt-1 h-11 w-full rounded-md border border-slate-300 px-3 outline-none focus:border-emerald-600 focus:ring-2 focus:ring-emerald-100"
+        onClick={(e) => openDatePicker(e.currentTarget)}
+        onKeyDown={(e) => {
+          if (isMobilePointer() && e.key !== "Tab") e.preventDefault();
+        }}
+        onPaste={(e) => {
+          if (isMobilePointer()) e.preventDefault();
+        }}
+        aria-invalid={invalid}
+        className={`mt-1 h-11 w-full rounded-md border px-3 outline-none focus:ring-2 ${invalid ? "border-red-500 focus:border-red-500 focus:ring-red-100" : "border-slate-300 focus:border-emerald-600 focus:ring-emerald-100"}`}
       />
+      {error && <span className="mt-1 block text-xs text-red-600">{error}</span>}
     </label>
   );
 }

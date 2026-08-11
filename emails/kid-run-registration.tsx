@@ -103,8 +103,11 @@ export function KidRunRegistrationEmail({
                 )}
                 <Text style={line}>Năm sinh: {participant.birthYear}</Text>
                 <Text style={line}>
+                  Giới tính: {participant.gender === "MALE" ? "Nam" : "Nữ"}
+                </Text>
+                <Text style={line}>
                   {bibIssued
-                    ? `Nhóm tuổi: ${participant.category.name} · ${participant.category.distanceLabel}`
+                    ? `Nhóm tuổi: ${participant.category.name}`
                     : "Nhóm tuổi: Chờ Ban tổ chức phân bổ"}
                 </Text>
               </Section>
