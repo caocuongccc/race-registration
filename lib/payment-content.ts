@@ -102,5 +102,5 @@ export function extractMerchOrderCodeFromTransferContent(
 
 export function extractKidRunCodeFromTransferContent(content?: string | null): string | null {
   if (!content) return null;
-  return content.match(/\\b(KID[A-Z0-9]{10})\\b/i)?.[1]?.toUpperCase() || null;
+  return content.match(/(KID[A-Z0-9]{10})(?![A-Z0-9])/i)?.[1]?.toUpperCase() || null;
 }

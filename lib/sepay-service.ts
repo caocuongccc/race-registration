@@ -211,11 +211,13 @@ export function parseSepayWebhook(webhookData: any): {
 
   return {
     orderCode,
-    orderType: merchOrderCode
-      ? "MERCH_ORDER"
-      : shirtOrderCode
-        ? "SHIRT_ORDER"
-        : "REGISTRATION",
+    orderType: kidRunCode
+      ? "KID_RUN"
+      : merchOrderCode
+        ? "MERCH_ORDER"
+        : shirtOrderCode
+          ? "SHIRT_ORDER"
+          : "REGISTRATION",
     amount: parseInt(webhookData.transferAmount) || 0,
     transactionId: webhookData.id?.toString() || `sepay_${Date.now()}`,
     transactionDate: webhookData.transactionDate || new Date().toISOString(),

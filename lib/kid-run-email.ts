@@ -41,6 +41,7 @@ export async function sendKidRunRegistrationEmail(
   secretCode?: string,
   payment?: any,
   existingBibAttachments?: any[],
+  recipientOverride?: string,
 ) {
   const application = await loadApplication(applicationId);
   const hasBib =
@@ -54,7 +55,7 @@ export async function sendKidRunRegistrationEmail(
     (hasBib ? await generateKidRunBibAttachments(application.participants) : []);
   const subject = `Đã nhận đăng ký Mid-Autumn Kids Runs - ${application.campaign.name} - ${application.publicCode}`;
   const result = await sendEmailGmailFirst({
-    to: application.email,
+    to: recipientOverride || application.email,
     subject,
     react: KidRunRegistrationEmail({
       application,
@@ -70,7 +71,7 @@ export async function sendKidRunRegistrationEmail(
   await logResult(
     applicationId,
     "REGISTRATION_CONFIRMED",
-    application.email,
+    recipientOverride || application.email,
     subject,
     result,
   );

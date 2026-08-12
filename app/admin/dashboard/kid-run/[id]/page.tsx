@@ -59,6 +59,11 @@ export default function KidRunDetailPage() {
   const [notice, setNotice] = useState("");
   const [saving, setSaving] = useState(false);
   const [workflowBusy, setWorkflowBusy] = useState(false);
+  const [applicationsLoading, setApplicationsLoading] = useState(false);
+  const [appliedSearch, setAppliedSearch] = useState("");
+  const [resendTarget, setResendTarget] = useState<any>(null);
+  const [resendEmail, setResendEmail] = useState("");
+  const [resending, setResending] = useState(false);
   const [team, setTeam] = useState<{ users: any[]; assignedUserIds: string[] }>(
     { users: [], assignedUserIds: [] },
   );
@@ -99,15 +104,33 @@ export default function KidRunDetailPage() {
   const loadApplications = async (
     page = pagination.page,
     pageSize = pagination.pageSize,
+    query = appliedSearch,
+    includeSummary = false,
   ) => {
-    const res = await fetch(
-      `/api/admin/kid-run-campaigns/${id}/applications?page=${page}&pageSize=${pageSize}&search=${encodeURIComponent(search)}`,
-    );
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.error);
-    setApplications(data.applications);
-    setSummary(data.summary);
-    setPagination(data.pagination);
+    setApplicationsLoading(true);
+    try {
+      const params = new URLSearchParams({
+        page: String(page),
+        pageSize: String(pageSize),
+        search: query,
+        includeSummary: includeSummary ? "1" : "0",
+      });
+      const res = await fetch(
+        `/api/admin/kid-run-campaigns/${id}/applications?${params}`,
+      );
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      setApplications(data.applications);
+      if (data.summary) setSummary(data.summary);
+      setPagination(data.pagination);
+    } finally {
+      setApplicationsLoading(false);
+    }
+  };
+  const applySearch = async () => {
+    const query = search.trim();
+    setAppliedSearch(query);
+    await loadApplications(1, pagination.pageSize, query, false);
   };
   useEffect(() => {
     load().catch((e) => setError(e.message));
@@ -117,7 +140,7 @@ export default function KidRunDetailPage() {
   }, [id]);
   useEffect(() => {
     if (tab === "applications")
-      loadApplications(1).catch((e) => setError(e.message));
+      loadApplications(1, pagination.pageSize, "", true).catch((e) => setError(e.message));
   }, [tab]);
 
   const save = async () => {
@@ -202,6 +225,32 @@ export default function KidRunDetailPage() {
         : [...team.assignedUserIds, userId],
     });
   };
+  const resendApplicationEmail = async () => {
+    if (!resendTarget) return;
+    setResending(true);
+    setError("");
+    setNotice("");
+    try {
+      const res = await fetch(
+        `/api/admin/kid-run-campaigns/${id}/applications/${resendTarget.id}/resend-email`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email: resendEmail }),
+        },
+      );
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      setNotice(`Đã gửi lại email tới ${data.email} và cập nhật email hồ sơ.`);
+      setResendTarget(null);
+      await loadApplications(pagination.page, pagination.pageSize, appliedSearch);
+    } catch (e: any) {
+      setError(e.message);
+    } finally {
+      setResending(false);
+    }
+  };
+
   const confirmPayment = async (applicationId: string) => {
     if (!confirm("Xác nhận BTC đã nhận đủ tiền áo?")) return;
     const res = await fetch(
@@ -210,7 +259,7 @@ export default function KidRunDetailPage() {
     );
     const data = await res.json();
     if (!res.ok) return setError(data.error);
-    await loadApplications();
+    await loadApplications(pagination.page, pagination.pageSize, appliedSearch, true);
   };
   const assignGroups = async () => {
     if (
@@ -833,15 +882,16 @@ export default function KidRunDetailPage() {
             <input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && loadApplications(1)}
+              onKeyDown={(e) => e.key === "Enter" && applySearch()}
               placeholder="Tên bé, BIB, phụ huynh, email, SĐT..."
               className="h-11 flex-1 rounded-md border px-3"
             />
             <button
-              onClick={() => loadApplications(1)}
-              className="rounded-md border px-4"
+              onClick={applySearch}
+              disabled={applicationsLoading}
+              className="rounded-md border px-4 disabled:opacity-50"
             >
-              <RefreshCw className="h-5 w-5" />
+              <RefreshCw className={`h-5 w-5 ${applicationsLoading ? "animate-spin" : ""}`} />
             </button>
             <a
               href={`/api/admin/kid-run-campaigns/${id}/export`}
@@ -850,7 +900,7 @@ export default function KidRunDetailPage() {
               Export Excel
             </a>
           </div>
-          <div className="mt-4 overflow-x-auto rounded-lg border bg-white">
+          <div className={`mt-4 overflow-x-auto rounded-lg border bg-white transition-opacity ${applicationsLoading ? "pointer-events-none opacity-60" : ""}`}>
             <table className="min-w-full text-sm">
               <thead className="bg-slate-50 text-left">
                 <tr>
@@ -868,6 +918,14 @@ export default function KidRunDetailPage() {
                       <b>{app.guardianName}</b>
                       <div>{app.phone}</div>
                       <div className="text-slate-500">{app.publicCode}</div>
+                      <div className="break-all text-xs text-slate-500">
+                        {app.email}
+                      </div>
+                      {app.emailLogs?.[0]?.status === "FAILED" && (
+                        <div className="mt-1 text-xs font-semibold text-red-600">
+                          Email gần nhất gửi lỗi
+                        </div>
+                      )}
                     </td>
                     <td className="p-3">
                       {app.participants.map((p: any) => (
@@ -903,6 +961,17 @@ export default function KidRunDetailPage() {
                       /{app.participants.length}
                     </td>
                     <td className="p-3">
+                      {appliedSearch && (
+                        <button
+                          onClick={() => {
+                            setResendTarget(app);
+                            setResendEmail(app.email);
+                          }}
+                          className="mb-2 block rounded-md border border-blue-600 px-3 py-2 text-blue-700"
+                        >
+                          Gửi lại email
+                        </button>
+                      )}
                       {app.shirtPaymentStatus === "PENDING" && (
                         <button
                           onClick={() => confirmPayment(app.id)}
@@ -920,7 +989,7 @@ export default function KidRunDetailPage() {
           <div className="mt-4 flex items-center justify-between">
             <select
               value={pagination.pageSize}
-              onChange={(e) => loadApplications(1, Number(e.target.value))}
+              onChange={(e) => loadApplications(1, Number(e.target.value), appliedSearch)}
               className="rounded-md border px-3 py-2"
             >
               <option>10</option>
@@ -929,8 +998,8 @@ export default function KidRunDetailPage() {
             </select>
             <div className="flex items-center gap-2">
               <button
-                disabled={pagination.page <= 1}
-                onClick={() => loadApplications(pagination.page - 1)}
+                disabled={applicationsLoading || pagination.page <= 1}
+                onClick={() => loadApplications(pagination.page - 1, pagination.pageSize, appliedSearch)}
                 className="rounded-md border px-3 py-2 disabled:opacity-40"
               >
                 Trước
@@ -939,8 +1008,8 @@ export default function KidRunDetailPage() {
                 {pagination.page}/{Math.max(1, pagination.totalPages)}
               </span>
               <button
-                disabled={pagination.page >= pagination.totalPages}
-                onClick={() => loadApplications(pagination.page + 1)}
+                disabled={applicationsLoading || pagination.page >= pagination.totalPages}
+                onClick={() => loadApplications(pagination.page + 1, pagination.pageSize, appliedSearch)}
                 className="rounded-md border px-3 py-2 disabled:opacity-40"
               >
                 Sau
@@ -949,7 +1018,31 @@ export default function KidRunDetailPage() {
           </div>
         </div>
       )}
-    </div>
+      {resendTarget && (
+        <div className="fixed inset-0 z-50 grid place-items-center bg-black/60 p-4">
+          <div className="w-full max-w-md rounded-xl bg-white p-5 shadow-xl">
+            <h2 className="text-lg font-bold">Gửi lại email đăng ký</h2>
+            <p className="mt-1 text-sm text-slate-600">
+              {resendTarget.guardianName} · {resendTarget.publicCode}
+            </p>
+            <label className="mt-4 block text-sm font-medium">
+              Email nhận lại
+              <input
+                type="email"
+                value={resendEmail}
+                onChange={(e) => setResendEmail(e.target.value)}
+                className="mt-1 h-11 w-full rounded-md border px-3"
+              />
+            </label>
+            <div className="mt-5 flex justify-end gap-2">
+              <button disabled={resending} onClick={() => setResendTarget(null)} className="rounded-md border px-4 py-2">Hủy</button>
+              <button disabled={resending} onClick={resendApplicationEmail} className="rounded-md bg-blue-600 px-4 py-2 font-semibold text-white disabled:opacity-50">
+                {resending ? "Đang gửi..." : "Gửi và cập nhật email"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}    </div>
   );
 }
 function Input({ label, value, onChange, type = "text" }: any) {
