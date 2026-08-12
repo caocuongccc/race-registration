@@ -25,11 +25,6 @@ BEGIN
   END IF;
 END $$;
 
-CREATE TEMP TABLE "target_kid_run_campaign" ON COMMIT DROP AS
-SELECT "id"
-FROM "kid_run_campaigns"
-WHERE "slug" = 'ttce-kid-run-2026'
-  AND "name" = 'Mid-Autumn Kids Runs';
 
 -- Chan dang ky/webhook moi chen vao trong luc reset.
 -- LOCK tu dong duoc tha khi COMMIT hoac ROLLBACK.
@@ -39,13 +34,13 @@ LOCK TABLE "kid_run_webhook_logs" IN SHARE ROW EXCLUSIVE MODE;
 -- Xoa webhook truoc vi khoa ngoai cua bang nay dung ON DELETE SET NULL.
 DELETE FROM "kid_run_webhook_logs" webhook
 WHERE webhook."campaignId" IN (
-    SELECT "id" FROM "target_kid_run_campaign"
+    SELECT "id" FROM "kid_run_campaigns" WHERE "slug" = 'ttce-kid-run-2026' AND "name" = 'Mid-Autumn Kids Runs'
   )
   OR webhook."applicationId" IN (
     SELECT application."id"
     FROM "kid_run_family_applications" application
     WHERE application."campaignId" IN (
-      SELECT "id" FROM "target_kid_run_campaign"
+      SELECT "id" FROM "kid_run_campaigns" WHERE "slug" = 'ttce-kid-run-2026' AND "name" = 'Mid-Autumn Kids Runs'
     )
   );
 
@@ -53,13 +48,13 @@ WHERE webhook."campaignId" IN (
 -- checkin_log va email_log se duoc xoa theo ON DELETE CASCADE.
 DELETE FROM "kid_run_family_applications"
 WHERE "campaignId" IN (
-  SELECT "id" FROM "target_kid_run_campaign"
+  SELECT "id" FROM "kid_run_campaigns" WHERE "slug" = 'ttce-kid-run-2026' AND "name" = 'Mid-Autumn Kids Runs'
 );
 
 -- Quet lai webhook sau khi xoa application de khong con log giao dich mo coi.
 DELETE FROM "kid_run_webhook_logs" webhook
 WHERE webhook."campaignId" IN (
-  SELECT "id" FROM "target_kid_run_campaign"
+  SELECT "id" FROM "kid_run_campaigns" WHERE "slug" = 'ttce-kid-run-2026' AND "name" = 'Mid-Autumn Kids Runs'
 );
 
 -- Dua bo dem BIB cua 4 nhom dang mo ve gia tri ban dau.
@@ -70,7 +65,7 @@ SET
   "remainingBibCount" = category."bibCapacity",
   "updatedAt" = NOW()
 WHERE category."campaignId" IN (
-    SELECT "id" FROM "target_kid_run_campaign"
+    SELECT "id" FROM "kid_run_campaigns" WHERE "slug" = 'ttce-kid-run-2026' AND "name" = 'Mid-Autumn Kids Runs'
   )
   AND category."isAvailable" = TRUE
   AND category."name" <> '__UNASSIGNED__';
@@ -87,7 +82,7 @@ FROM (
     COALESCE(SUM(category."bibCapacity"), 0)::INTEGER AS capacity
   FROM "kid_run_race_categories" category
   WHERE category."campaignId" IN (
-      SELECT "id" FROM "target_kid_run_campaign"
+      SELECT "id" FROM "kid_run_campaigns" WHERE "slug" = 'ttce-kid-run-2026' AND "name" = 'Mid-Autumn Kids Runs'
     )
     AND category."isAvailable" = TRUE
     AND category."name" <> '__UNASSIGNED__'
@@ -103,11 +98,11 @@ DECLARE
 BEGIN
   SELECT COUNT(*) INTO application_count
   FROM "kid_run_family_applications"
-  WHERE "campaignId" IN (SELECT "id" FROM "target_kid_run_campaign");
+  WHERE "campaignId" IN (SELECT "id" FROM "kid_run_campaigns" WHERE "slug" = 'ttce-kid-run-2026' AND "name" = 'Mid-Autumn Kids Runs');
 
   SELECT COUNT(*) INTO webhook_count
   FROM "kid_run_webhook_logs"
-  WHERE "campaignId" IN (SELECT "id" FROM "target_kid_run_campaign");
+  WHERE "campaignId" IN (SELECT "id" FROM "kid_run_campaigns" WHERE "slug" = 'ttce-kid-run-2026' AND "name" = 'Mid-Autumn Kids Runs');
 
   IF application_count > 0 OR webhook_count > 0 THEN
     RAISE EXCEPTION
@@ -129,7 +124,7 @@ SELECT
     WHERE application."campaignId" = campaign."id"
   ) AS "applicationsRemaining"
 FROM "kid_run_campaigns" campaign
-WHERE campaign."id" IN (SELECT "id" FROM "target_kid_run_campaign");
+WHERE campaign."id" IN (SELECT "id" FROM "kid_run_campaigns" WHERE "slug" = 'ttce-kid-run-2026' AND "name" = 'Mid-Autumn Kids Runs');
 
 SELECT
   category."name",
@@ -140,7 +135,7 @@ SELECT
   category."remainingBibCount",
   category."isAvailable"
 FROM "kid_run_race_categories" category
-WHERE category."campaignId" IN (SELECT "id" FROM "target_kid_run_campaign")
+WHERE category."campaignId" IN (SELECT "id" FROM "kid_run_campaigns" WHERE "slug" = 'ttce-kid-run-2026' AND "name" = 'Mid-Autumn Kids Runs')
 ORDER BY category."sortOrder", category."name";
 
 COMMIT;

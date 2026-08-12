@@ -13,12 +13,16 @@ const montserratFontPath = path.resolve(
   "Montserrat-Variable.ttf",
 );
 const montserratFontBuffer = readFileSync(montserratFontPath);
-const montserratFont = opentype.parse(
-  montserratFontBuffer.buffer.slice(
-    montserratFontBuffer.byteOffset,
-    montserratFontBuffer.byteOffset + montserratFontBuffer.byteLength,
-  ),
+const montserratFontArrayBuffer = montserratFontBuffer.buffer.slice(
+  montserratFontBuffer.byteOffset,
+  montserratFontBuffer.byteOffset + montserratFontBuffer.byteLength,
 );
+
+function createMontserratFont() {
+  // opentype.js mutates variation state. Each image must own its font instance
+  // so concurrent registrations cannot switch each other's weight mid-render.
+  return opentype.parse(montserratFontArrayBuffer.slice(0));
+}
 
 type BibCategory = {
   bibTemplateUrl?: string | null;
@@ -60,6 +64,7 @@ export async function generateKidRunBibImage(participant: BibParticipant) {
   const nameFontSize = participant.category.bibNameFontSize || 42;
   const bibNumber = participant.bibNumber;
   const fullName = participant.fullName.trim().toLocaleUpperCase("vi-VN");
+  const montserratFont = createMontserratFont();
   const renderTextPath = (
     text: string,
     fontSize: number,
