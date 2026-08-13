@@ -700,8 +700,12 @@ model KidRunParticipant {
   schoolClub     String?
   bibNumber      String?
   bibCollectedAt DateTime?
-  bibCollectedBy String?
-  createdAt      DateTime                 @default(now())
+  bibCollectedBy  String?
+  bibStatus       KidRunBibStatus @default(ACTIVE)
+  bibCancelledAt  DateTime?
+  bibCancelledBy  String?
+  bibCancelReason String?         @db.Text
+  createdAt       DateTime                 @default(now())
   updatedAt      DateTime                 @updatedAt
   application    KidRunFamilyApplication  @relation(fields: [applicationId], references: [id], onDelete: Cascade)
   category       KidRunRaceCategory       @relation(fields: [categoryId], references: [id], onDelete: Restrict)
@@ -711,6 +715,7 @@ model KidRunParticipant {
   @@unique([categoryId, bibNumber])
   @@index([applicationId])
   @@index([categoryId])
+  @@index([categoryId, bibStatus])
   @@map("kid_run_participants")
 }
 
@@ -1007,6 +1012,11 @@ enum KidRunPaymentStatus {
 enum KidRunGender {
   MALE
   FEMALE
+}
+
+enum KidRunBibStatus {
+  ACTIVE
+  CANCELLED
 }
 
 enum KidRunEmailType {

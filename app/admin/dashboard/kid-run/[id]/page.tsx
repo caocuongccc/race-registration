@@ -208,6 +208,17 @@ export default function KidRunDetailPage() {
       setSaving(false);
     }
   };
+  const setAllShirtsAvailability = async (isAvailable: boolean) => {
+    if (!window.confirm(isAvailable ? "Mở lại toàn bộ mẫu áo trong form đăng ký Kid Run?" : "Tạm ngừng bán toàn bộ áo? Đăng ký BIB vẫn tiếp tục mở và các đơn áo cũ vẫn được giữ nguyên.")) return;
+    setSaving(true); setError(""); setNotice("");
+    try {
+      const res = await fetch(`/api/admin/kid-run-campaigns/${id}/styles/availability`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ isAvailable }) });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      setNotice(isAvailable ? `Đã mở lại ${data.updated} mẫu áo.` : `Đã tạm ngừng ${data.updated} mẫu áo. Đăng ký BIB không bị ảnh hưởng.`);
+      await load();
+    } catch (e: any) { setError(e.message); } finally { setSaving(false); }
+  };
   const toggleTeamUser = async (userId: string, assigned: boolean) => {
     const res = await fetch(
       `/api/admin/kid-run-campaigns/${id}/users${assigned ? `?userId=${userId}` : ""}`,
@@ -248,6 +259,50 @@ export default function KidRunDetailPage() {
       setError(e.message);
     } finally {
       setResending(false);
+    }
+  };
+
+  const cancelBib = async (participant: any) => {
+    const reason = window.prompt(
+      `Nhập lý do hủy BIB ${participant.bibNumber} - ${participant.fullName}:`,
+    );
+    if (reason === null) return;
+    if (!reason.trim()) return setError("Vui lòng nhập lý do hủy BIB");
+    if (
+      !window.confirm(
+        `Xác nhận hủy BIB ${participant.bibNumber}? Quota sẽ được hoàn lại nhưng số BIB này không được tái sử dụng.`,
+      )
+    )
+      return;
+    setWorkflowBusy(true);
+    setError("");
+    setNotice("");
+    try {
+      const res = await fetch(
+        `/api/admin/kid-run-campaigns/${id}/participants/${participant.id}/cancel-bib`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ reason: reason.trim() }),
+        },
+      );
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      setNotice(
+        data.alreadyCancelled
+          ? `BIB ${participant.bibNumber} đã được hủy trước đó.`
+          : `Đã hủy BIB ${participant.bibNumber} và hoàn lại 1 quota.`,
+      );
+      await loadApplications(
+        pagination.page,
+        pagination.pageSize,
+        appliedSearch,
+        true,
+      );
+    } catch (e: any) {
+      setError(e.message);
+    } finally {
+      setWorkflowBusy(false);
     }
   };
 
@@ -683,7 +738,12 @@ export default function KidRunDetailPage() {
       )}
 
       {tab === "shirts" && (
-        <div className="mt-6 grid gap-6 xl:grid-cols-[1fr_380px]">
+        <div className="mt-6 space-y-4">
+          <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border bg-white p-4">
+            <div><h2 className="font-bold">Trạng thái bán áo trong Kid Run</h2><p className="mt-1 text-sm text-slate-600">{campaign.shirtStyles.some((style: any) => style.isAvailable) ? "Đang hiển thị áo trong form đăng ký." : "Đã tạm ngừng bán áo; đăng ký BIB vẫn hoạt động."}</p></div>
+            {campaign.shirtStyles.some((style: any) => style.isAvailable) ? <button disabled={saving || campaign.shirtStyles.length === 0} onClick={() => setAllShirtsAvailability(false)} className="rounded-md border border-red-600 px-4 py-2 font-semibold text-red-700 disabled:opacity-50">Tạm ngừng bán áo</button> : <button disabled={saving || campaign.shirtStyles.length === 0} onClick={() => setAllShirtsAvailability(true)} className="rounded-md bg-emerald-700 px-4 py-2 font-semibold text-white disabled:opacity-50">Mở lại bán áo</button>}
+          </div>
+          <div className="grid gap-6 xl:grid-cols-[1fr_380px]">
           <div className="space-y-4">
             {campaign.shirtStyles.map((style: any) => (
               <div
@@ -831,6 +891,7 @@ export default function KidRunDetailPage() {
             </div>
           </form>
         </div>
+          </div>
       )}
 
       {tab === "applications" && (
@@ -930,7 +991,26 @@ export default function KidRunDetailPage() {
                     <td className="p-3">
                       {app.participants.map((p: any) => (
                         <div key={p.id} className="mb-2">
-                          <b>{p.bibNumber || "Chưa cấp BIB"}</b> - {p.fullName}
+                          <div className={`flex flex-wrap items-center gap-2 ${p.bibStatus === "CANCELLED" ? "opacity-70" : ""}`}>
+                            <b className={p.bibStatus === "CANCELLED" ? "text-red-700 line-through" : ""}>
+                              {p.bibNumber || "Chưa cấp BIB"}
+                            </b>{" "}- {p.fullName}
+                            {p.bibStatus === "CANCELLED" ? (
+                              <span className="rounded bg-red-100 px-2 py-0.5 text-xs font-semibold text-red-700">
+                                BIB ĐÃ HỦY · KHÔNG CÒN HIỆU LỰC
+                              </span>
+                            ) : (
+                              p.bibNumber && (
+                                <button
+                                  disabled={workflowBusy}
+                                  onClick={() => cancelBib(p)}
+                                  className="rounded border border-red-500 px-2 py-1 text-xs font-semibold text-red-600 disabled:opacity-50"
+                                >
+                                  Hủy BIB
+                                </button>
+                              )
+                            )}
+                          </div>
                           <div className="text-xs text-slate-500">
                             {p.category.name === "__UNASSIGNED__"
                               ? `Chờ xếp nhóm · sinh năm ${p.birthYear}`

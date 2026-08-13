@@ -506,10 +506,12 @@ async function processKidRunPaymentConfirmation(
     await prisma.kidRunWebhookLog.create({
       data: { campaignId: current.campaignId, applicationId: current.id, event: "payment.processed", transactionId, payload: webhookData, status: "SUCCESS" },
     });
-    after(async () => {
-      try { await sendKidRunShirtPaymentEmail(application.id); }
-      catch (error) { console.error("Kid Run paid email failed:", error); }
-    });
+    try {
+      await sendKidRunShirtPaymentEmail(application.id);
+    } catch (error) {
+      // Payment confirmation remains successful even when email delivery fails.
+      console.error("Kid Run paid email failed:", error);
+    }
     return { success: true, kidRunApplicationId: application.id, eventId: null };
   } catch (error) {
     await prisma.kidRunWebhookLog.create({

@@ -13,6 +13,7 @@ async function loadApplication(applicationId) {
     include: {
       campaign: true,
       participants: {
+        where: { bibStatus: "ACTIVE" },
         orderBy: { createdAt: "asc" },
         include: { category: true, shirts: true },
       },

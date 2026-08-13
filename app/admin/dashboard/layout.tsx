@@ -36,6 +36,11 @@ const navigationConfig = {
       icon: Gift,
     },
     { name: "Kid Run", href: "/admin/dashboard/kid-run", icon: Baby },
+    {
+      name: "Đối soát Kid Run",
+      href: "/admin/dashboard/kid-run-payment-reconciliation",
+      icon: Activity,
+    },
     { name: "Đăng ký", href: "/admin/dashboard/registrations", icon: Users },
     { name: "Số BIB", href: "/admin/dashboard/bibs", icon: Award }, // NEW
     {

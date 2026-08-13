@@ -9,6 +9,7 @@ async function loadAndAuthorize(token: string) {
     include: {
       campaign: true,
       participants: {
+        where: { bibStatus: "ACTIVE" },
         orderBy: { createdAt: "asc" },
         include: { category: true, shirts: true },
       },

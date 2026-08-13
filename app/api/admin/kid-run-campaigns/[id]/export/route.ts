@@ -66,6 +66,8 @@ export async function GET(
       "Nhóm tuổi": participant.category.name,
       "Cự ly": participant.category.distanceLabel,
       BIB: participant.bibNumber || "",
+      "Trạng thái BIB": participant.bibStatus === "CANCELLED" ? "Đã hủy" : "Hoạt động",
+      "Lý do hủy BIB": participant.bibCancelReason || "",
       "Đã nhận BIB": participant.bibCollectedAt ? "Có" : "Chưa",
       "Áo trẻ em": participant.shirts
         .filter((shirt) => shirt.category === "KID")
