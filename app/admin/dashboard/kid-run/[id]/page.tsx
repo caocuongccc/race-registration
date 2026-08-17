@@ -64,6 +64,7 @@ export default function KidRunDetailPage() {
   const [resendTarget, setResendTarget] = useState<any>(null);
   const [resendEmail, setResendEmail] = useState("");
   const [resending, setResending] = useState(false);
+  const [paymentEmailSendingId, setPaymentEmailSendingId] = useState("");
   const [team, setTeam] = useState<{ users: any[]; assignedUserIds: string[] }>(
     { users: [], assignedUserIds: [] },
   );
@@ -262,6 +263,32 @@ export default function KidRunDetailPage() {
     }
   };
 
+  const resendPaymentEmail = async (application: any) => {
+    if (
+      !window.confirm(
+        `Gửi lại email xác nhận thanh toán áo tới ${application.email}?`,
+      )
+    )
+      return;
+
+    setPaymentEmailSendingId(application.id);
+    setError("");
+    setNotice("");
+    try {
+      const res = await fetch(
+        `/api/admin/kid-run-campaigns/${id}/applications/${application.id}/resend-payment-email`,
+        { method: "POST" },
+      );
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      setNotice(`Đã gửi lại email xác nhận thanh toán áo tới ${data.email}.`);
+      await loadApplications(pagination.page, pagination.pageSize, appliedSearch);
+    } catch (e: any) {
+      setError(e.message);
+    } finally {
+      setPaymentEmailSendingId("");
+    }
+  };
   const cancelBib = async (participant: any) => {
     const reason = window.prompt(
       `Nhập lý do hủy BIB ${participant.bibNumber} - ${participant.fullName}:`,
@@ -1060,7 +1087,18 @@ export default function KidRunDetailPage() {
                           }}
                           className="mb-2 block rounded-md border border-blue-600 px-3 py-2 text-blue-700"
                         >
-                          Gửi lại email
+                          Gửi lại email BIB
+                        </button>
+                      )}
+                      {appliedSearch && app.shirtPaymentStatus === "PAID" && (
+                        <button
+                          disabled={paymentEmailSendingId === app.id}
+                          onClick={() => resendPaymentEmail(app)}
+                          className="mb-2 block rounded-md border border-emerald-600 px-3 py-2 text-emerald-700 disabled:opacity-50"
+                        >
+                          {paymentEmailSendingId === app.id
+                            ? "Đang gửi..."
+                            : "Gửi lại email thanh toán"}
                         </button>
                       )}
                       {app.shirtPaymentStatus === "PENDING" && (
