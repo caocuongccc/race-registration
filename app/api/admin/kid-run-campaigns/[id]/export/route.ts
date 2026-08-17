@@ -33,6 +33,7 @@ export async function GET(
           include: {
             shirts: true,
             participants: {
+              where: { bibStatus: "ACTIVE" },
               include: { category: true, shirts: true },
               orderBy: { createdAt: "asc" },
             },
