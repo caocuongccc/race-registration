@@ -974,9 +974,20 @@ export default function KidRunDetailPage() {
               </thead>
               <tbody>
                 {applications.map((app) => (
-                  <tr key={app.id} className="border-t align-top">
+                  <tr
+                    key={app.id}
+                    className={`border-t align-top ${app.duplicateInfo ? app.duplicateInfo.differentCategories ? "bg-red-50" : "bg-amber-50" : ""}`}
+                  >
                     <td className="p-3">
                       <b>{app.guardianName}</b>
+                      {app.duplicateInfo && (
+                        <div className={`mt-1 rounded-md border px-2 py-1 text-xs font-semibold ${app.duplicateInfo.differentCategories ? "border-red-300 bg-red-100 text-red-800" : "border-amber-300 bg-amber-100 text-amber-800"}`}>
+                          Dòng {app.duplicateInfo.rowNumber} · trùng với dòng {app.duplicateInfo.duplicateRows.join(", ")}
+                          {app.duplicateInfo.differentCategories
+                            ? ` · khác nhóm: ${app.duplicateInfo.categories} ↔ ${app.duplicateInfo.duplicateCategories.join(" / ")}`
+                            : ` · cùng nhóm ${app.duplicateInfo.categories}`}
+                        </div>
+                      )}
                       <div>{app.phone}</div>
                       <div className="text-slate-500">{app.publicCode}</div>
                       <div className="break-all text-xs text-slate-500">

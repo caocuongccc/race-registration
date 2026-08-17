@@ -2,6 +2,10 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getUserSession } from "@/lib/event-permissions";
 
+function normalizeDuplicateName(value: string) {
+  return value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/đ/g, "d").replace(/Đ/g, "D").toLowerCase().replace(/\s+/g, " ").trim();
+}
+
 export async function GET(
   req: NextRequest,
   context: { params: Promise<{ id: string }> },
@@ -49,7 +53,7 @@ export async function GET(
       : {}),
   };
 
-  const [applications, total] = await Promise.all([
+  const [applications, total, duplicateSource] = await Promise.all([
     prisma.kidRunFamilyApplication.findMany({
       where,
       skip: (page - 1) * pageSize,
@@ -69,7 +73,58 @@ export async function GET(
       },
     }),
     prisma.kidRunFamilyApplication.count({ where }),
+    prisma.kidRunFamilyApplication.findMany({
+      where: { campaignId: id },
+      orderBy: { createdAt: "desc" },
+      select: {
+        id: true,
+        guardianName: true,
+        participants: {
+          select: {
+            fullName: true,
+            category: { select: { name: true } },
+          },
+        },
+      },
+    }),
   ]);
+
+  const rowNumberById = new Map(
+    duplicateSource.map((application, index) => [application.id, index + 1]),
+  );
+  const duplicateGroups = new Map<string, typeof duplicateSource>();
+  for (const application of duplicateSource) {
+    const childNames = application.participants
+      .map((participant) => normalizeDuplicateName(participant.fullName))
+      .sort();
+    const key = `${normalizeDuplicateName(application.guardianName)}||${childNames.join("||")}`;
+    duplicateGroups.set(key, [...(duplicateGroups.get(key) || []), application]);
+  }
+  const duplicateInfoById = new Map<string, any>();
+  for (const group of duplicateGroups.values()) {
+    if (group.length < 2) continue;
+    const categoryLabels = group.map((application) =>
+      [...new Set(application.participants.map((participant) => participant.category.name))]
+        .sort()
+        .join(", "),
+    );
+    const differentCategories = new Set(categoryLabels).size > 1;
+    group.forEach((application, groupIndex) => {
+      duplicateInfoById.set(application.id, {
+        rowNumber: rowNumberById.get(application.id),
+        duplicateRows: group
+          .filter((item) => item.id !== application.id)
+          .map((item) => rowNumberById.get(item.id)),
+        categories: categoryLabels[groupIndex],
+        duplicateCategories: categoryLabels.filter((_, index) => index !== groupIndex),
+        differentCategories,
+      });
+    });
+  }
+  const applicationsWithDuplicateInfo = applications.map((application) => ({
+    ...application,
+    duplicateInfo: duplicateInfoById.get(application.id) || null,
+  }));
 
   let summary: any = undefined;
   if (includeSummary) {
@@ -118,7 +173,7 @@ export async function GET(
   }
 
   return NextResponse.json({
-    applications,
+    applications: applicationsWithDuplicateInfo,
     pagination: {
       page,
       pageSize,
