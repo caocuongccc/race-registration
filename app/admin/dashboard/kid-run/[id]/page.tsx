@@ -67,6 +67,9 @@ export default function KidRunDetailPage() {
   const [paymentEmailSendingId, setPaymentEmailSendingId] = useState("");
   const [noteDrafts, setNoteDrafts] = useState<Record<string, string>>({});
   const [noteSavingId, setNoteSavingId] = useState("");
+  const [pickupTestOpen, setPickupTestOpen] = useState(false);
+  const [pickupTestEmail, setPickupTestEmail] = useState("");
+  const [pickupTestSending, setPickupTestSending] = useState(false);
   const [team, setTeam] = useState<{ users: any[]; assignedUserIds: string[] }>(
     { users: [], assignedUserIds: [] },
   );
@@ -449,6 +452,76 @@ export default function KidRunDetailPage() {
         `Đã cấp mới ${issued} BIB, gửi thành công ${sent} email${failed || failedRemaining ? `, còn ${failedRemaining} email lỗi cần gửi lại` : ""}.`,
       );
       await loadApplications(1);
+    } catch (e: any) {
+      setError(e.message);
+    } finally {
+      setWorkflowBusy(false);
+    }
+  };
+  const sendBibPickupTest = async () => {
+    setPickupTestSending(true);
+    setError("");
+    setNotice("");
+    try {
+      const res = await fetch(
+        `/api/admin/kid-run-campaigns/${id}/send-bib-pickup-test`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email: pickupTestEmail }),
+        },
+      );
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      setPickupTestOpen(false);
+      setNotice(
+        `Đã gửi email test tới ${data.email}, dùng hồ sơ mẫu ${data.samplePublicCode}.`,
+      );
+    } catch (e: any) {
+      setError(e.message);
+    } finally {
+      setPickupTestSending(false);
+    }
+  };
+  const sendBibPickupEmails = async (retryFailed = false) => {
+    if (
+      !confirm(
+        retryFailed
+          ? "Gửi lại các email thông báo nhận BIB đang lỗi?"
+          : "Gửi email thông báo thời gian nhận BIB cho tất cả hồ sơ còn BIB hiệu lực? BIB đã hủy sẽ không được gửi.",
+      )
+    )
+      return;
+    setWorkflowBusy(true);
+    setError("");
+    setNotice("");
+    try {
+      let sent = 0;
+      let failed = 0;
+      let remaining = 1;
+      let failedRemaining = 0;
+      let rounds = 0;
+      do {
+        const res = await fetch(
+          `/api/admin/kid-run-campaigns/${id}/send-bib-pickup`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ retryFailed }),
+          },
+        );
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error);
+        sent += data.sent;
+        failed += data.failed;
+        remaining = retryFailed ? 0 : data.remainingUnattempted;
+        failedRemaining = data.failedRemaining;
+        rounds++;
+        if (!data.processed) break;
+      } while (remaining > 0 && rounds < 30);
+      setNotice(
+        `Đã gửi ${sent} email thông báo nhận BIB${failed || failedRemaining ? `; còn ${failedRemaining} email lỗi.` : "."}`,
+      );
     } catch (e: any) {
       setError(e.message);
     } finally {
@@ -994,6 +1067,27 @@ export default function KidRunDetailPage() {
             >
               Gửi lại email lỗi
             </button>
+            <button
+              disabled={workflowBusy}
+              onClick={() => setPickupTestOpen(true)}
+              className="rounded-md border border-sky-600 px-4 py-2 font-semibold text-sky-700 disabled:opacity-50"
+            >
+              Gửi email test
+            </button>
+            <button
+              disabled={workflowBusy}
+              onClick={() => sendBibPickupEmails(false)}
+              className="rounded-md bg-emerald-700 px-4 py-2 font-semibold text-white disabled:opacity-50"
+            >
+              Gửi thông báo nhận BIB
+            </button>
+            <button
+              disabled={workflowBusy}
+              onClick={() => sendBibPickupEmails(true)}
+              className="rounded-md border border-emerald-700 px-4 py-2 font-semibold text-emerald-700 disabled:opacity-50"
+            >
+              Gửi lại thông báo lỗi
+            </button>
             <span className="self-center text-sm text-slate-500">
               {workflowBusy
                 ? "Đang thực hiện..."
@@ -1206,6 +1300,43 @@ export default function KidRunDetailPage() {
                 className="rounded-md border px-3 py-2 disabled:opacity-40"
               >
                 Sau
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {pickupTestOpen && (
+        <div className="fixed inset-0 z-50 grid place-items-center bg-black/60 p-4">
+          <div className="w-full max-w-md rounded-xl bg-white p-5 shadow-xl">
+            <h2 className="text-lg font-bold">Gửi thử thông báo nhận BIB</h2>
+            <p className="mt-1 text-sm text-slate-600">
+              Email dùng một hồ sơ còn BIB hiệu lực làm dữ liệu mẫu. Thao tác này không đánh dấu đã gửi hàng loạt.
+            </p>
+            <label className="mt-4 block text-sm font-medium">
+              Email nhận bản test
+              <input
+                type="email"
+                autoFocus
+                value={pickupTestEmail}
+                onChange={(event) => setPickupTestEmail(event.target.value)}
+                placeholder="example@gmail.com"
+                className="mt-1 h-11 w-full rounded-md border px-3"
+              />
+            </label>
+            <div className="mt-5 flex justify-end gap-2">
+              <button
+                disabled={pickupTestSending}
+                onClick={() => setPickupTestOpen(false)}
+                className="rounded-md border px-4 py-2"
+              >
+                Hủy
+              </button>
+              <button
+                disabled={pickupTestSending || !pickupTestEmail.trim()}
+                onClick={sendBibPickupTest}
+                className="rounded-md bg-sky-600 px-4 py-2 font-semibold text-white disabled:opacity-50"
+              >
+                {pickupTestSending ? "Đang gửi..." : "Gửi email test"}
               </button>
             </div>
           </div>

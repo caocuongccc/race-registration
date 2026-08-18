@@ -1,0 +1,5 @@
+-- CHAY MOT LAN TREN SUPABASE TRUOC KHI DEPLOY CHUC NANG GUI THONG BAO NHAN BIB.
+-- Script chi them mot gia tri enum, KHONG xoa hay cap nhat du lieu hien co.
+
+ALTER TYPE "KidRunEmailType"
+  ADD VALUE IF NOT EXISTS 'BIB_PICKUP_ANNOUNCEMENT';

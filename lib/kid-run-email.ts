@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { generateQRBuffer } from "@/lib/qr-inline";
 import { sendEmailGmailFirst } from "@/lib/email-service-gmail-first";
 import { KidRunRegistrationEmail } from "@/emails/kid-run-registration";
+import { KidRunBibPickupEmail } from "@/emails/kid-run-bib-pickup";
 import { generateKidRunBibAttachments } from "@/lib/kid-run-bib-image";
 
 const appUrl =
@@ -118,6 +119,41 @@ export async function sendKidRunBibEmail(applicationId: string) {
     throw new Error(result.error || "Không gửi được email BIB Kid Run");
 }
 
+export async function sendKidRunBibPickupEmail(
+  applicationId: string,
+  options?: { recipientOverride?: string; isTest?: boolean },
+) {
+  const application = await loadApplication(applicationId);
+  if (!application.participants.length)
+    throw new Error("Hồ sơ không còn BIB đang hoạt động");
+  if (application.participants.some((participant) => !participant.bibNumber))
+    throw new Error("Hồ sơ chưa được cấp đủ BIB");
+
+  const subject = `${options?.isTest ? "[TEST] " : ""}Thông báo thời gian nhận BIB - ${application.campaign.name} - ${application.publicCode}`;
+  const qrBuffer = await generateQRBuffer(
+    `${appUrl}/admin/dashboard/kid-run/checkin/${application.bibQrToken}`,
+  );
+  const qrCode = `data:image/png;base64,${qrBuffer.toString("base64")}`;
+  const result = await sendEmailGmailFirst({
+    to: options?.recipientOverride || application.email,
+    subject,
+    react: KidRunBibPickupEmail({ application, posterUrl: `${appUrl}/poster.jpg` }),
+    fromName: application.campaign.name,
+    fromEmail: application.campaign.contactEmail || process.env.FROM_EMAIL,
+    qrCode,
+  });
+  if (!options?.isTest) {
+    await logResult(
+      applicationId,
+      "BIB_PICKUP_ANNOUNCEMENT",
+      application.email,
+      subject,
+      result,
+    );
+  }
+  if (!result.success)
+    throw new Error(result.error || "Không gửi được thông báo nhận BIB");
+}
 export async function sendKidRunShirtPaymentEmail(applicationId: string) {
   const application = await loadApplication(applicationId);
   const subject = `Đã nhận thanh toán áo - ${application.campaign.name} - ${application.publicCode}`;
