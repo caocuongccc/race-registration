@@ -1003,10 +1003,17 @@ export default function KidRunDetailPage() {
                 {applications.map((app) => (
                   <tr
                     key={app.id}
-                    className={`border-t align-top ${app.duplicateInfo ? app.duplicateInfo.differentCategories ? "bg-red-50" : "bg-amber-50" : ""}`}
+                    className={`border-t align-top ${app.duplicateInfo ? app.duplicateInfo.differentCategories ? "border-l-4 border-l-red-600 bg-red-100" : "border-l-4 border-l-amber-500 bg-amber-100" : ""}`}
                   >
                     <td className="p-3">
-                      <b>{app.guardianName}</b>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <b>{app.guardianName}</b>
+                        {app.duplicateInfo && (
+                          <span className={`rounded-full px-2 py-0.5 text-[11px] font-bold uppercase tracking-wide text-white ${app.duplicateInfo.differentCategories ? "bg-red-600" : "bg-amber-600"}`}>
+                            Nghi trùng
+                          </span>
+                        )}
+                      </div>
                       {app.duplicateInfo && (
                         <div className={`mt-1 rounded-md border px-2 py-1 text-xs font-semibold ${app.duplicateInfo.differentCategories ? "border-red-300 bg-red-100 text-red-800" : "border-amber-300 bg-amber-100 text-amber-800"}`}>
                           Dòng {app.duplicateInfo.rowNumber} · trùng với dòng {app.duplicateInfo.duplicateRows.join(", ")}
