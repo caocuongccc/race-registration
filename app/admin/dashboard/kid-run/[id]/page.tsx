@@ -65,6 +65,8 @@ export default function KidRunDetailPage() {
   const [resendEmail, setResendEmail] = useState("");
   const [resending, setResending] = useState(false);
   const [paymentEmailSendingId, setPaymentEmailSendingId] = useState("");
+  const [noteDrafts, setNoteDrafts] = useState<Record<string, string>>({});
+  const [noteSavingId, setNoteSavingId] = useState("");
   const [team, setTeam] = useState<{ users: any[]; assignedUserIds: string[] }>(
     { users: [], assignedUserIds: [] },
   );
@@ -287,6 +289,38 @@ export default function KidRunDetailPage() {
       setError(e.message);
     } finally {
       setPaymentEmailSendingId("");
+    }
+  };
+  const saveApplicationNote = async (application: any) => {
+    const notes = noteDrafts[application.id] ?? application.notes ?? "";
+    setNoteSavingId(application.id);
+    setError("");
+    setNotice("");
+    try {
+      const res = await fetch(
+        `/api/admin/kid-run-campaigns/${id}/applications/${application.id}/note`,
+        {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ notes }),
+        },
+      );
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      setApplications((current) =>
+        current.map((item) =>
+          item.id === application.id ? { ...item, notes: data.notes } : item,
+        ),
+      );
+      setNoteDrafts((current) => ({
+        ...current,
+        [application.id]: data.notes || "",
+      }));
+      setNotice(`Đã lưu ghi chú cho hồ sơ ${application.publicCode}.`);
+    } catch (e: any) {
+      setError(e.message);
+    } finally {
+      setNoteSavingId("");
     }
   };
   const cancelBib = async (participant: any) => {
@@ -994,6 +1028,7 @@ export default function KidRunDetailPage() {
                 <tr>
                   <th className="p-3">Hồ sơ</th>
                   <th className="p-3">Các BIB</th>
+                  <th className="min-w-72 p-3">Ghi chú phát BIB</th>
                   <th className="p-3">Áo</th>
                   <th className="p-3">Nhận BIB</th>
                   <th className="p-3"></th>
@@ -1063,6 +1098,28 @@ export default function KidRunDetailPage() {
                           </div>
                         </div>
                       ))}
+                    </td>
+                    <td className="min-w-72 p-3">
+                      <textarea
+                        rows={3}
+                        maxLength={1000}
+                        value={noteDrafts[app.id] ?? app.notes ?? ""}
+                        onChange={(event) =>
+                          setNoteDrafts((current) => ({
+                            ...current,
+                            [app.id]: event.target.value,
+                          }))
+                        }
+                        placeholder="VD: BIB gốc 123 nhóm 11–12 chuyển sang BIB 234 nhóm 5–6..."
+                        className="w-full resize-y rounded-md border border-slate-300 bg-white px-3 py-2 text-sm focus:border-amber-500 focus:outline-none focus:ring-2 focus:ring-amber-200"
+                      />
+                      <button
+                        disabled={noteSavingId === app.id}
+                        onClick={() => saveApplicationNote(app)}
+                        className="mt-2 rounded-md bg-amber-600 px-3 py-2 text-xs font-semibold text-white disabled:opacity-50"
+                      >
+                        {noteSavingId === app.id ? "Đang lưu..." : "Lưu ghi chú"}
+                      </button>
                     </td>
                     <td className="p-3">
                       <div>

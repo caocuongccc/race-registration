@@ -64,6 +64,16 @@ export default function KidRunCheckinPage() {
           </div>
           <div className="mt-1 text-sm">Mã hồ sơ: {application.publicCode}</div>
         </div>
+        {application.notes && (
+          <div className="mt-5 rounded-lg border-2 border-amber-500 bg-amber-50 p-4 text-amber-950">
+            <div className="text-sm font-bold uppercase tracking-wide text-amber-800">
+              ⚠️ Ghi chú phát BIB
+            </div>
+            <div className="mt-2 whitespace-pre-wrap text-base font-semibold">
+              {application.notes}
+            </div>
+          </div>
+        )}
         {allDone && (
           <div className="mt-5 flex items-center gap-2 rounded-md bg-emerald-50 p-4 font-bold text-emerald-800">
             <CheckCircle2 />
