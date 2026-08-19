@@ -136,7 +136,7 @@ export async function GET(
 
   let summary: any = undefined;
   if (includeSummary) {
-    const [applicationSummary, shirtCount, participantCount, unassignedCount, issuedBibCount, bibEmailSentCount] =
+    const [applicationSummary, shirtCount, participantCount, unassignedCount, issuedBibCount, bibEmailSentCount, activeBibCount, collectedBibCount] =
       await Promise.all([
         prisma.kidRunFamilyApplication.aggregate({
           where: { campaignId: id },
@@ -168,6 +168,21 @@ export async function GET(
             status: "SENT",
           },
         }),
+        prisma.kidRunParticipant.count({
+          where: {
+            application: { campaignId: id, status: "CONFIRMED" },
+            bibStatus: "ACTIVE",
+            bibNumber: { not: null },
+          },
+        }),
+        prisma.kidRunParticipant.count({
+          where: {
+            application: { campaignId: id, status: "CONFIRMED" },
+            bibStatus: "ACTIVE",
+            bibNumber: { not: null },
+            bibCollectedAt: { not: null },
+          },
+        }),
       ]);
     summary = {
       applications: applicationSummary._count,
@@ -177,6 +192,8 @@ export async function GET(
       unassigned: unassignedCount,
       issuedBibs: issuedBibCount,
       bibEmailsSent: bibEmailSentCount,
+      activeBibs: activeBibCount,
+      collectedBibs: collectedBibCount,
     };
   }
 

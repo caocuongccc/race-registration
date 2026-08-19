@@ -136,7 +136,7 @@ export default function KidRunDetailPage() {
   const applySearch = async () => {
     const query = search.trim();
     setAppliedSearch(query);
-    await loadApplications(1, pagination.pageSize, query, false);
+    await loadApplications(1, pagination.pageSize, query, true);
   };
   useEffect(() => {
     load().catch((e) => setError(e.message));
@@ -1030,11 +1030,15 @@ export default function KidRunDetailPage() {
 
       {tab === "applications" && (
         <div className="mt-6">
-          <div className="grid gap-4 md:grid-cols-3">
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
             {[
               ["Hồ sơ", summary?.applications || 0],
               ["Áo đã thanh toán", summary?.selectedShirts || 0],
               ["Tiền áo", money(summary?.paidShirtRevenue || 0)],
+              [
+                "BIB đã nhận",
+                `${summary?.collectedBibs || 0}/${summary?.activeBibs || 0}`,
+              ],
             ].map(([label, value]) => (
               <div
                 key={label as string}
