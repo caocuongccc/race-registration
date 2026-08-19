@@ -23,7 +23,10 @@ export async function middleware(request: NextRequest) {
           new URL("/admin/dashboard/merch-campaigns", request.url),
         );
       }
-      if (!pathname.startsWith("/admin/dashboard/merch-campaigns")) {
+      if (
+        !pathname.startsWith("/admin/dashboard/merch-campaigns") &&
+        !pathname.startsWith("/admin/dashboard/kid-run")
+      ) {
         return NextResponse.redirect(new URL("/member", request.url));
       }
     }

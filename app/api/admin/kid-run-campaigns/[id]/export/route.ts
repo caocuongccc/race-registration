@@ -67,6 +67,7 @@ export async function GET(
       "Nhóm tuổi": participant.category.name,
       "Cự ly": participant.category.distanceLabel,
       BIB: participant.bibNumber || "",
+      Note: application.notes || "",
       "Trạng thái BIB": participant.bibStatus === "CANCELLED" ? "Đã hủy" : "Hoạt động",
       "Lý do hủy BIB": participant.bibCancelReason || "",
       "Đã nhận BIB": participant.bibCollectedAt ? "Có" : "Chưa",

@@ -14,7 +14,7 @@ CREATE EXTENSION IF NOT EXISTS pgcrypto WITH SCHEMA extensions;
 DO $$
 DECLARE
   member_email CONSTANT TEXT := 'trmyduyen007@gmail.com';
-  member_password CONSTANT TEXT := 'Admin@2026';
+  member_password CONSTANT TEXT := '';
   member_name CONSTANT TEXT := 'Nhan vien Ao Trung Thu va Kid Run';
   kid_run_campaign_id CONSTANT TEXT := 'cmsctqc1n0001um4g4sqqqwwm';
   target_user_id TEXT;
