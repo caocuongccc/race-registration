@@ -10,6 +10,7 @@ import {
   Plus,
   RefreshCw,
   Save,
+  ScanLine,
   Shirt,
   Users,
 } from "lucide-react";
@@ -552,14 +553,23 @@ export default function KidRunDetailPage() {
             <p className="mt-1 text-slate-500">/kid-run/{campaign.slug}</p>
           </div>
         </div>
-        <Link
-          target="_blank"
-          href={`/kid-run/${campaign.slug}?preview=1`}
-          className="inline-flex items-center gap-2 rounded-md border border-blue-600 px-4 py-2 text-blue-700"
-        >
-          <ExternalLink className="h-4 w-4" />
-          Xem trang đăng ký
-        </Link>
+        <div className="flex flex-wrap gap-2">
+          <Link
+            href={`/admin/dashboard/kid-run/${id}/scanner`}
+            className="inline-flex items-center gap-2 rounded-md bg-emerald-700 px-4 py-2 font-semibold text-white"
+          >
+            <ScanLine className="h-4 w-4" />
+            Quét BIB liên tục
+          </Link>
+          <Link
+            target="_blank"
+            href={`/kid-run/${campaign.slug}?preview=1`}
+            className="inline-flex items-center gap-2 rounded-md border border-blue-600 px-4 py-2 text-blue-700"
+          >
+            <ExternalLink className="h-4 w-4" />
+            Xem trang đăng ký
+          </Link>
+        </div>
       </div>
       <div className="mt-6 flex overflow-x-auto border-b">
         {[
