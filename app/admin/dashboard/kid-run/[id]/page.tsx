@@ -1183,6 +1183,12 @@ export default function KidRunDetailPage() {
               <RefreshCw className={`h-5 w-5 ${applicationsLoading ? "animate-spin" : ""}`} />
             </button>
             <a
+              href={`/api/admin/kid-run-campaigns/${id}/export?mode=paid-shirts-detailed`}
+              className="rounded-md bg-amber-600 px-4 py-3 font-semibold text-white"
+            >
+              Export áo đã thanh toán
+            </a>
+            <a
               href={`/api/admin/kid-run-campaigns/${id}/export`}
               className="rounded-md bg-emerald-700 px-4 py-3 font-semibold text-white"
             >

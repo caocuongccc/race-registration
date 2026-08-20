@@ -6,9 +6,41 @@ import { getUserSession } from "@/lib/event-permissions";
 function safeSheetName(value: string, fallback: string) {
   return (value.replace(/[\\/?*\[\]:]/g, "-").trim() || fallback).slice(0, 31);
 }
+function formatDateTime(value: unknown) {
+  if (!value) return "";
+  const text = String(value).trim();
+  const bankDate = text.match(
+    /^(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2}):(\d{2})/,
+  );
+  if (bankDate) {
+    const [, year, month, day, hour, minute, second] = bankDate;
+    return `${day}/${month}/${year} ${hour}:${minute}:${second}`;
+  }
+
+  const date = value instanceof Date ? value : new Date(text);
+  if (Number.isNaN(date.getTime())) return text;
+  return new Intl.DateTimeFormat("vi-VN", {
+    timeZone: "Asia/Ho_Chi_Minh",
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hour12: false,
+  }).format(date);
+}
+
+function getTransactionDate(payload: unknown) {
+  if (!payload || typeof payload !== "object") return "";
+  const data = payload as Record<string, any>;
+  return formatDateTime(
+    data.transactionDate || data.webhookData?.transactionDate,
+  );
+}
 
 export async function GET(
-  _req: Request,
+  req: Request,
   context: { params: Promise<{ id: string }> },
 ) {
   const user = await getUserSession();
@@ -31,7 +63,13 @@ export async function GET(
         applications: {
           orderBy: { createdAt: "asc" },
           include: {
-            shirts: true,
+            shirts: {
+              include: {
+                participant: {
+                  select: { fullName: true, bibNumber: true },
+                },
+              },
+            },
             participants: {
               where: { bibStatus: "ACTIVE" },
               include: { category: true, shirts: true },
@@ -123,10 +161,12 @@ export async function GET(
     "Số tiền nhận": payment.amount,
     "Trạng thái": payment.status,
     "Phương thức": payment.paymentMethod || "",
-    "Ngày nhận": payment.createdAt.toISOString(),
+    "Thời gian chuyển khoản": getTransactionDate(payment.webhookData),
+    "Thời gian ghi nhận hệ thống": formatDateTime(payment.createdAt),
   }));
   const webhookRows = webhookLogs.map((log) => ({
-    "Thời gian": log.createdAt.toISOString(),
+    "Thời gian chuyển khoản": getTransactionDate(log.payload),
+    "Thời gian ghi nhận hệ thống": formatDateTime(log.createdAt),
     "Mã hồ sơ": log.application?.publicCode || "",
     Email: log.application?.email || "",
     Event: log.event,
@@ -137,6 +177,59 @@ export async function GET(
   }));
 
   const workbook = XLSX.utils.book_new();
+  const exportMode = new URL(req.url).searchParams.get("mode");
+  if (exportMode === "paid-shirts-detailed") {
+    let order = 0;
+    const detailedPaidShirtRows = campaign.applications
+      .filter((application) => application.shirtPaymentStatus === "PAID")
+      .flatMap((application) =>
+        application.shirts.flatMap((shirt) =>
+          Array.from({ length: shirt.quantity }, (_, unitIndex) => ({
+            STT: ++order,
+            "Mã hồ sơ": application.publicCode,
+            "Phụ huynh": application.guardianName,
+            "Số điện thoại": application.phone,
+            Email: application.email,
+            "Người nhận áo":
+              shirt.category === "KID"
+                ? shirt.participant.fullName
+                : application.guardianName,
+            BIB: shirt.category === "KID" ? shirt.participant.bibNumber || "" : "",
+            "Mẫu áo": shirt.styleName,
+            "Đối tượng":
+              shirt.category === "KID"
+                ? "Trẻ em"
+                : shirt.category === "MALE"
+                  ? "Nam"
+                  : "Nữ",
+            Kiểu: shirt.type,
+            Size: shirt.size,
+            "Áo thứ": unitIndex + 1,
+            "Đơn giá": shirt.unitPrice,
+            "Trạng thái thanh toán": application.shirtPaymentStatus,
+            "Ngày thanh toán": formatDateTime(application.shirtPaymentDate),
+            Note: application.notes || "",
+          })),
+        ),
+      );
+
+    XLSX.utils.book_append_sheet(
+      workbook,
+      XLSX.utils.json_to_sheet(detailedPaidShirtRows),
+      "Ao da thanh toan",
+    );
+    const paidShirtBuffer = XLSX.write(workbook, {
+      type: "buffer",
+      bookType: "xlsx",
+    });
+    return new NextResponse(paidShirtBuffer, {
+      headers: {
+        "Content-Type":
+          "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        "Content-Disposition": `attachment; filename="kid-run-paid-shirts-${campaign.slug}.xlsx"`,
+      },
+    });
+  }
   const realCategories = campaign.categories.filter(
     (category) => category.name !== "__UNASSIGNED__",
   );
