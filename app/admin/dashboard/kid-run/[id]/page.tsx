@@ -149,6 +149,18 @@ export default function KidRunDetailPage() {
     if (tab === "applications")
       loadApplications(1, pagination.pageSize, "", true).catch((e) => setError(e.message));
   }, [tab]);
+  useEffect(() => {
+    if (tab !== "applications") return;
+    const query = search.trim();
+    if (query === appliedSearch) return;
+    const timer = window.setTimeout(() => {
+      setAppliedSearch(query);
+      loadApplications(1, pagination.pageSize, query, true).catch((e) =>
+        setError(e.message),
+      );
+    }, 5000);
+    return () => window.clearTimeout(timer);
+  }, [search, tab, appliedSearch, pagination.pageSize]);
 
   const save = async () => {
     setSaving(true);
@@ -371,6 +383,52 @@ export default function KidRunDetailPage() {
     }
   };
 
+  const confirmApplicationBibPickup = async (application: any) => {
+    const participantIds = application.participants
+      .filter(
+        (participant: any) =>
+          participant.bibStatus === "ACTIVE" &&
+          participant.bibNumber &&
+          !participant.bibCollectedAt,
+      )
+      .map((participant: any) => participant.id);
+    if (!participantIds.length) return;
+    if (
+      !window.confirm(
+        `Xác nhận đã phát ${participantIds.length} BIB cho hồ sơ ${application.publicCode}?`,
+      )
+    )
+      return;
+
+    setWorkflowBusy(true);
+    setError("");
+    setNotice("");
+    try {
+      const res = await fetch(
+        `/api/admin/kid-run/checkin/${application.bibQrToken}`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ participantIds }),
+        },
+      );
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      setNotice(
+        `Đã xác nhận phát ${participantIds.length} BIB cho hồ sơ ${application.publicCode}.`,
+      );
+      await loadApplications(
+        pagination.page,
+        pagination.pageSize,
+        appliedSearch,
+        true,
+      );
+    } catch (e: any) {
+      setError(e.message);
+    } finally {
+      setWorkflowBusy(false);
+    }
+  };
   const confirmPayment = async (applicationId: string) => {
     if (!confirm("Xác nhận BTC đã nhận đủ tiền áo?")) return;
     const res = await fetch(
@@ -1115,6 +1173,7 @@ export default function KidRunDetailPage() {
               onKeyDown={(e) => e.key === "Enter" && applySearch()}
               placeholder="Tên bé, BIB, phụ huynh, email, SĐT..."
               className="h-11 flex-1 rounded-md border px-3"
+              aria-label="Tìm kiếm hồ sơ, tự động tìm sau 5 giây"
             />
             <button
               onClick={applySearch}
@@ -1244,11 +1303,43 @@ export default function KidRunDetailPage() {
                       </span>
                     </td>
                     <td className="p-3">
-                      {
-                        app.participants.filter((p: any) => p.bibCollectedAt)
-                          .length
-                      }
-                      /{app.participants.length}
+                      <div className="font-semibold">
+                        {
+                          app.participants.filter(
+                            (p: any) =>
+                              p.bibStatus === "ACTIVE" && p.bibCollectedAt,
+                          ).length
+                        }
+                        /{
+                          app.participants.filter(
+                            (p: any) => p.bibStatus === "ACTIVE",
+                          ).length
+                        }
+                      </div>
+                      {app.participants.some(
+                        (p: any) =>
+                          p.bibStatus === "ACTIVE" &&
+                          p.bibNumber &&
+                          !p.bibCollectedAt,
+                      ) && (
+                        <button
+                          disabled={workflowBusy}
+                          onClick={() => confirmApplicationBibPickup(app)}
+                          className="mt-2 rounded-md bg-emerald-700 px-3 py-2 text-xs font-semibold text-white disabled:opacity-50"
+                        >
+                          Xác nhận đã nhận BIB
+                        </button>
+                      )}
+                      {app.participants.some(
+                        (p: any) => p.bibStatus === "ACTIVE",
+                      ) &&
+                        app.participants
+                          .filter((p: any) => p.bibStatus === "ACTIVE")
+                          .every((p: any) => p.bibCollectedAt) && (
+                          <div className="mt-1 text-xs font-semibold text-emerald-700">
+                            Đã nhận đủ
+                          </div>
+                        )}
                     </td>
                     <td className="p-3">
                       {appliedSearch && (
