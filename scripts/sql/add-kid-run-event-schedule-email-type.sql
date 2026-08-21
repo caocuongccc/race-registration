@@ -1,0 +1,5 @@
+-- CHAY MOT LAN TREN SUPABASE TRUOC KHI DEPLOY NUT GUI LICH TRINH KID RUN.
+-- Script chi them enum email, KHONG xoa hay cap nhat du lieu hien co.
+
+ALTER TYPE "KidRunEmailType"
+  ADD VALUE IF NOT EXISTS 'EVENT_SCHEDULE_ANNOUNCEMENT';

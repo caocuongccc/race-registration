@@ -517,6 +517,47 @@ export default function KidRunDetailPage() {
       setWorkflowBusy(false);
     }
   };
+  const sendEventScheduleEmail = async () => {
+    setWorkflowBusy(true);
+    setError("");
+    setNotice("");
+    try {
+      const previewRes = await fetch(
+        `/api/admin/kid-run-campaigns/${id}/send-event-schedule`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ preview: true }),
+        },
+      );
+      const previewData = await previewRes.json();
+      if (!previewRes.ok) throw new Error(previewData.error);
+      if (!previewData.recipients) {
+        setNotice("Tất cả email hợp lệ đã nhận thông báo lịch trình.");
+        return;
+      }
+      if (
+        !window.confirm(
+          `Gửi thông báo lịch trình bằng BCC tới ${previewData.recipients} email (${previewData.applications} hồ sơ)?`,
+        )
+      )
+        return;
+
+      const res = await fetch(
+        `/api/admin/kid-run-campaigns/${id}/send-event-schedule`,
+        { method: "POST" },
+      );
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      setNotice(
+        `Đã gửi thông báo lịch trình tới ${data.recipients} email cho ${data.applications} hồ sơ qua ${data.provider}.`,
+      );
+    } catch (e: any) {
+      setError(e.message);
+    } finally {
+      setWorkflowBusy(false);
+    }
+  };
   const sendBibPickupTest = async () => {
     setPickupTestSending(true);
     setError("");
@@ -1138,6 +1179,21 @@ export default function KidRunDetailPage() {
               className="rounded-md border border-amber-600 px-4 py-2 font-semibold text-amber-700 disabled:opacity-50"
             >
               Gửi lại email lỗi
+            </button>
+            <a
+              href={`/api/admin/kid-run-campaigns/${id}/send-event-schedule`}
+              target="_blank"
+              rel="noreferrer"
+              className="rounded-md border border-violet-700 px-4 py-2 font-semibold text-violet-700"
+            >
+              Xem trước email lịch trình
+            </a>
+            <button
+              disabled={workflowBusy}
+              onClick={sendEventScheduleEmail}
+              className="rounded-md bg-violet-700 px-4 py-2 font-semibold text-white disabled:opacity-50"
+            >
+              Gửi lịch trình & sơ đồ
             </button>
             <button
               disabled={workflowBusy}

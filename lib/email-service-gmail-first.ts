@@ -9,6 +9,7 @@ const resend = new Resend(process.env.RESEND_API_KEY);
 
 interface EmailOptions {
   to: string;
+  bcc?: string[];
   subject: string;
   react: React.ReactElement;
   attachments?: any[];
@@ -27,6 +28,7 @@ export async function sendEmailGmailFirst(
 ): Promise<{ success: boolean; provider: "gmail" | "resend"; error?: string }> {
   const {
     to,
+    bcc,
     subject,
     react,
     attachments = [],
@@ -76,6 +78,7 @@ export async function sendEmailGmailFirst(
       await gmailTransporter.sendMail({
         from: `"${fromName || process.env.FROM_NAME}" <${process.env.GMAIL_USER}>`,
         to,
+        bcc,
         subject,
         html: emailHtml,
         attachments: allAttachments, // ✅ Include QR with CID
@@ -99,6 +102,7 @@ export async function sendEmailGmailFirst(
     await resend.emails.send({
       from: `${fromName || process.env.FROM_NAME} <${fromEmail || process.env.FROM_EMAIL}>`,
       to,
+      bcc,
       subject,
       react,
       attachments: allAttachments,
