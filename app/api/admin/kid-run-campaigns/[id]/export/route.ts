@@ -66,7 +66,11 @@ export async function GET(
             shirts: {
               include: {
                 participant: {
-                  select: { fullName: true, bibNumber: true },
+                  select: {
+                    fullName: true,
+                    bibNumber: true,
+                    category: { select: { name: true } },
+                  },
                 },
               },
             },
@@ -195,6 +199,8 @@ export async function GET(
                 ? shirt.participant.fullName
                 : application.guardianName,
             BIB: shirt.category === "KID" ? shirt.participant.bibNumber || "" : "",
+            "Nhóm tuổi":
+              shirt.category === "KID" ? shirt.participant.category.name : "",
             "Mẫu áo": shirt.styleName,
             "Đối tượng":
               shirt.category === "KID"
