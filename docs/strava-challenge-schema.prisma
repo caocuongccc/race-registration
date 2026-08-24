@@ -1,0 +1,538 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model ChallengeUser {
+  id            String                       @id @default(cuid())
+  displayName   String
+  gender        ChallengeGender              @default(UNSPECIFIED)
+  avatarUrl     String?
+  timezone      String                       @default("Asia/Ho_Chi_Minh")
+  status        ChallengeUserStatus          @default(ACTIVE)
+  createdAt     DateTime                     @default(now())
+  updatedAt     DateTime                     @updatedAt
+  stravaAccount ChallengeStravaAccount?
+  enrollments   ChallengeEnrollment[]
+  activities    ChallengeActivity[]
+  ledgerEntries ChallengePointLedger[]
+  athleteDaily  ChallengeAthleteDailyTotal[]
+  athleteTotals ChallengeAthleteEventTotal[]
+
+  @@index([status])
+  @@map("challenge_users")
+}
+
+model ChallengeStravaAccount {
+  id                    String        @id @default(cuid())
+  userId                String        @unique
+  stravaAthleteId       BigInt        @unique
+  accessTokenEncrypted  String        @db.Text
+  refreshTokenEncrypted String        @db.Text
+  tokenExpiresAt        DateTime
+  scopes                String[]      @default([])
+  connectedAt           DateTime      @default(now())
+  disconnectedAt        DateTime?
+  lastSyncedAt          DateTime?
+  lastSyncError         String?       @db.Text
+  createdAt             DateTime      @default(now())
+  updatedAt             DateTime      @updatedAt
+  user                  ChallengeUser @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([tokenExpiresAt])
+  @@map("challenge_strava_accounts")
+}
+
+model ChallengeEvent {
+  id                String                        @id @default(cuid())
+  name              String
+  slug              String                        @unique
+  description       String?                       @db.Text
+  timezone          String                        @default("Asia/Ho_Chi_Minh")
+  startsAt          DateTime
+  endsAt            DateTime
+  status            ChallengeEventStatus          @default(DRAFT)
+  participationMode ChallengeParticipationMode    @default(INDIVIDUAL_AND_TEAM)
+  defaultTeamSize   Int?
+  enablePoints      Boolean                       @default(false)
+  pointsPerKm       Decimal                       @default(1) @db.Decimal(12, 4)
+  rankingMetric     ChallengeRankingMetric        @default(DISTANCE)
+  topCount          Int                           @default(3)
+  currentRulesetId  String?                       @unique
+  createdAt         DateTime                      @default(now())
+  updatedAt         DateTime                      @updatedAt
+  currentRuleset    ChallengeRuleset?             @relation("ChallengeCurrentRuleset", fields: [currentRulesetId], references: [id], onDelete: SetNull)
+  rulesets          ChallengeRuleset[]            @relation("ChallengeEventRulesets")
+  teams             ChallengeTeam[]
+  enrollments       ChallengeEnrollment[]
+  evaluations       ChallengeActivityEvaluation[]
+  ledgerEntries     ChallengePointLedger[]
+  athleteDaily      ChallengeAthleteDailyTotal[]
+  teamDaily         ChallengeTeamDailyTotal[]
+  athleteTotals     ChallengeAthleteEventTotal[]
+  teamTotals        ChallengeTeamEventTotal[]
+  webhookEvents     ChallengeWebhookEvent[]
+  jobs              ChallengeJob[]
+  auditLogs         ChallengeAuditLog[]
+
+  @@index([status, startsAt, endsAt])
+  @@map("challenge_events")
+}
+
+model ChallengeEnrollment {
+  id              String                    @id @default(cuid())
+  eventId         String
+  userId          String
+  status          ChallengeEnrollmentStatus @default(ACTIVE)
+  activeFrom      DateTime
+  activeUntil     DateTime?
+  removedReason   String?                   @db.Text
+  createdAt       DateTime                  @default(now())
+  updatedAt       DateTime                  @updatedAt
+  event           ChallengeEvent            @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  user            ChallengeUser             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  teamMemberships ChallengeTeamMembership[]
+
+  @@index([eventId, status, activeFrom, activeUntil])
+  @@index([userId, status])
+  @@map("challenge_enrollments")
+}
+
+model ChallengeTeam {
+  id          String                        @id @default(cuid())
+  eventId     String
+  name        String
+  maxMembers  Int
+  status      ChallengeTeamStatus           @default(ACTIVE)
+  createdAt   DateTime                      @default(now())
+  updatedAt   DateTime                      @updatedAt
+  event       ChallengeEvent                @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  memberships ChallengeTeamMembership[]
+  evaluations ChallengeActivityEvaluation[]
+  ledger      ChallengePointLedger[]
+  dailyTotals ChallengeTeamDailyTotal[]
+  eventTotals ChallengeTeamEventTotal[]
+
+  @@unique([eventId, name])
+  @@index([eventId, status])
+  @@map("challenge_teams")
+}
+
+model ChallengeTeamMembership {
+  id            String                        @id @default(cuid())
+  teamId        String
+  enrollmentId  String
+  status        ChallengeTeamMembershipStatus @default(ACTIVE)
+  joinedAt      DateTime
+  leftAt        DateTime?
+  removedReason String?                       @db.Text
+  createdAt     DateTime                      @default(now())
+  updatedAt     DateTime                      @updatedAt
+  team          ChallengeTeam                 @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  enrollment    ChallengeEnrollment           @relation(fields: [enrollmentId], references: [id], onDelete: Cascade)
+
+  @@index([teamId, status, joinedAt, leftAt])
+  @@index([enrollmentId, status])
+  @@map("challenge_team_memberships")
+}
+
+model ChallengeRuleset {
+  id               String                        @id @default(cuid())
+  eventId          String
+  version          Int
+  effectiveFrom    DateTime
+  applicationScope ChallengeRuleApplicationScope @default(FROM_NOW)
+  schemaVersion    Int                           @default(1)
+  configJson       Json
+  changeReason     String?                       @db.Text
+  createdBy        String?
+  createdAt        DateTime                      @default(now())
+  event            ChallengeEvent                @relation("ChallengeEventRulesets", fields: [eventId], references: [id], onDelete: Cascade)
+  currentForEvents ChallengeEvent[]              @relation("ChallengeCurrentRuleset")
+  timeWindows      ChallengeTimeWindow[]
+  specialDays      ChallengeSpecialDay[]
+  evaluations      ChallengeActivityEvaluation[]
+
+  @@unique([eventId, version])
+  @@index([eventId, effectiveFrom])
+  @@map("challenge_rulesets")
+}
+
+model ChallengeTimeWindow {
+  id          String           @id @default(cuid())
+  rulesetId   String
+  weekday     Int
+  startMinute Int
+  endMinute   Int
+  sortOrder   Int              @default(0)
+  ruleset     ChallengeRuleset @relation(fields: [rulesetId], references: [id], onDelete: Cascade)
+
+  @@index([rulesetId, weekday, sortOrder])
+  @@map("challenge_time_windows")
+}
+
+model ChallengeSpecialDay {
+  id         String           @id @default(cuid())
+  rulesetId  String
+  localDate  DateTime         @db.Date
+  name       String
+  multiplier Decimal          @default(1) @db.Decimal(12, 4)
+  ruleset    ChallengeRuleset @relation(fields: [rulesetId], references: [id], onDelete: Cascade)
+
+  @@unique([rulesetId, localDate])
+  @@map("challenge_special_days")
+}
+
+model ChallengeActivity {
+  id                 String                        @id @default(cuid())
+  userId             String
+  stravaActivityId   BigInt                        @unique
+  revision           Int                           @default(1)
+  name               String?
+  sportType          String
+  startDate          DateTime
+  startDateLocal     DateTime
+  activityTimezone   String?
+  distanceMeters     Int
+  movingTimeSeconds  Int
+  elapsedTimeSeconds Int
+  isManual           Boolean                       @default(false)
+  isTrainer          Boolean                       @default(false)
+  hasGps             Boolean                       @default(false)
+  mapPolyline        String?                       @db.Text
+  hasHeartRate       Boolean                       @default(false)
+  averageHeartRate   Decimal?                      @db.Decimal(8, 2)
+  maxHeartRate       Decimal?                      @db.Decimal(8, 2)
+  normalizedJson     Json
+  processingStatus   ChallengeActivityStatus       @default(PENDING)
+  lastError          String?                       @db.Text
+  processedAt        DateTime?
+  deletedAt          DateTime?
+  createdAt          DateTime                      @default(now())
+  updatedAt          DateTime                      @updatedAt
+  user               ChallengeUser                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  revisions          ChallengeActivityRevision[]
+  evaluations        ChallengeActivityEvaluation[]
+  ledgerEntries      ChallengePointLedger[]
+
+  @@index([userId, startDate])
+  @@index([processingStatus, updatedAt])
+  @@map("challenge_activities")
+}
+
+model ChallengeActivityRevision {
+  id              String                      @id @default(cuid())
+  activityId      String
+  revision        Int
+  changeType      ChallengeActivityChangeType
+  stravaUpdatedAt DateTime?
+  snapshotJson    Json
+  createdAt       DateTime                    @default(now())
+  activity        ChallengeActivity           @relation(fields: [activityId], references: [id], onDelete: Cascade)
+
+  @@unique([activityId, revision])
+  @@map("challenge_activity_revisions")
+}
+
+model ChallengeActivityEvaluation {
+  id                       String                    @id @default(cuid())
+  activityId               String
+  eventId                  String
+  rulesetId                String
+  teamId                   String?
+  activityRevision         Int
+  status                   ChallengeEvaluationStatus
+  failureReasons           Json
+  validDistanceMeters      Int                       @default(0)
+  creditedIndividualMeters Int                       @default(0)
+  creditedTeamMeters       Int                       @default(0)
+  individualPoints         Decimal                   @default(0) @db.Decimal(18, 6)
+  teamPoints               Decimal                   @default(0) @db.Decimal(18, 6)
+  isCurrent                Boolean                   @default(true)
+  evaluatedAt              DateTime                  @default(now())
+  createdAt                DateTime                  @default(now())
+  activity                 ChallengeActivity         @relation(fields: [activityId], references: [id], onDelete: Cascade)
+  event                    ChallengeEvent            @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  ruleset                  ChallengeRuleset          @relation(fields: [rulesetId], references: [id], onDelete: Restrict)
+  team                     ChallengeTeam?            @relation(fields: [teamId], references: [id], onDelete: SetNull)
+  ledgerEntries            ChallengePointLedger[]
+
+  @@index([eventId, status, evaluatedAt])
+  @@index([activityId, eventId, isCurrent])
+  @@index([rulesetId])
+  @@map("challenge_activity_evaluations")
+}
+
+model ChallengePointLedger {
+  id              String                      @id @default(cuid())
+  operationKey    String                      @unique
+  eventId         String
+  activityId      String
+  evaluationId    String
+  userId          String
+  teamId          String?
+  localDate       DateTime                    @db.Date
+  subjectType     ChallengeLedgerSubject
+  entryType       ChallengeLedgerEntryType
+  distanceMeters  Int
+  points          Decimal                     @db.Decimal(18, 6)
+  reversesEntryId String?
+  createdAt       DateTime                    @default(now())
+  event           ChallengeEvent              @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  activity        ChallengeActivity           @relation(fields: [activityId], references: [id], onDelete: Cascade)
+  evaluation      ChallengeActivityEvaluation @relation(fields: [evaluationId], references: [id], onDelete: Cascade)
+  user            ChallengeUser               @relation(fields: [userId], references: [id], onDelete: Restrict)
+  team            ChallengeTeam?              @relation(fields: [teamId], references: [id], onDelete: SetNull)
+  reversesEntry   ChallengePointLedger?       @relation("ChallengeLedgerReversal", fields: [reversesEntryId], references: [id], onDelete: Restrict)
+  reversedBy      ChallengePointLedger[]      @relation("ChallengeLedgerReversal")
+
+  @@index([eventId, userId, localDate])
+  @@index([eventId, teamId, localDate])
+  @@index([evaluationId])
+  @@map("challenge_point_ledger")
+}
+
+model ChallengeAthleteDailyTotal {
+  id             String         @id @default(cuid())
+  eventId        String
+  userId         String
+  localDate      DateTime       @db.Date
+  distanceMeters Int            @default(0)
+  points         Decimal        @default(0) @db.Decimal(18, 6)
+  updatedAt      DateTime       @updatedAt
+  event          ChallengeEvent @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  user           ChallengeUser  @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([eventId, userId, localDate])
+  @@map("challenge_athlete_daily_totals")
+}
+
+model ChallengeTeamDailyTotal {
+  id             String         @id @default(cuid())
+  eventId        String
+  teamId         String
+  localDate      DateTime       @db.Date
+  distanceMeters Int            @default(0)
+  points         Decimal        @default(0) @db.Decimal(18, 6)
+  updatedAt      DateTime       @updatedAt
+  event          ChallengeEvent @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  team           ChallengeTeam  @relation(fields: [teamId], references: [id], onDelete: Cascade)
+
+  @@unique([eventId, teamId, localDate])
+  @@map("challenge_team_daily_totals")
+}
+
+model ChallengeAthleteEventTotal {
+  id             String         @id @default(cuid())
+  eventId        String
+  userId         String
+  distanceMeters Int            @default(0)
+  points         Decimal        @default(0) @db.Decimal(18, 6)
+  acceptedCount  Int            @default(0)
+  updatedAt      DateTime       @updatedAt
+  event          ChallengeEvent @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  user           ChallengeUser  @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([eventId, userId])
+  @@index([eventId, distanceMeters])
+  @@index([eventId, points])
+  @@map("challenge_athlete_event_totals")
+}
+
+model ChallengeTeamEventTotal {
+  id             String         @id @default(cuid())
+  eventId        String
+  teamId         String
+  distanceMeters Int            @default(0)
+  points         Decimal        @default(0) @db.Decimal(18, 6)
+  acceptedCount  Int            @default(0)
+  updatedAt      DateTime       @updatedAt
+  event          ChallengeEvent @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  team           ChallengeTeam  @relation(fields: [teamId], references: [id], onDelete: Cascade)
+
+  @@unique([eventId, teamId])
+  @@index([eventId, distanceMeters])
+  @@index([eventId, points])
+  @@map("challenge_team_event_totals")
+}
+
+model ChallengeWebhookEvent {
+  id               String                 @id @default(cuid())
+  eventId          String?
+  providerEventKey String                 @unique
+  objectType       String
+  objectId         BigInt
+  aspectType       String
+  ownerStravaId    BigInt
+  eventTime        DateTime
+  payloadJson      Json
+  status           ChallengeWebhookStatus @default(RECEIVED)
+  attempts         Int                    @default(0)
+  lastError        String?                @db.Text
+  processedAt      DateTime?
+  createdAt        DateTime               @default(now())
+  updatedAt        DateTime               @updatedAt
+  event            ChallengeEvent?        @relation(fields: [eventId], references: [id], onDelete: SetNull)
+
+  @@index([status, createdAt])
+  @@index([ownerStravaId, objectId])
+  @@map("challenge_webhook_events")
+}
+
+model ChallengeJob {
+  id           String             @id @default(cuid())
+  eventId      String?
+  type         ChallengeJobType
+  status       ChallengeJobStatus @default(QUEUED)
+  dedupeKey    String?            @unique
+  payloadJson  Json
+  progressJson Json?
+  attempts     Int                @default(0)
+  maxAttempts  Int                @default(5)
+  runAfter     DateTime           @default(now())
+  lockedAt     DateTime?
+  completedAt  DateTime?
+  lastError    String?            @db.Text
+  createdAt    DateTime           @default(now())
+  updatedAt    DateTime           @updatedAt
+  event        ChallengeEvent?    @relation(fields: [eventId], references: [id], onDelete: SetNull)
+
+  @@index([status, runAfter])
+  @@map("challenge_jobs")
+}
+
+model ChallengeAuditLog {
+  id           String          @id @default(cuid())
+  eventId      String?
+  actorType    String
+  actorId      String?
+  action       String
+  entityType   String
+  entityId     String?
+  beforeJson   Json?
+  afterJson    Json?
+  metadataJson Json?
+  createdAt    DateTime        @default(now())
+  event        ChallengeEvent? @relation(fields: [eventId], references: [id], onDelete: SetNull)
+
+  @@index([eventId, createdAt])
+  @@index([entityType, entityId])
+  @@map("challenge_audit_logs")
+}
+
+enum ChallengeGender {
+  MALE
+  FEMALE
+  UNSPECIFIED
+}
+
+enum ChallengeUserStatus {
+  ACTIVE
+  DISCONNECTED
+  SUSPENDED
+}
+
+enum ChallengeEventStatus {
+  DRAFT
+  PUBLISHED
+  ACTIVE
+  COMPLETED
+  CANCELLED
+}
+
+enum ChallengeParticipationMode {
+  INDIVIDUAL_ONLY
+  TEAM_ONLY
+  INDIVIDUAL_AND_TEAM
+}
+
+enum ChallengeRankingMetric {
+  DISTANCE
+  POINTS
+}
+
+enum ChallengeEnrollmentStatus {
+  ACTIVE
+  REMOVED
+}
+
+enum ChallengeTeamStatus {
+  ACTIVE
+  ARCHIVED
+}
+
+enum ChallengeTeamMembershipStatus {
+  ACTIVE
+  REMOVED
+}
+
+enum ChallengeRuleApplicationScope {
+  FROM_NOW
+  FROM_SELECTED_DATETIME
+  RECALCULATE_WHOLE_EVENT
+}
+
+enum ChallengeActivityStatus {
+  PENDING
+  PROCESSING
+  ACCEPTED
+  ACCEPTED_WITH_CAP
+  REJECTED
+  NEEDS_REVIEW
+  SYNC_FAILED
+  DELETED
+}
+
+enum ChallengeActivityChangeType {
+  CREATED
+  UPDATED
+  CROPPED
+  DELETED
+  RESYNCED
+}
+
+enum ChallengeEvaluationStatus {
+  ACCEPTED
+  ACCEPTED_WITH_CAP
+  REJECTED
+  NEEDS_REVIEW
+}
+
+enum ChallengeLedgerSubject {
+  INDIVIDUAL
+  TEAM
+}
+
+enum ChallengeLedgerEntryType {
+  CREDIT
+  REVERSAL
+}
+
+enum ChallengeWebhookStatus {
+  RECEIVED
+  QUEUED
+  PROCESSING
+  PROCESSED
+  FAILED
+  IGNORED
+}
+
+enum ChallengeJobType {
+  SYNC_ACTIVITY
+  DELETE_ACTIVITY
+  RECALCULATE_EVENT
+  REBUILD_AGGREGATES
+}
+
+enum ChallengeJobStatus {
+  QUEUED
+  RUNNING
+  COMPLETED
+  PARTIALLY_FAILED
+  FAILED
+  CANCELLED
+}

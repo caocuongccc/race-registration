@@ -1,0 +1,9 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "functions": {
+    "app/api/cron/challenge-jobs/route.ts": {
+      "maxDuration": 60
+    }
+  }
+}
+

@@ -36,6 +36,7 @@ const navigationConfig = {
       icon: Gift,
     },
     { name: "Kid Run", href: "/admin/dashboard/kid-run", icon: Baby },
+    { name: "Strava Challenge", href: "/admin/dashboard/challenges", icon: Activity },
     {
       name: "Đối soát Kid Run",
       href: "/admin/dashboard/kid-run-payment-reconciliation",
@@ -86,6 +87,7 @@ const navigationConfig = {
   ],
   MEMBER: [
     { name: "Kid Run", href: "/admin/dashboard/kid-run", icon: Baby },
+    { name: "Strava Challenge", href: "/admin/dashboard/challenges", icon: Activity },
     {
       name: "Cổng bán áo",
       href: "/admin/dashboard/merch-campaigns",
