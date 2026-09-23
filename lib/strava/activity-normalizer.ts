@@ -77,7 +77,7 @@ function nonnegativeInteger(value: number): number {
 
 function parseLocalParts(value: string): { date: Date; weekday: number; minute: number } {
   const match = value.match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})/);
-  if (!match) throw new Error("start_date_local của Strava không hợp lệ");
+  if (!match) throw new Error("start_date_local của Strava không hợp l�?");
   const [, year, month, day, hour, minute, second] = match;
   const date = new Date(Date.UTC(
     Number(year),
@@ -94,8 +94,39 @@ function parseLocalParts(value: string): { date: Date; weekday: number; minute: 
   };
 }
 
-function buildSplits(activity: StravaDetailedActivity): ChallengePaceSplit[] {
-  return (activity.splits_metric ?? []).map((split, index) => ({
+function buildStreamSplits(streams: StravaActivityStreams): ChallengePaceSplit[] {
+  const distances = streams.distance?.data ?? [];
+  const times = streams.time?.data ?? [];
+  if (distances.length < 2 || distances.length !== times.length) return [];
+  const totalDistance = distances.at(-1) ?? 0;
+  const boundaries: number[] = [];
+  for (let distance = 1000; distance < totalDistance; distance += 1000) boundaries.push(distance);
+  boundaries.push(totalDistance);
+  let previousDistance = 0;
+  let previousTime = times[0] ?? 0;
+  return boundaries.map((boundary, index) => {
+    let cursor = distances.findIndex((distance) => distance >= boundary);
+    if (cursor < 0) cursor = distances.length - 1;
+    const currentDistance = distances[cursor] ?? boundary;
+    const currentTime = times[cursor] ?? previousTime;
+    const splitDistance = Math.max(0, currentDistance - previousDistance);
+    const splitTime = Math.max(0, currentTime - previousTime);
+    previousDistance = currentDistance;
+    previousTime = currentTime;
+    return {
+      splitNumber: index + 1,
+      distanceMeters: nonnegativeInteger(splitDistance),
+      // Strava time streams contain elapsed seconds. Use the same value for
+      // moving pace only when detailed metric splits are unavailable.
+      movingTimeSeconds: nonnegativeInteger(splitTime),
+      elapsedTimeSeconds: nonnegativeInteger(splitTime),
+      isCompleteKm: splitDistance >= 999,
+    };
+  });
+}
+
+function buildSplits(activity: StravaDetailedActivity, streams: StravaActivityStreams): ChallengePaceSplit[] {
+  const metricSplits = (activity.splits_metric ?? []).map((split, index) => ({
     splitNumber: Number.isFinite(split.split) ? split.split : index + 1,
     distanceMeters: nonnegativeInteger(split.distance),
     movingTimeSeconds: nonnegativeInteger(split.moving_time),
@@ -103,6 +134,7 @@ function buildSplits(activity: StravaDetailedActivity): ChallengePaceSplit[] {
     // Strava can report a tiny floating-point difference around exactly 1 km.
     isCompleteKm: split.distance >= 999,
   }));
+  return metricSplits.length > 0 ? metricSplits : buildStreamSplits(streams);
 }
 
 export function normalizeStravaActivity(
@@ -110,7 +142,7 @@ export function normalizeStravaActivity(
   streams: StravaActivityStreams = {},
 ): NormalizedStravaActivity {
   const startDate = new Date(activity.start_date);
-  if (Number.isNaN(startDate.getTime())) throw new Error("start_date của Strava không hợp lệ");
+  if (Number.isNaN(startDate.getTime())) throw new Error("start_date của Strava không hợp l�?");
   const localStart = parseLocalParts(activity.start_date_local);
   const elapsedTimeSeconds = nonnegativeInteger(activity.elapsed_time);
   const localEndDate = new Date(localStart.date.getTime() + elapsedTimeSeconds * 1000);
@@ -121,7 +153,7 @@ export function normalizeStravaActivity(
   const hasGpsStream = (streams.latlng?.data.length ?? 0) >= 2;
   const hasHeartRate = Boolean(activity.has_heartrate && (activity.average_heartrate ?? 0) > 0);
   const hasHeartRateStream = (streams.heartrate?.data.length ?? 0) >= 2;
-  const splits = buildSplits(activity);
+  const splits = buildSplits(activity, streams);
   const distanceMeters = nonnegativeInteger(activity.distance);
   const movingTimeSeconds = nonnegativeInteger(activity.moving_time);
   const sportType = activity.sport_type || activity.type || "Unknown";
@@ -170,4 +202,3 @@ export function normalizeStravaActivity(
     ruleInput,
   };
 }
-

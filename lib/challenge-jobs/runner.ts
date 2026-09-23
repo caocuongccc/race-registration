@@ -7,6 +7,8 @@ import {
   recoverStaleChallengeJobs,
 } from "./queue";
 import { processRecalculationPage } from "./recalculation";
+import { processBackfillPage } from "./backfill";
+import { processAggregateRebuildPage } from "./aggregate-rebuild";
 
 export interface ChallengeBatchResult {
   claimed: number;
@@ -15,16 +17,14 @@ export interface ChallengeBatchResult {
   failed: number;
 }
 
-async function processPayload(type: string, payload: Prisma.JsonValue): Promise<void> {
-  if (type === "SYNC_ACTIVITY") return syncStravaActivity(payload);
-  if (type === "DELETE_ACTIVITY") return deleteStravaActivity(payload);
-  if (type === "RECALCULATE_EVENT") {
-    await processRecalculationPage(payload);
-    return;
-  }
-  throw new Error(`Challenge job type ${type} chưa được hỗ trợ`);
+async function processPayload(type: string, payload: Prisma.JsonValue): Promise<unknown> {
+  if (type === "SYNC_ACTIVITY") { await syncStravaActivity(payload); return; }
+  if (type === "DELETE_ACTIVITY") { await deleteStravaActivity(payload); return; }
+  if (type === "BACKFILL_ACTIVITIES") return processBackfillPage(payload);
+  if (type === "RECALCULATE_EVENT") return processRecalculationPage(payload);
+  if (type === "REBUILD_AGGREGATES") return processAggregateRebuildPage(payload);
+  throw new Error(`Challenge job type ${type} is not supported`);
 }
-
 export async function runChallengeJobBatch(limit = 5): Promise<ChallengeBatchResult> {
   await recoverStaleChallengeJobs();
   const jobs = await claimChallengeJobs(limit);
@@ -32,8 +32,9 @@ export async function runChallengeJobBatch(limit = 5): Promise<ChallengeBatchRes
   // Sequential processing intentionally limits Strava API bursts and cap races.
   for (const job of jobs) {
     try {
-      await processPayload(job.type, job.payloadJson);
-      await completeChallengeJob(job.id);
+      const progress = await processPayload(job.type, job.payloadJson);
+      const serializedProgress = progress === undefined ? undefined : JSON.parse(JSON.stringify(progress)) as Prisma.InputJsonValue;
+      await completeChallengeJob(job.id, serializedProgress);
       result.completed += 1;
     } catch (error) {
       console.error(`Challenge job ${job.id} failed`, error);
@@ -44,4 +45,3 @@ export async function runChallengeJobBatch(limit = 5): Promise<ChallengeBatchRes
   }
   return result;
 }
-

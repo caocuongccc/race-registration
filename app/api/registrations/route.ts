@@ -47,6 +47,8 @@ export async function POST(req: NextRequest) {
       finisherShirtCategory,
       finisherShirtType,
       finisherShirtSize,
+      wantsFinisherShirt,
+      finisherDonationAmount,
       utmSource,
     } = body;
 
@@ -122,8 +124,12 @@ export async function POST(req: NextRequest) {
 
     const shouldCloneFinisherShirt =
       distance.requiresFinisherShirt && distance.cloneRaceShirtToFinisher;
+    const optionalFinisherSelected =
+      event.enableOptionalFinisherDonation && wantsFinisherShirt === true;
+    const requiresAnyFinisherShirt =
+      distance.requiresFinisherShirt || optionalFinisherSelected;
 
-    if (distance.requiresFinisherShirt && !shouldCloneFinisherShirt) {
+    if (requiresAnyFinisherShirt && !shouldCloneFinisherShirt) {
       if (!finisherShirtCategory || !finisherShirtType || !finisherShirtSize) {
         return NextResponse.json(
           { error: "Vui long chon loai, kieu va size ao finish cho cu ly nay" },
@@ -164,6 +170,17 @@ export async function POST(req: NextRequest) {
     // Calculate fees
     const raceFee = distance.price;
     let shirtFee = 0;
+    let optionalDonation = 0;
+
+    if (optionalFinisherSelected) {
+      optionalDonation = Number(finisherDonationAmount);
+      if (!Number.isInteger(optionalDonation) || optionalDonation < event.minFinisherDonation) {
+        return NextResponse.json(
+          { error: `Mức ủng hộ nhận áo finisher tối thiểu là ${event.minFinisherDonation.toLocaleString("vi-VN")}đ` },
+          { status: 400 },
+        );
+      }
+    }
 
     if (event.hasShirt && !racekitShirtOptedOut && !shirtId) {
       return NextResponse.json(
@@ -202,7 +219,7 @@ export async function POST(req: NextRequest) {
       shirtFee = isRacekitShirtIncluded ? 0 : shirt.price;
     }
 
-    const totalAmount = raceFee + shirtFee;
+    const totalAmount = raceFee + shirtFee + optionalDonation;
     const isFreeRegistration = totalAmount <= 0;
     const bankAccountInfo = isFreeRegistration
       ? null
@@ -251,7 +268,7 @@ export async function POST(req: NextRequest) {
         shirtCategory: racekitShirtOptedOut ? null : body.shirtCategory || null,
         shirtType: racekitShirtOptedOut ? null : body.shirtType || null,
         shirtSize: racekitShirtOptedOut ? null : body.shirtSize || null,
-        finisherShirtSize: distance.requiresFinisherShirt
+        finisherShirtSize: requiresAnyFinisherShirt
           ? shouldCloneFinisherShirt
             ? body.shirtSize
             : body.finisherShirtSize
@@ -304,17 +321,17 @@ export async function POST(req: NextRequest) {
       LIMIT 1
     `;
     const registrationNumber = registrationNumberRows[0]?.registration_number;
-    const finalFinisherShirtCategory = distance.requiresFinisherShirt
+    const finalFinisherShirtCategory = requiresAnyFinisherShirt
       ? shouldCloneFinisherShirt
         ? body.shirtCategory
         : body.finisherShirtCategory
       : null;
-    const finalFinisherShirtType = distance.requiresFinisherShirt
+    const finalFinisherShirtType = requiresAnyFinisherShirt
       ? shouldCloneFinisherShirt
         ? body.shirtType
         : body.finisherShirtType
       : null;
-    if (distance.requiresFinisherShirt) {
+    if (requiresAnyFinisherShirt) {
       await prisma.$executeRaw`
         UPDATE "registrations"
         SET

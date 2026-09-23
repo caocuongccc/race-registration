@@ -3,7 +3,7 @@ import { prisma } from "@/lib/prisma";
 
 export interface ClaimedChallengeJob {
   id: string;
-  type: "SYNC_ACTIVITY" | "DELETE_ACTIVITY" | "RECALCULATE_EVENT" | "REBUILD_AGGREGATES";
+  type: "SYNC_ACTIVITY" | "DELETE_ACTIVITY" | "RECALCULATE_EVENT" | "BACKFILL_ACTIVITIES" | "REBUILD_AGGREGATES";
   payloadJson: Prisma.JsonValue;
   attempts: number;
   maxAttempts: number;
@@ -64,7 +64,7 @@ export async function claimChallengeJobs(limit = 5): Promise<ClaimedChallengeJob
   `);
 }
 
-export async function completeChallengeJob(jobId: string): Promise<void> {
+export async function completeChallengeJob(jobId: string, progress?: Prisma.InputJsonValue): Promise<void> {
   await prisma.challengeJob.updateMany({
     where: { id: jobId, status: "RUNNING" },
     data: {
@@ -72,6 +72,7 @@ export async function completeChallengeJob(jobId: string): Promise<void> {
       completedAt: new Date(),
       lockedAt: null,
       lastError: null,
+      ...(progress === undefined ? {} : { progressJson: progress }),
     },
   });
 }
@@ -100,4 +101,3 @@ export async function failChallengeJob(jobId: string, error: unknown): Promise<C
   });
   return nextStatus;
 }
-

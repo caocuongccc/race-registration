@@ -154,6 +154,10 @@ export async function syncStravaActivity(payloadValue: Prisma.JsonValue): Promis
   const streamKeys = new Set<string>();
   if (configs.some((config) => config.gps.enabled && config.gps.mode === "STRICT")) streamKeys.add("latlng");
   if (configs.some((config) => config.heartRate.enabled)) streamKeys.add("heartrate");
+  if (configs.some((config) => config.pace.enabled && config.pace.mode === "EVERY_KM") && !detail.splits_metric?.length) {
+    streamKeys.add("distance");
+    streamKeys.add("time");
+  }
   const streams = streamKeys.size > 0
     ? await getStravaActivityStreams<StravaActivityStreams>(
       payload.stravaActivityId,
@@ -358,4 +362,3 @@ export async function deleteStravaActivity(payloadValue: Prisma.JsonValue): Prom
     await markWebhookProcessed(tx, payload.webhookEventId);
   }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable, timeout: 20_000 });
 }
-

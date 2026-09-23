@@ -106,6 +106,8 @@ export async function GET(
         allowStandaloneShirtSale: event.allowStandaloneShirtSale,
         requireOnlinePayment: event.requireOnlinePayment,
         registrationServiceOnly: event.registrationServiceOnly,
+        enableOptionalFinisherDonation: event.enableOptionalFinisherDonation,
+        minFinisherDonation: event.minFinisherDonation,
         allowRegistration: event.allowRegistration,
 
         // ✅ NEW: Form field visibility configuration

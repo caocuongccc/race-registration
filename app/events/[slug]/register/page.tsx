@@ -45,6 +45,8 @@ interface EventData {
     allowRegistration: boolean;
     hasShirt: boolean;
     requiresShirtPurchase: boolean;
+    enableOptionalFinisherDonation: boolean;
+    minFinisherDonation: number;
     bankName?: string;
     bankAccount?: string;
     bankHolder?: string;
@@ -92,6 +94,8 @@ interface FormData {
   finisherShirtCategory: string;
   finisherShirtType: string;
   finisherShirtSize: string;
+  wantsFinisherShirt: boolean;
+  finisherDonationAmount: number;
 }
 
 const FINISHER_SHIRT_SIZES = ["XS", "S", "M", "L", "XL", "XXL", "XXXL"];
@@ -200,11 +204,25 @@ export default function RegistrationPage() {
   const watchFinisherShirtCategory = watch("finisherShirtCategory");
   const watchFinisherShirtType = watch("finisherShirtType");
   const watchFinisherShirtSize = watch("finisherShirtSize");
+  const watchWantsFinisherShirt = watch("wantsFinisherShirt");
+  const watchFinisherDonationAmount = Number(
+    watch("finisherDonationAmount") || 0,
+  );
+
+  useEffect(() => {
+    if (eventData?.distances?.length === 1 && !watchDistanceId) {
+      setValue("distanceId", eventData.distances[0].id);
+    }
+  }, [eventData, watchDistanceId, setValue]);
   const selectedDistance =
     eventData?.distances?.find((distance) => distance.id === watchDistanceId) ||
     null;
   const selectedDistanceRequiresFinisherShirt =
-    requiresFinisherShirt(selectedDistance);
+    requiresFinisherShirt(selectedDistance) ||
+    Boolean(
+      eventData?.event.enableOptionalFinisherDonation &&
+      watchWantsFinisherShirt,
+    );
   const selectedDistanceClonesFinisherShirt =
     selectedDistanceRequiresFinisherShirt &&
     clonesRaceShirtToFinisher(selectedDistance);
@@ -251,8 +269,7 @@ export default function RegistrationPage() {
     ...(shirtImages?.KID || []),
   ];
 
-  const requiresShirtPurchase =
-    eventData?.event.requiresShirtPurchase === true;
+  const requiresShirtPurchase = eventData?.event.requiresShirtPurchase === true;
   const racekitShirtOptedOut =
     !requiresShirtPurchase && watchShirtCategory === "NONE";
   const needsRacekitCategory = eventData?.event.hasShirt && !watchShirtCategory;
@@ -290,11 +307,18 @@ export default function RegistrationPage() {
     (eventData?.event.showEmergencyContact &&
       (!watchEmergencyContactName || !watchEmergencyContactPhone)) ||
     (eventData?.event.requireWaiver && !watchWaiverAccepted);
+  const invalidOptionalFinisherDonation =
+    Boolean(
+      eventData?.event.enableOptionalFinisherDonation &&
+      watchWantsFinisherShirt,
+    ) &&
+    watchFinisherDonationAmount < (eventData?.event.minFinisherDonation || 0);
   const isSubmitDisabled =
     submitting ||
     redirectingPayment ||
     !selectedDistance ||
     hasMissingRequiredInfo ||
+    invalidOptionalFinisherDonation ||
     (selectedDistanceRequiresFinisherShirt &&
       !selectedDistanceClonesFinisherShirt &&
       (!watchFinisherShirtCategory ||
@@ -448,6 +472,13 @@ export default function RegistrationPage() {
       total += selectedShirtPrice;
     }
 
+    if (
+      eventData?.event.enableOptionalFinisherDonation &&
+      watchWantsFinisherShirt
+    ) {
+      total += watchFinisherDonationAmount;
+    }
+
     return total;
   };
 
@@ -477,6 +508,17 @@ export default function RegistrationPage() {
       (!data.emergencyContactName || !data.emergencyContactPhone)
     ) {
       toast.error("Vui long nhap day du thong tin lien he khan cap");
+      return;
+    }
+
+    if (
+      eventData?.event.enableOptionalFinisherDonation &&
+      data.wantsFinisherShirt &&
+      Number(data.finisherDonationAmount) < eventData.event.minFinisherDonation
+    ) {
+      toast.error(
+        `Mức ủng hộ tối thiểu là ${formatCurrency(eventData.event.minFinisherDonation)}`,
+      );
       return;
     }
 
@@ -562,10 +604,18 @@ export default function RegistrationPage() {
         submissionData.waiverAccepted = data.waiverAccepted;
       }
 
+      if (eventData?.event.enableOptionalFinisherDonation) {
+        submissionData.wantsFinisherShirt = Boolean(data.wantsFinisherShirt);
+        submissionData.finisherDonationAmount = data.wantsFinisherShirt
+          ? Number(data.finisherDonationAmount)
+          : 0;
+      }
+
       if (selectedDistanceRequiresFinisherShirt) {
-        submissionData.finisherShirtCategory = selectedDistanceClonesFinisherShirt
-          ? data.shirtCategory
-          : data.finisherShirtCategory;
+        submissionData.finisherShirtCategory =
+          selectedDistanceClonesFinisherShirt
+            ? data.shirtCategory
+            : data.finisherShirtCategory;
         submissionData.finisherShirtType = selectedDistanceClonesFinisherShirt
           ? data.shirtType
           : data.finisherShirtType;
@@ -732,7 +782,9 @@ export default function RegistrationPage() {
             <CardHeader className="pb-3">
               <CardTitle className="flex items-center gap-2 text-xl">
                 <Award className="w-5 h-5" />
-                Bước 1: Chọn Cự Ly
+                {eventData.event.enableOptionalFinisherDonation
+                  ? "Bước 1: Nội dung thử thách"
+                  : "Bước 1: Chọn Cự Ly"}
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -1082,16 +1134,14 @@ export default function RegistrationPage() {
                           }}
                         >
                           <FileText className="mr-2 h-4 w-4" />
-                          {showWaiverTerms
-                            ? "Ẩn điều khoản"
-                            : "Xem điều khoản"}
+                          {showWaiverTerms ? "Ẩn điều khoản" : "Xem điều khoản"}
                         </Button>
                       </div>
 
                       {showWaiverTerms && (
                         <div className="max-h-64 overflow-y-auto rounded-lg border border-amber-200 bg-white p-4 text-sm leading-6 text-gray-800 whitespace-pre-line">
-                        {eventData.event.waiverContent ||
-                          `Tôi xác nhận đã đọc, hiểu và tự nguyện đăng ký tham gia sự kiện.
+                          {eventData.event.waiverContent ||
+                            `Tôi xác nhận đã đọc, hiểu và tự nguyện đăng ký tham gia sự kiện.
 
 Tôi cam kết đủ điều kiện sức khỏe để tham gia, tự chịu trách nhiệm về tình trạng sức khỏe cá nhân trước, trong và sau sự kiện.
 
@@ -1594,6 +1644,53 @@ Tôi đồng ý cho Ban Tổ Chức sử dụng hình ảnh, video, tên và th�
             </Card>
           )}
 
+          {eventData.event.enableOptionalFinisherDonation && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Shirt className="h-6 w-6" />
+                  Lựa chọn áo finisher
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setValue("wantsFinisherShirt", false);
+                      setValue("finisherDonationAmount", 0);
+                      setValue("finisherShirtCategory", "");
+                      setValue("finisherShirtType", "");
+                      setValue("finisherShirtSize", "");
+                    }}
+                    className={optionButtonClass(!watchWantsFinisherShirt)}
+                  >
+                    Đăng ký, không nhận áo
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setValue("wantsFinisherShirt", true);
+                      if (
+                        watchFinisherDonationAmount <
+                        eventData.event.minFinisherDonation
+                      ) {
+                        setValue(
+                          "finisherDonationAmount",
+                          eventData.event.minFinisherDonation,
+                        );
+                      }
+                    }}
+                    className={optionButtonClass(
+                      Boolean(watchWantsFinisherShirt),
+                    )}
+                  >
+                    Đăng ký và nhận áo finisher
+                  </button>
+                </div>
+              </CardContent>
+            </Card>
+          )}
           {selectedDistanceRequiresFinisherShirt && (
             <Card>
               <CardHeader>
@@ -1623,69 +1720,41 @@ Tôi đồng ý cho Ban Tổ Chức sử dụng hình ảnh, video, tên và th�
                       </div>
                     ) : (
                       <p className="text-sm text-green-800">
-                        Vui lòng chọn áo racekit trước. Size áo finish sẽ tự động
-                        dùng cùng thông tin áo racekit.
+                        Vui lòng chọn áo racekit trước. Size áo finish sẽ tự
+                        động dùng cùng thông tin áo racekit.
                       </p>
                     )}
                   </div>
                 )}
                 <p className="text-sm text-blue-700 bg-blue-50 border border-blue-200 rounded-lg p-3">
-                  Cự ly {selectedDistance.name} có thêm áo finish miễn phí.{" "}
+                  Cự ly {selectedDistance.name} đã chọn nhận áo finisher.{" "}
                   {selectedDistanceClonesFinisherShirt
                     ? "Thông tin áo finish sẽ được lấy theo áo racekit bạn đã chọn."
                     : "Vui lòng chọn loại, kiểu và size áo finish để BTC chuẩn bị đúng."}
                 </p>
 
                 {!selectedDistanceClonesFinisherShirt && (
-                <div className={stepBoxClass(needsFinisherCategory)}>
-                  <label className="block text-sm font-medium mb-3">
-                    Loại áo finish
-                  </label>
-                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                    {finisherShirtCategories.map((category) => {
-                      const isSelected =
-                        watchFinisherShirtCategory === category;
-
-                      return (
-                        <button
-                          key={category}
-                          type="button"
-                          onClick={() => {
-                            setValue("finisherShirtCategory", category);
-                            setValue("finisherShirtType", "");
-                            setValue("finisherShirtSize", "");
-                          }}
-                          className={optionButtonClass(isSelected)}
-                        >
-                          {shirtCategoryLabels[category] || category}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-
-                )}
-
-                {!selectedDistanceClonesFinisherShirt && watchFinisherShirtCategory && (
-                  <div className={stepBoxClass(needsFinisherType)}>
+                  <div className={stepBoxClass(needsFinisherCategory)}>
                     <label className="block text-sm font-medium mb-3">
-                      Kiểu áo finish
+                      Loại áo finish
                     </label>
-                    <div className="grid grid-cols-2 gap-3">
-                      {finisherShirtTypes.map((type) => {
-                        const isSelected = watchFinisherShirtType === type;
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                      {finisherShirtCategories.map((category) => {
+                        const isSelected =
+                          watchFinisherShirtCategory === category;
 
                         return (
                           <button
-                            key={type}
+                            key={category}
                             type="button"
                             onClick={() => {
-                              setValue("finisherShirtType", type);
+                              setValue("finisherShirtCategory", category);
+                              setValue("finisherShirtType", "");
                               setValue("finisherShirtSize", "");
                             }}
                             className={optionButtonClass(isSelected)}
                           >
-                            {shirtTypeLabels[type] || type}
+                            {shirtCategoryLabels[category] || category}
                           </button>
                         );
                       })}
@@ -1693,30 +1762,92 @@ Tôi đồng ý cho Ban Tổ Chức sử dụng hình ảnh, video, tên và th�
                   </div>
                 )}
 
-                {!selectedDistanceClonesFinisherShirt && watchFinisherShirtType && (
-                  <div className={stepBoxClass(needsFinisherSize)}>
-                    <label className="block text-sm font-medium mb-3">
-                      Size áo finish
-                    </label>
-                    <div className="grid grid-cols-4 sm:grid-cols-5 md:grid-cols-6 lg:grid-cols-8 gap-3">
-                      {finisherShirtSizes.map((size: string) => {
-                        const isSelected = watchFinisherShirtSize === size;
+                {!selectedDistanceClonesFinisherShirt &&
+                  watchFinisherShirtCategory && (
+                    <div className={stepBoxClass(needsFinisherType)}>
+                      <label className="block text-sm font-medium mb-3">
+                        Kiểu áo finish
+                      </label>
+                      <div className="grid grid-cols-2 gap-3">
+                        {finisherShirtTypes.map((type) => {
+                          const isSelected = watchFinisherShirtType === type;
 
-                        return (
-                          <button
-                            key={size}
-                            type="button"
-                            onClick={() => setValue("finisherShirtSize", size)}
-                            className={`group relative p-4 rounded-xl border-2 transition-all duration-200 transform ${
-                              isSelected
-                                ? "border-purple-500 bg-gradient-to-br from-purple-50 to-purple-100 ring-4 ring-purple-200 shadow-lg scale-105"
-                                : "border-gray-300 bg-white hover:border-purple-400 hover:bg-purple-50 hover:shadow-md hover:scale-102"
-                            }`}
-                          >
-                            {isSelected && (
-                              <div className="absolute -top-2 -right-2 bg-purple-500 rounded-full p-1 shadow-md">
+                          return (
+                            <button
+                              key={type}
+                              type="button"
+                              onClick={() => {
+                                setValue("finisherShirtType", type);
+                                setValue("finisherShirtSize", "");
+                              }}
+                              className={optionButtonClass(isSelected)}
+                            >
+                              {shirtTypeLabels[type] || type}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+
+                {!selectedDistanceClonesFinisherShirt &&
+                  watchFinisherShirtType && (
+                    <div className={stepBoxClass(needsFinisherSize)}>
+                      <label className="block text-sm font-medium mb-3">
+                        Size áo finish
+                      </label>
+                      <div className="grid grid-cols-4 sm:grid-cols-5 md:grid-cols-6 lg:grid-cols-8 gap-3">
+                        {finisherShirtSizes.map((size: string) => {
+                          const isSelected = watchFinisherShirtSize === size;
+
+                          return (
+                            <button
+                              key={size}
+                              type="button"
+                              onClick={() =>
+                                setValue("finisherShirtSize", size)
+                              }
+                              className={`group relative p-4 rounded-xl border-2 transition-all duration-200 transform ${
+                                isSelected
+                                  ? "border-purple-500 bg-gradient-to-br from-purple-50 to-purple-100 ring-4 ring-purple-200 shadow-lg scale-105"
+                                  : "border-gray-300 bg-white hover:border-purple-400 hover:bg-purple-50 hover:shadow-md hover:scale-102"
+                              }`}
+                            >
+                              {isSelected && (
+                                <div className="absolute -top-2 -right-2 bg-purple-500 rounded-full p-1 shadow-md">
+                                  <svg
+                                    className="w-3 h-3 text-white"
+                                    fill="currentColor"
+                                    viewBox="0 0 20 20"
+                                  >
+                                    <path
+                                      fillRule="evenodd"
+                                      d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                                      clipRule="evenodd"
+                                    />
+                                  </svg>
+                                </div>
+                              )}
+                              <div
+                                className={`text-xl font-bold ${
+                                  isSelected
+                                    ? "text-purple-700"
+                                    : "text-gray-900"
+                                }`}
+                              >
+                                {size}
+                              </div>
+                            </button>
+                          );
+                        })}
+                      </div>
+                      {watchFinisherShirtSize && (
+                        <div className="animate-fadeIn p-4 bg-gradient-to-r from-green-50 to-emerald-50 border-2 border-green-300 rounded-xl shadow-sm">
+                          <div className="flex items-start gap-3">
+                            <div className="flex-shrink-0 mt-0.5">
+                              <div className="w-8 h-8 bg-green-500 rounded-full flex items-center justify-center">
                                 <svg
-                                  className="w-3 h-3 text-white"
+                                  className="w-5 h-5 text-white"
                                   fill="currentColor"
                                   viewBox="0 0 20 20"
                                 >
@@ -1727,71 +1858,66 @@ Tôi đồng ý cho Ban Tổ Chức sử dụng hình ảnh, video, tên và th�
                                   />
                                 </svg>
                               </div>
-                            )}
-                            <div
-                              className={`text-xl font-bold ${
-                                isSelected ? "text-purple-700" : "text-gray-900"
-                              }`}
-                            >
-                              {size}
                             </div>
-                          </button>
-                        );
-                      })}
-                    </div>
-                    {watchFinisherShirtSize && (
-                      <div className="animate-fadeIn p-4 bg-gradient-to-r from-green-50 to-emerald-50 border-2 border-green-300 rounded-xl shadow-sm">
-                        <div className="flex items-start gap-3">
-                          <div className="flex-shrink-0 mt-0.5">
-                            <div className="w-8 h-8 bg-green-500 rounded-full flex items-center justify-center">
+                            <div className="flex-1">
+                              <p className="text-sm font-semibold text-green-900 mb-1">
+                                Đã chọn size áo finish
+                              </p>
+                              <div className="flex flex-wrap items-center gap-2">
+                                <span className="inline-flex items-center px-3 py-1 bg-white border border-green-300 rounded-full text-sm font-bold text-green-700">
+                                  Size {watchFinisherShirtSize}
+                                </span>
+                                <span className="text-sm text-green-700">
+                                  Đi kèm cự ly {selectedDistance.name}
+                                </span>
+                              </div>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => setValue("finisherShirtSize", "")}
+                              className="flex-shrink-0 text-green-600 hover:text-green-800 transition-colors"
+                              title="Bỏ chọn"
+                            >
                               <svg
-                                className="w-5 h-5 text-white"
+                                className="w-5 h-5"
                                 fill="currentColor"
                                 viewBox="0 0 20 20"
                               >
                                 <path
                                   fillRule="evenodd"
-                                  d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                                  d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
                                   clipRule="evenodd"
                                 />
                               </svg>
-                            </div>
+                            </button>
                           </div>
-                          <div className="flex-1">
-                            <p className="text-sm font-semibold text-green-900 mb-1">
-                              Đã chọn size áo finish
-                            </p>
-                            <div className="flex flex-wrap items-center gap-2">
-                              <span className="inline-flex items-center px-3 py-1 bg-white border border-green-300 rounded-full text-sm font-bold text-green-700">
-                                Size {watchFinisherShirtSize}
-                              </span>
-                              <span className="text-sm text-green-700">
-                                Đi kèm cự ly {selectedDistance.name}
-                              </span>
-                            </div>
-                          </div>
-                          <button
-                            type="button"
-                            onClick={() => setValue("finisherShirtSize", "")}
-                            className="flex-shrink-0 text-green-600 hover:text-green-800 transition-colors"
-                            title="Bỏ chọn"
-                          >
-                            <svg
-                              className="w-5 h-5"
-                              fill="currentColor"
-                              viewBox="0 0 20 20"
-                            >
-                              <path
-                                fillRule="evenodd"
-                                d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
-                                clipRule="evenodd"
-                              />
-                            </svg>
-                          </button>
                         </div>
-                      </div>
+                      )}
+                    </div>
+                  )}
+                {watchWantsFinisherShirt && (
+                  <label className="block rounded-xl border-2 border-orange-200 bg-orange-50 p-4">
+                    <span className="block text-sm font-semibold text-orange-900">
+                      Số tiền ủng hộ Quỹ (tối thiểu{" "}
+                      {formatCurrency(eventData.event.minFinisherDonation)})
+                    </span>
+                    <input
+                      type="number"
+                      min={eventData.event.minFinisherDonation}
+                      step="1000"
+                      {...register("finisherDonationAmount", {
+                        valueAsNumber: true,
+                      })}
+                      className="mt-2 h-12 w-full rounded-lg border border-orange-300 bg-white px-4 text-lg font-bold"
+                    />
+                    {watchFinisherDonationAmount <
+                      eventData.event.minFinisherDonation && (
+                      <span className="mt-2 block text-sm text-red-600">
+                        Vui lòng nhập tối thiểu{" "}
+                        {formatCurrency(eventData.event.minFinisherDonation)}.
+                      </span>
                     )}
-                  </div>
+                  </label>
                 )}
               </CardContent>
             </Card>
@@ -1902,7 +2028,11 @@ Tôi đồng ý cho Ban Tổ Chức sử dụng hình ảnh, video, tên và th�
                         selectedShirtPrice > 0 &&
                         !isRacekitShirtIncluded
                           ? "Phí đăng ký + Áo"
-                          : "Phí đăng ký"}
+                          : eventData.event.enableOptionalFinisherDonation
+                            ? watchWantsFinisherShirt
+                              ? "Ủng hộ Quỹ và nhận áo finisher"
+                              : "Đăng ký không nhận áo"
+                            : "Phí đăng ký"}
                       </div>
                     </div>
                     <div className="text-right">
@@ -1932,6 +2062,12 @@ Tôi đồng ý cho Ban Tổ Chức sử dụng hình ảnh, video, tên và th�
                     <AlertCircle className="w-5 h-5 mr-2" />
                     Vui lòng chọn cự ly để tiếp tục
                   </>
+                ) : eventData.event.enableOptionalFinisherDonation ? (
+                  watchWantsFinisherShirt ? (
+                    `Tiếp tục tạo mã QR - ${formatCurrency(calculateTotal())}`
+                  ) : (
+                    "Đăng ký ngay - Miễn phí"
+                  )
                 ) : (
                   `Tiếp tục thanh toán - ${formatCurrency(calculateTotal())}`
                 )}

@@ -4,6 +4,12 @@ import Link from "next/link";
 import { use, useEffect, useState } from "react";
 import { ArrowLeft, CheckCircle2, Plus, ShieldCheck, Users } from "lucide-react";
 import { TeamMembersManager } from "./team-members-manager";
+import { BackfillJobsPanel } from "./backfill-jobs-panel";
+import { ParticipantsManager } from "./participants-manager";
+import { EventStatusControl } from "./event-status-control";
+import { RuleSimulator } from "./rule-simulator";
+import { AdvancedRulesPanel } from "./advanced-rules-panel";
+import { ActivityReviewPanel } from "./activity-review-panel";
 
 export default function ChallengeDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
@@ -70,7 +76,7 @@ export default function ChallengeDetailPage({ params }: { params: Promise<{ id: 
   if (!data) return <main className="p-8"><div className="rounded-2xl border bg-white p-12 text-center text-slate-500">{error || "Đang tải sự kiện..."}</div></main>;
   return <main className="p-4 md:p-8">
     <Link href="/admin/dashboard/challenges" className="inline-flex items-center gap-2 text-sm font-semibold text-slate-600 hover:text-orange-700"><ArrowLeft className="h-4 w-4" />Danh sách Challenge</Link>
-    <div className="mt-4 flex flex-wrap items-start justify-between gap-4"><div><p className="text-sm font-semibold uppercase tracking-wider text-orange-600">Ruleset v{data.currentRuleset?.version}</p><h1 className="text-3xl font-bold text-slate-950">{data.name}</h1><p className="mt-2 text-slate-600">{new Date(data.startsAt).toLocaleString("vi-VN")} → {new Date(data.endsAt).toLocaleString("vi-VN")}</p></div><span className="rounded-full bg-slate-100 px-4 py-2 text-sm font-bold">{data.status}</span></div>
+    <div className="mt-4 flex flex-wrap items-start justify-between gap-4"><div><p className="text-sm font-semibold uppercase tracking-wider text-orange-600">Ruleset v{data.currentRuleset?.version}</p><h1 className="text-3xl font-bold text-slate-950">{data.name}</h1><p className="mt-2 text-slate-600">{new Date(data.startsAt).toLocaleString("vi-VN")} → {new Date(data.endsAt).toLocaleString("vi-VN")}</p></div><EventStatusControl eventId={id} status={data.status} onChanged={load} /></div>
     {error && <div className="mt-5 rounded-xl border border-red-200 bg-red-50 p-4 text-red-700">{error}</div>}
 
     <div className="mt-6 grid gap-4 sm:grid-cols-3"><Stat label="Người tham gia" value={data._count.enrollments} icon={Users} /><Stat label="Số đội" value={data.teams.length} icon={Users} /><Stat label="Activity đã xét" value={data._count.evaluations} icon={CheckCircle2} /></div>
@@ -86,6 +92,11 @@ export default function ChallengeDetailPage({ params }: { params: Promise<{ id: 
         <div className="mt-5 space-y-3">{data.teams.map((item: any) => <div key={item.id} className="rounded-xl border p-4"><div className="flex items-center justify-between"><strong>{item.name}</strong><span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold">{item.memberships.length}/{item.maxMembers}</span></div><TeamMembersManager eventId={id} team={item} onChanged={load} /></div>)}</div>
       </section>
     </div>
+    <AdvancedRulesPanel eventId={id} currentRuleset={data.currentRuleset} enablePoints={data.enablePoints} pointsPerKm={data.pointsPerKm} onChanged={load} />
+    <RuleSimulator eventId={id} />
+    <ParticipantsManager eventId={id} />
+    <ActivityReviewPanel eventId={id} />
+    <BackfillJobsPanel eventId={id} startsAt={data.startsAt} endsAt={data.endsAt} />
   </main>;
 }
 

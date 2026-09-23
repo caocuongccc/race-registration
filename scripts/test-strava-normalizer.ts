@@ -43,6 +43,18 @@ assert.equal(normalized.hasHeartRateStream, true);
 assert.equal(normalized.splits[0].isCompleteKm, true);
 assert.equal(normalized.splits[2].isCompleteKm, false);
 
+const fallback = normalizeStravaActivity({
+  id: 222, sport_type: "Run", start_date: "2026-09-20T00:30:00Z",
+  start_date_local: "2026-09-20T07:30:00Z", distance: 2100,
+  moving_time: 750, elapsed_time: 780,
+}, {
+  distance: { data: [0, 500, 1000, 1500, 2000, 2100] },
+  time: { data: [0, 180, 360, 550, 740, 780] },
+});
+assert.equal(fallback.splits.length, 3);
+assert.equal(fallback.splits[0].distanceMeters, 1000);
+assert.equal(fallback.splits[0].elapsedTimeSeconds, 360);
+assert.equal(fallback.splits[2].isCompleteKm, false);
 const event = parseStravaWebhookEvent({
   object_type: "activity",
   object_id: 123456789,

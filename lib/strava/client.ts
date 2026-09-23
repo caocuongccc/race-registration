@@ -99,4 +99,26 @@ export async function getStravaActivityStreams<T = unknown>(
   });
   return parseResponse<T>(response);
 }
+export interface StravaRateLimit {
+  shortLimit: number | null;
+  dailyLimit: number | null;
+  shortUsage: number | null;
+  dailyUsage: number | null;
+}
 
+function readRateLimit(response: Response): StravaRateLimit {
+  const limits = response.headers.get("x-ratelimit-limit")?.split(",").map(Number) ?? [];
+  const usage = response.headers.get("x-ratelimit-usage")?.split(",").map(Number) ?? [];
+  return { shortLimit: limits[0] ?? null, dailyLimit: limits[1] ?? null, shortUsage: usage[0] ?? null, dailyUsage: usage[1] ?? null };
+}
+
+export async function listStravaAthleteActivities<T = unknown>(input: { accessToken: string; after: Date; before: Date; page: number; perPage?: number }): Promise<{ activities: T[]; rateLimit: StravaRateLimit }> {
+  const url = new URL("/api/v3/athlete/activities", STRAVA_BASE_URL);
+  url.searchParams.set("after", String(Math.floor(input.after.getTime() / 1000)));
+  url.searchParams.set("before", String(Math.floor(input.before.getTime() / 1000)));
+  url.searchParams.set("page", String(input.page));
+  url.searchParams.set("per_page", String(Math.min(100, input.perPage ?? 100)));
+  const response = await fetch(url, { headers: { authorization: `Bearer ${input.accessToken}` }, cache: "no-store" });
+  const limits = readRateLimit(response);
+  return { activities: await parseResponse<T[]>(response), rateLimit: limits };
+}
