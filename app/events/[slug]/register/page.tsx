@@ -272,14 +272,17 @@ export default function RegistrationPage() {
   const requiresShirtPurchase = eventData?.event.requiresShirtPurchase === true;
   const racekitShirtOptedOut =
     !requiresShirtPurchase && watchShirtCategory === "NONE";
-  const needsRacekitCategory = eventData?.event.hasShirt && !watchShirtCategory;
+  const showRacekitSelection = Boolean(
+    eventData?.event.hasShirt && !eventData.event.enableOptionalFinisherDonation,
+  );
+  const needsRacekitCategory = showRacekitSelection && !watchShirtCategory;
   const needsRacekitType =
-    eventData?.event.hasShirt &&
+    showRacekitSelection &&
     watchShirtCategory &&
     !racekitShirtOptedOut &&
     !watchShirtType;
   const needsRacekitSize =
-    eventData?.event.hasShirt &&
+    showRacekitSelection &&
     watchShirtType &&
     !racekitShirtOptedOut &&
     !watchShirtSize;
@@ -324,7 +327,7 @@ export default function RegistrationPage() {
       (!watchFinisherShirtCategory ||
         !watchFinisherShirtType ||
         !watchFinisherShirtSize)) ||
-    (eventData?.event.hasShirt &&
+    (showRacekitSelection &&
       !racekitShirtOptedOut &&
       (!watchShirtCategory || !watchShirtType || !watchShirtSize)) ||
     !!emailError ||
@@ -535,13 +538,13 @@ export default function RegistrationPage() {
 
     const racekitOptedOut =
       !requiresShirtPurchase && data.shirtCategory === "NONE";
-    if (eventData?.event.hasShirt && !data.shirtCategory) {
+    if (showRacekitSelection && !data.shirtCategory) {
       toast.error("Vui lòng chọn loại áo racekit");
       return;
     }
 
     if (
-      eventData?.event.hasShirt &&
+      showRacekitSelection &&
       requiresShirtPurchase &&
       data.shirtCategory === "NONE"
     ) {
@@ -549,7 +552,7 @@ export default function RegistrationPage() {
       return;
     }
 
-    if (eventData?.event.hasShirt && !racekitOptedOut && !data.shirtId) {
+    if (showRacekitSelection && !racekitOptedOut && !data.shirtId) {
       toast.error("Vui lòng chọn size áo racekit");
       return;
     }
@@ -1200,7 +1203,7 @@ Tôi đồng ý cho Ban Tổ Chức sử dụng hình ảnh, video, tên và th�
           </Card>
 
           {/* Step 3: Shirt Selection - WITH SIZE DROPDOWN */}
-          {eventData.event.hasShirt && (
+          {showRacekitSelection && (
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
@@ -1696,7 +1699,9 @@ Tôi đồng ý cho Ban Tổ Chức sử dụng hình ảnh, video, tên và th�
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <Shirt className="w-6 h-6" />
-                  Áo finish cho cự ly {selectedDistance.name}
+                  {eventData.event.enableOptionalFinisherDonation
+                    ? "Chọn áo finisher"
+                    : `Áo finish cho cự ly ${selectedDistance.name}`}
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-5">
@@ -1727,7 +1732,9 @@ Tôi đồng ý cho Ban Tổ Chức sử dụng hình ảnh, video, tên và th�
                   </div>
                 )}
                 <p className="text-sm text-blue-700 bg-blue-50 border border-blue-200 rounded-lg p-3">
-                  Cự ly {selectedDistance.name} đã chọn nhận áo finisher.{" "}
+                  {eventData.event.enableOptionalFinisherDonation
+                    ? "Bạn đã chọn nhận áo finisher. Vui lòng chọn loại, kiểu và size áo."
+                    : `Cự ly ${selectedDistance.name} đã chọn nhận áo finisher.`}{" "}
                   {selectedDistanceClonesFinisherShirt
                     ? "Thông tin áo finish sẽ được lấy theo áo racekit bạn đã chọn."
                     : "Vui lòng chọn loại, kiểu và size áo finish để BTC chuẩn bị đúng."}
@@ -2093,7 +2100,7 @@ Tôi đồng ý cho Ban Tổ Chức sử dụng hình ảnh, video, tên và th�
               )}
 
               {selectedDistance &&
-                eventData.event.hasShirt &&
+                showRacekitSelection &&
                 !racekitShirtOptedOut &&
                 (!watchShirtCategory || !watchShirtType || !watchShirtSize) && (
                   <div className="mt-3 p-3 bg-red-50 border-l-4 border-red-400 rounded-lg">

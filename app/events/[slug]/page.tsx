@@ -417,10 +417,19 @@ export default function EventDetailPage() {
             <Card className="lg:sticky lg:top-24">
               <CardContent className="pt-6 space-y-4">
                 <div className="text-center">
-                  <div className="text-sm text-gray-600 mb-2">Giá từ</div>
-                  <div className="text-4xl font-bold text-blue-600 mb-4">
-                    {formatCurrency(Math.min(...distances.map((d) => d.price)))}
+                  <div className="text-sm text-gray-600 mb-2">
+                    {event.enableOptionalFinisherDonation ? "Tham gia" : "Giá từ"}
                   </div>
+                  <div className="text-4xl font-bold text-blue-600 mb-1">
+                    {event.enableOptionalFinisherDonation
+                      ? "Miễn phí"
+                      : formatCurrency(Math.min(...distances.map((d) => d.price)))}
+                  </div>
+                  {event.enableOptionalFinisherDonation && (
+                    <div className="mb-4 text-sm font-medium text-orange-600">
+                      Áo finisher: ủng hộ từ {formatCurrency(event.minFinisherDonation)}
+                    </div>
+                  )}
                   {/* CẬP NHẬT: Conditional Button */}
                   {event.allowRegistration ? (
                     <Link href={`/events/${event.slug}/register`}>

@@ -45,6 +45,8 @@ export async function GET() {
         coverImageUrl: event.coverImageUrl, // NEW
         hasShirt: event.hasShirt,
         allowStandaloneShirtSale: event.allowStandaloneShirtSale,
+        enableOptionalFinisherDonation: event.enableOptionalFinisherDonation,
+        minFinisherDonation: event.minFinisherDonation,
         distances: event.distances,
         allowRegistration: event.allowRegistration, // NEW: Send to frontend
       })),

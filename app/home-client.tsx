@@ -31,6 +31,8 @@ interface Event {
   coverImageUrl?: string;
   hasShirt: boolean;
   allowStandaloneShirtSale: boolean;
+  enableOptionalFinisherDonation: boolean;
+  minFinisherDonation: number;
   allowRegistration: boolean;
   status: string;
   distances: Array<{
@@ -335,13 +337,23 @@ export default function HomePage() {
                     {/* PRICE */}
                     <div className="mt-auto pt-3 border-t border-gray-100">
                       <div className="flex items-center justify-between">
-                        <span className="text-sm text-gray-600">Giá từ:</span>
-
-                        <span className="text-lg font-bold text-blue-600">
-                          {formatCurrency(
-                            Math.min(...event.distances.map((d) => d.price)),
-                          )}
+                        <span className="text-sm text-gray-600">
+                          {event.enableOptionalFinisherDonation ? "Tham gia:" : "Giá từ:"}
                         </span>
+
+                        <div className="text-right">
+                          <span className="block text-lg font-bold text-blue-600">
+                            {event.enableOptionalFinisherDonation
+                              ? "Miễn phí"
+                              : formatCurrency(Math.min(...event.distances.map((d) => d.price)))}
+                          </span>
+                          {event.enableOptionalFinisherDonation && (
+                            <span className="block text-xs font-medium text-orange-600">
+                              Áo finisher: ủng hộ từ {formatCurrency(event.minFinisherDonation)}
+                            </span>
+                          )}
+                        </div>
+
                       </div>
                     </div>
 

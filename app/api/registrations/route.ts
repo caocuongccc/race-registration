@@ -128,6 +128,8 @@ export async function POST(req: NextRequest) {
       event.enableOptionalFinisherDonation && wantsFinisherShirt === true;
     const requiresAnyFinisherShirt =
       distance.requiresFinisherShirt || optionalFinisherSelected;
+    const supportsRacekitSelection =
+      event.hasShirt && !event.enableOptionalFinisherDonation;
 
     if (requiresAnyFinisherShirt && !shouldCloneFinisherShirt) {
       if (!finisherShirtCategory || !finisherShirtType || !finisherShirtSize) {
@@ -182,7 +184,7 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    if (event.hasShirt && !racekitShirtOptedOut && !shirtId) {
+    if (supportsRacekitSelection && !racekitShirtOptedOut && !shirtId) {
       return NextResponse.json(
         { error: "Vui lòng chọn size áo racekit" },
         { status: 400 },

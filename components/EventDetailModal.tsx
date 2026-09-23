@@ -221,14 +221,23 @@ export function EventDetailModal({
                 <div className="space-y-4">
                   <div className="bg-gradient-to-br from-blue-500 to-indigo-600 p-5 text-white rounded-xl">
                     <div className="text-center">
-                      <div className="text-sm opacity-90">Giá từ</div>
-                      <div className="text-3xl font-bold my-2">
-                        {formatCurrency(
-                          distances.length
-                            ? Math.min(...distances.map((d) => d.price))
-                            : 0,
-                        )}
+                      <div className="text-sm opacity-90">
+                        {event.enableOptionalFinisherDonation ? "Tham gia" : "Giá từ"}
                       </div>
+                      <div className="text-3xl font-bold my-2">
+                        {event.enableOptionalFinisherDonation
+                          ? "Miễn phí"
+                          : formatCurrency(
+                              distances.length
+                                ? Math.min(...distances.map((d) => d.price))
+                                : 0,
+                            )}
+                      </div>
+                      {event.enableOptionalFinisherDonation && (
+                        <div className="mb-2 text-sm font-medium text-blue-100">
+                          Áo finisher: ủng hộ từ {formatCurrency(event.minFinisherDonation)}
+                        </div>
+                      )}
                       {event.allowRegistration ? (
                         <Link
                           href={`/events/${event.slug}/register`}
