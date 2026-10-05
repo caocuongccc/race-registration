@@ -132,7 +132,9 @@ async function main() {
     hasShirt: false,
     requiresShirtPurchase: false,
     allowStandaloneShirtSale: false,
-    requireOnlinePayment: true,
+    // XmaxDay is reconciled and confirmed manually by admin. The QR transfer
+    // content is the registrant phone number, so automatic webhook matching is off.
+    requireOnlinePayment: false,
     sendBibImmediately: true,
     registrationServiceOnly: false,
     enableOptionalFinisherDonation: true,

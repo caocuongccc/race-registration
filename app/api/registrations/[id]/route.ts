@@ -29,6 +29,7 @@ export async function GET(
         event: {
           select: {
             name: true,
+            slug: true,
             date: true,
             location: true,
             logoUrl: true,
@@ -88,7 +89,9 @@ export async function GET(
         )
       : buildManualRegistrationTransferContent(
           registration.phone,
-          registrationNumber,
+          registration.event.slug === "xmaxday-2026"
+            ? null
+            : registrationNumber,
         );
     const event = {
       ...registration.event,

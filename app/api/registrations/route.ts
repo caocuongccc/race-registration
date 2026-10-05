@@ -411,7 +411,7 @@ export async function POST(req: NextRequest) {
         )
       : buildManualRegistrationTransferContent(
           newRegistration.phone,
-          registrationNumber,
+          event.slug === "xmaxday-2026" ? null : registrationNumber,
         );
     console.log("💬 Transfer content built:", {
       registrationId: newRegistration.id,
