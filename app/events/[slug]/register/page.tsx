@@ -47,6 +47,8 @@ interface EventData {
     requiresShirtPurchase: boolean;
     enableOptionalFinisherDonation: boolean;
     minFinisherDonation: number;
+    finisherShirtPrice: number;
+    finisherShirtSockPrice: number;
     bankName?: string;
     bankAccount?: string;
     bankHolder?: string;
@@ -69,6 +71,15 @@ interface EventData {
   distances: any[];
   shirts: any[];
   shirtImages?: any;
+  sockOptions: Array<{
+    id: string;
+    name: string;
+    colorCode: string;
+    imageUrl?: string | null;
+    price: number;
+    stockQuantity?: number | null;
+    soldQuantity: number;
+  }>;
 }
 
 interface FormData {
@@ -94,8 +105,8 @@ interface FormData {
   finisherShirtCategory: string;
   finisherShirtType: string;
   finisherShirtSize: string;
-  wantsFinisherShirt: boolean;
-  finisherDonationAmount: number;
+  registrationPackage: "BASIC" | "FINISHER_SHIRT" | "FINISHER_SHIRT_SOCKS";
+  sockOptionId: string;
 }
 
 const FINISHER_SHIRT_SIZES = ["XS", "S", "M", "L", "XL", "XXL", "XXXL"];
@@ -204,10 +215,13 @@ export default function RegistrationPage() {
   const watchFinisherShirtCategory = watch("finisherShirtCategory");
   const watchFinisherShirtType = watch("finisherShirtType");
   const watchFinisherShirtSize = watch("finisherShirtSize");
-  const watchWantsFinisherShirt = watch("wantsFinisherShirt");
-  const watchFinisherDonationAmount = Number(
-    watch("finisherDonationAmount") || 0,
-  );
+  const watchRegistrationPackage = watch("registrationPackage") || "BASIC";
+  const watchSockOptionId = watch("sockOptionId");
+  const includesFinisherShirt = watchRegistrationPackage !== "BASIC";
+  const includesSocks = watchRegistrationPackage === "FINISHER_SHIRT_SOCKS";
+  const selectedSockOption =
+    eventData?.sockOptions.find((sock) => sock.id === watchSockOptionId) ||
+    null;
 
   useEffect(() => {
     if (eventData?.distances?.length === 1 && !watchDistanceId) {
@@ -220,8 +234,7 @@ export default function RegistrationPage() {
   const selectedDistanceRequiresFinisherShirt =
     requiresFinisherShirt(selectedDistance) ||
     Boolean(
-      eventData?.event.enableOptionalFinisherDonation &&
-      watchWantsFinisherShirt,
+      eventData?.event.enableOptionalFinisherDonation && includesFinisherShirt,
     );
   const selectedDistanceClonesFinisherShirt =
     selectedDistanceRequiresFinisherShirt &&
@@ -273,7 +286,8 @@ export default function RegistrationPage() {
   const racekitShirtOptedOut =
     !requiresShirtPurchase && watchShirtCategory === "NONE";
   const showRacekitSelection = Boolean(
-    eventData?.event.hasShirt && !eventData.event.enableOptionalFinisherDonation,
+    eventData?.event.hasShirt &&
+    !eventData.event.enableOptionalFinisherDonation,
   );
   const needsRacekitCategory = showRacekitSelection && !watchShirtCategory;
   const needsRacekitType =
@@ -310,18 +324,17 @@ export default function RegistrationPage() {
     (eventData?.event.showEmergencyContact &&
       (!watchEmergencyContactName || !watchEmergencyContactPhone)) ||
     (eventData?.event.requireWaiver && !watchWaiverAccepted);
-  const invalidOptionalFinisherDonation =
-    Boolean(
-      eventData?.event.enableOptionalFinisherDonation &&
-      watchWantsFinisherShirt,
-    ) &&
-    watchFinisherDonationAmount < (eventData?.event.minFinisherDonation || 0);
+  const missingSockOption = Boolean(
+    eventData?.event.enableOptionalFinisherDonation &&
+    includesSocks &&
+    !watchSockOptionId,
+  );
   const isSubmitDisabled =
     submitting ||
     redirectingPayment ||
     !selectedDistance ||
     hasMissingRequiredInfo ||
-    invalidOptionalFinisherDonation ||
+    missingSockOption ||
     (selectedDistanceRequiresFinisherShirt &&
       !selectedDistanceClonesFinisherShirt &&
       (!watchFinisherShirtCategory ||
@@ -475,11 +488,13 @@ export default function RegistrationPage() {
       total += selectedShirtPrice;
     }
 
-    if (
-      eventData?.event.enableOptionalFinisherDonation &&
-      watchWantsFinisherShirt
-    ) {
-      total += watchFinisherDonationAmount;
+    if (eventData?.event.enableOptionalFinisherDonation) {
+      total +=
+        watchRegistrationPackage === "FINISHER_SHIRT_SOCKS"
+          ? eventData.event.finisherShirtSockPrice
+          : watchRegistrationPackage === "FINISHER_SHIRT"
+            ? eventData.event.finisherShirtPrice
+            : 0;
     }
 
     return total;
@@ -516,12 +531,10 @@ export default function RegistrationPage() {
 
     if (
       eventData?.event.enableOptionalFinisherDonation &&
-      data.wantsFinisherShirt &&
-      Number(data.finisherDonationAmount) < eventData.event.minFinisherDonation
+      data.registrationPackage === "FINISHER_SHIRT_SOCKS" &&
+      !data.sockOptionId
     ) {
-      toast.error(
-        `Mức ủng hộ tối thiểu là ${formatCurrency(eventData.event.minFinisherDonation)}`,
-      );
+      toast.error("Vui lòng chọn màu tất");
       return;
     }
 
@@ -608,10 +621,12 @@ export default function RegistrationPage() {
       }
 
       if (eventData?.event.enableOptionalFinisherDonation) {
-        submissionData.wantsFinisherShirt = Boolean(data.wantsFinisherShirt);
-        submissionData.finisherDonationAmount = data.wantsFinisherShirt
-          ? Number(data.finisherDonationAmount)
-          : 0;
+        submissionData.registrationPackage =
+          data.registrationPackage || "BASIC";
+        submissionData.sockOptionId =
+          data.registrationPackage === "FINISHER_SHIRT_SOCKS"
+            ? data.sockOptionId
+            : null;
       }
 
       if (selectedDistanceRequiresFinisherShirt) {
@@ -1652,44 +1667,49 @@ Tôi đồng ý cho Ban Tổ Chức sử dụng hình ảnh, video, tên và th�
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <Shirt className="h-6 w-6" />
-                  Lựa chọn áo finisher
+                  Chọn gói đăng ký
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="grid gap-3 sm:grid-cols-2">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setValue("wantsFinisherShirt", false);
-                      setValue("finisherDonationAmount", 0);
-                      setValue("finisherShirtCategory", "");
-                      setValue("finisherShirtType", "");
-                      setValue("finisherShirtSize", "");
-                    }}
-                    className={optionButtonClass(!watchWantsFinisherShirt)}
-                  >
-                    Đăng ký, không nhận áo
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setValue("wantsFinisherShirt", true);
-                      if (
-                        watchFinisherDonationAmount <
-                        eventData.event.minFinisherDonation
-                      ) {
-                        setValue(
-                          "finisherDonationAmount",
-                          eventData.event.minFinisherDonation,
-                        );
-                      }
-                    }}
-                    className={optionButtonClass(
-                      Boolean(watchWantsFinisherShirt),
-                    )}
-                  >
-                    Đăng ký và nhận áo finisher
-                  </button>
+                <div className="grid gap-3 md:grid-cols-3">
+                  {(
+                    [
+                      ["BASIC", "Không áo, không tất", 0],
+                      [
+                        "FINISHER_SHIRT",
+                        "Áo finisher",
+                        eventData.event.finisherShirtPrice,
+                      ],
+                      [
+                        "FINISHER_SHIRT_SOCKS",
+                        "Áo finisher + tất",
+                        eventData.event.finisherShirtSockPrice,
+                      ],
+                    ] as const
+                  ).map(([value, label, price]) => (
+                    <button
+                      key={value}
+                      type="button"
+                      onClick={() => {
+                        setValue("registrationPackage", value);
+                        if (value !== "FINISHER_SHIRT_SOCKS")
+                          setValue("sockOptionId", "");
+                        if (value === "BASIC") {
+                          setValue("finisherShirtCategory", "");
+                          setValue("finisherShirtType", "");
+                          setValue("finisherShirtSize", "");
+                        }
+                      }}
+                      className={optionButtonClass(
+                        watchRegistrationPackage === value,
+                      )}
+                    >
+                      <span className="block">{label}</span>
+                      <span className="mt-1 block text-sm font-bold">
+                        {formatCurrency(price)}
+                      </span>
+                    </button>
+                  ))}
                 </div>
               </CardContent>
             </Card>
@@ -1733,7 +1753,7 @@ Tôi đồng ý cho Ban Tổ Chức sử dụng hình ảnh, video, tên và th�
                 )}
                 <p className="text-sm text-blue-700 bg-blue-50 border border-blue-200 rounded-lg p-3">
                   {eventData.event.enableOptionalFinisherDonation
-                    ? "Bạn đã chọn nhận áo finisher. Vui lòng chọn loại, kiểu và size áo."
+                    ? "Bạn đã chọn nhận áo finisher. "
                     : `Cự ly ${selectedDistance.name} đã chọn nhận áo finisher.`}{" "}
                   {selectedDistanceClonesFinisherShirt
                     ? "Thông tin áo finish sẽ được lấy theo áo racekit bạn đã chọn."
@@ -1902,29 +1922,55 @@ Tôi đồng ý cho Ban Tổ Chức sử dụng hình ảnh, video, tên và th�
                       )}
                     </div>
                   )}
-                {watchWantsFinisherShirt && (
-                  <label className="block rounded-xl border-2 border-orange-200 bg-orange-50 p-4">
-                    <span className="block text-sm font-semibold text-orange-900">
-                      Số tiền ủng hộ Quỹ (tối thiểu{" "}
-                      {formatCurrency(eventData.event.minFinisherDonation)})
-                    </span>
-                    <input
-                      type="number"
-                      min={eventData.event.minFinisherDonation}
-                      step="1000"
-                      {...register("finisherDonationAmount", {
-                        valueAsNumber: true,
+                {includesSocks && (
+                  <div className="rounded-xl border-2 border-blue-200 bg-blue-50 p-4">
+                    <p className="mb-3 text-sm font-semibold text-blue-900">
+                      Chọn loại tất
+                    </p>
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      {eventData.sockOptions.map((sock) => {
+                        const soldOut =
+                          sock.stockQuantity !== null &&
+                          sock.stockQuantity !== undefined &&
+                          sock.soldQuantity >= sock.stockQuantity;
+                        return (
+                          <button
+                            key={sock.id}
+                            type="button"
+                            disabled={soldOut}
+                            onClick={() => setValue("sockOptionId", sock.id)}
+                            className={optionButtonClass(
+                              watchSockOptionId === sock.id,
+                            )}
+                          >
+                            {sock.imageUrl ? (
+                              <img
+                                src={sock.imageUrl}
+                                alt={sock.name}
+                                className="mx-auto mb-2 h-28 w-full rounded-lg object-contain"
+                              />
+                            ) : (
+                              <span
+                                className="mx-auto mb-2 block h-20 w-20 rounded-full border-4 border-white shadow"
+                                style={{ backgroundColor: sock.colorCode }}
+                              />
+                            )}
+                            <span className="block">{sock.name}</span>
+                            {soldOut && (
+                              <span className="block text-xs text-red-600">
+                                Hết hàng
+                              </span>
+                            )}
+                          </button>
+                        );
                       })}
-                      className="mt-2 h-12 w-full rounded-lg border border-orange-300 bg-white px-4 text-lg font-bold"
-                    />
-                    {watchFinisherDonationAmount <
-                      eventData.event.minFinisherDonation && (
-                      <span className="mt-2 block text-sm text-red-600">
-                        Vui lòng nhập tối thiểu{" "}
-                        {formatCurrency(eventData.event.minFinisherDonation)}.
-                      </span>
+                    </div>
+                    {!watchSockOptionId && (
+                      <p className="mt-2 text-sm text-red-600">
+                        Vui lòng chọn một loại tất.
+                      </p>
                     )}
-                  </label>
+                  </div>
                 )}
               </CardContent>
             </Card>
@@ -1990,6 +2036,38 @@ Tôi đồng ý cho Ban Tổ Chức sử dụng hình ảnh, video, tên và th�
                     </div>
                   )}
 
+                {includesSocks && selectedSockOption && (
+                  <div className="flex items-center justify-between rounded-lg bg-green-50 p-3 text-gray-700 animate-fadeIn">
+                    <div className="flex items-center gap-3">
+                      {selectedSockOption.imageUrl ? (
+                        <img
+                          src={selectedSockOption.imageUrl}
+                          alt={selectedSockOption.name}
+                          className="h-12 w-12 rounded-lg object-contain"
+                        />
+                      ) : (
+                        <span
+                          className="h-10 w-10 rounded-full border-2 border-white shadow"
+                          style={{
+                            backgroundColor: selectedSockOption.colorCode,
+                          }}
+                        />
+                      )}
+                      <div>
+                        <div className="font-medium">
+                          Tất finisher – {selectedSockOption.name}
+                        </div>
+                        <div className="text-xs text-gray-500">
+                          Đi kèm gói áo finisher và tất
+                        </div>
+                      </div>
+                    </div>
+                    <span className="text-lg font-semibold text-green-700">
+                      Đã gồm
+                    </span>
+                  </div>
+                )}
+
                 {watchShirtSize &&
                   !racekitShirtOptedOut &&
                   selectedShirtPrice > 0 &&
@@ -2036,9 +2114,12 @@ Tôi đồng ý cho Ban Tổ Chức sử dụng hình ảnh, video, tên và th�
                         !isRacekitShirtIncluded
                           ? "Phí đăng ký + Áo"
                           : eventData.event.enableOptionalFinisherDonation
-                            ? watchWantsFinisherShirt
-                              ? "Ủng hộ Quỹ và nhận áo finisher"
-                              : "Đăng ký không nhận áo"
+                            ? watchRegistrationPackage !== "BASIC"
+                              ? watchRegistrationPackage ===
+                                "FINISHER_SHIRT_SOCKS"
+                                ? "Gói áo finisher và tất"
+                                : "Gói áo finisher"
+                              : "Đăng ký không áo, không tất"
                             : "Phí đăng ký"}
                       </div>
                     </div>
@@ -2070,7 +2151,7 @@ Tôi đồng ý cho Ban Tổ Chức sử dụng hình ảnh, video, tên và th�
                     Vui lòng chọn cự ly để tiếp tục
                   </>
                 ) : eventData.event.enableOptionalFinisherDonation ? (
-                  watchWantsFinisherShirt ? (
+                  watchRegistrationPackage !== "BASIC" ? (
                     `Tiếp tục tạo mã QR - ${formatCurrency(calculateTotal())}`
                   ) : (
                     "Đăng ký ngay - Miễn phí"

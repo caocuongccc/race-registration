@@ -45,6 +45,13 @@ function formatShirt(
   return `${categoryName} - ${typeName} - ${size}`;
 }
 
+function getPackageLabel(registrationPackage: string): string {
+  if (registrationPackage === "FINISHER_SHIRT_SOCKS")
+    return "Áo finisher + tất";
+  if (registrationPackage === "FINISHER_SHIRT") return "Áo finisher";
+  return "Không áo, không tất";
+}
+
 export async function GET(req: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
@@ -84,6 +91,7 @@ export async function GET(req: NextRequest) {
       include: {
         distance: true,
         event: true,
+        sockOption: true,
       },
       orderBy: {
         bibNumber: "asc",
@@ -91,9 +99,7 @@ export async function GET(req: NextRequest) {
     });
     const registrationNumbers =
       registrations.length > 0
-        ? await prisma.$queryRaw<
-            { id: string; registration_number: number }[]
-          >`
+        ? await prisma.$queryRaw<{ id: string; registration_number: number }[]>`
             SELECT "id", "registration_number"
             FROM "registrations"
             WHERE "id" IN (${Prisma.join(registrations.map((r) => r.id))})
@@ -139,7 +145,9 @@ export async function GET(req: NextRequest) {
     const sourceStats = registrations.reduce<
       Record<string, { count: number; amount: number }>
     >((acc, registration) => {
-      const source = getRegistrationSourceLabel(registration.registrationSource);
+      const source = getRegistrationSourceLabel(
+        registration.registrationSource,
+      );
       if (!acc[source]) {
         acc[source] = { count: 0, amount: 0 };
       }
@@ -241,8 +249,11 @@ export async function GET(req: NextRequest) {
           r.finisherShirtType,
           r.finisherShirtSize,
         ),
+        "Gói đăng ký": getPackageLabel(r.registrationPackage),
+        "Loại tất": r.sockOption?.name || "",
         "Phí đăng ký": r.raceFee,
         "Phí áo": r.shirtFee,
+        "Phí gói": r.packageFee,
         "Tổng tiền": r.totalAmount,
         "Ngày đăng ký": new Date(r.registrationDate).toLocaleDateString(
           "vi-VN",
@@ -422,6 +433,48 @@ export async function GET(req: NextRequest) {
       const wsFinishShirts = XLSX.utils.json_to_sheet(finishRows);
       wsFinishShirts["!cols"] = [{ wch: 32 }, { wch: 12 }];
       XLSX.utils.book_append_sheet(wb, wsFinishShirts, "Thống kê áo finish");
+    }
+
+    const packageStats = new Map<string, { count: number; revenue: number }>();
+    registrations.forEach((registration) => {
+      const label = getPackageLabel(registration.registrationPackage);
+      const current = packageStats.get(label) || { count: 0, revenue: 0 };
+      current.count += 1;
+      current.revenue += registration.packageFee || 0;
+      packageStats.set(label, current);
+    });
+    const packageRows = Array.from(packageStats.entries()).map(
+      ([packageName, stats]) => ({
+        "Gói đăng ký": packageName,
+        "Số lượng": stats.count,
+        "Doanh thu": stats.revenue,
+      }),
+    );
+    if (packageRows.length > 0) {
+      const wsPackages = XLSX.utils.json_to_sheet(packageRows);
+      wsPackages["!cols"] = [{ wch: 28 }, { wch: 12 }, { wch: 18 }];
+      XLSX.utils.book_append_sheet(wb, wsPackages, "Thống kê gói");
+    }
+
+    const sockStats = new Map<string, number>();
+    registrations
+      .filter(
+        (registration) =>
+          registration.registrationPackage === "FINISHER_SHIRT_SOCKS" &&
+          registration.sockOption,
+      )
+      .forEach((registration) => {
+        const name = registration.sockOption!.name;
+        sockStats.set(name, (sockStats.get(name) || 0) + 1);
+      });
+    if (sockStats.size > 0) {
+      const sockRows = Array.from(sockStats.entries()).map(([name, count]) => ({
+        "Loại tất": name,
+        "Số lượng": count,
+      }));
+      const wsSocks = XLSX.utils.json_to_sheet(sockRows);
+      wsSocks["!cols"] = [{ wch: 24 }, { wch: 12 }];
+      XLSX.utils.book_append_sheet(wb, wsSocks, "Thống kê tất");
     }
 
     // ===================================

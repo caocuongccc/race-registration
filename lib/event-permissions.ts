@@ -19,7 +19,12 @@ export async function getUserSession() {
     throw new Error("Unauthorized");
   }
   // Returns: { id, email, name, role }
-  return session.user as { id: string; email?: string | null; name?: string | null; role: string };
+  return session.user as {
+    id: string;
+    email?: string | null;
+    name?: string | null;
+    role: string;
+  };
 }
 
 /**
@@ -244,8 +249,7 @@ export async function getUserAccessibleRegistrations(
 
   // Other filters
   if (search) {
-    const searchEventIds =
-      eventId && eventId !== "all" ? [eventId] : eventIds;
+    const searchEventIds = eventId && eventId !== "all" ? [eventId] : eventIds;
     const registrationNumberMatches = /^\d+$/.test(search)
       ? await prisma.$queryRaw<{ id: string }[]>`
           SELECT "id"
@@ -286,6 +290,9 @@ export async function getUserAccessibleRegistrations(
     include: {
       distance: { select: { name: true } },
       event: { select: { name: true } },
+      sockOption: {
+        select: { id: true, name: true, colorCode: true, imageUrl: true },
+      },
     },
     orderBy: { registrationDate: "desc" },
     skip,
@@ -293,9 +300,7 @@ export async function getUserAccessibleRegistrations(
   });
   const registrationNumbers =
     registrations.length > 0
-      ? await prisma.$queryRaw<
-          { id: string; registration_number: number }[]
-        >`
+      ? await prisma.$queryRaw<{ id: string; registration_number: number }[]>`
           SELECT "id", "registration_number"
           FROM "registrations"
           WHERE "id" IN (${Prisma.join(registrations.map((r) => r.id))})
@@ -306,8 +311,7 @@ export async function getUserAccessibleRegistrations(
   );
   const registrationsWithNumber = registrations.map((registration) => ({
     ...registration,
-    registrationNumber:
-      registrationNumberById.get(registration.id) ?? null,
+    registrationNumber: registrationNumberById.get(registration.id) ?? null,
   }));
   const totalPages = Math.ceil(totalCount / limit);
 

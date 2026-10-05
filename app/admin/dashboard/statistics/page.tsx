@@ -55,6 +55,17 @@ interface Stats {
   distanceDetails?: Array<any>; // ✅ Add distance details type
   ageGroups: Record<string, number>;
   emailStats?: EmailStat[]; // ✅ Add email stats type
+  packageStats?: Array<{
+    package: "BASIC" | "FINISHER_SHIRT" | "FINISHER_SHIRT_SOCKS";
+    count: number;
+    revenue: number;
+  }>;
+  sockStats?: Array<{
+    id: string;
+    name: string;
+    colorCode: string;
+    count: number;
+  }>;
 }
 
 const COLORS = ["#3b82f6", "#10b981", "#f59e0b", "#ef4444", "#8b5cf6"];
@@ -99,7 +110,9 @@ export default function StatisticsPage() {
       // ✅ Check for API error before setting stats
       if (!res.ok || data.error) {
         console.error("Statistics API error:", data.error);
-        toast.error("Không thể tải thống kê: " + (data.error || "Lỗi không xác định"));
+        toast.error(
+          "Không thể tải thống kê: " + (data.error || "Lỗi không xác định"),
+        );
         return;
       }
 
@@ -111,7 +124,6 @@ export default function StatisticsPage() {
       setLoading(false);
     }
   };
-
 
   const handleExport = async () => {
     if (selectedEvent === "all") {
@@ -247,6 +259,69 @@ export default function StatisticsPage() {
           </CardContent>
         </Card>
       </div>
+
+      {Boolean(stats.packageStats?.length || stats.sockStats?.length) && (
+        <div className="grid gap-6 lg:grid-cols-2">
+          <Card>
+            <CardHeader>
+              <CardTitle>Thống kê gói đăng ký</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {stats.packageStats?.map((item) => (
+                <div
+                  key={item.package}
+                  className="flex items-center justify-between rounded-lg bg-gray-50 p-3"
+                >
+                  <div>
+                    <div className="font-medium">
+                      {item.package === "FINISHER_SHIRT_SOCKS"
+                        ? "Áo finisher + tất"
+                        : item.package === "FINISHER_SHIRT"
+                          ? "Áo finisher"
+                          : "Không áo, không tất"}
+                    </div>
+                    <div className="text-xs text-gray-500">
+                      {item.count} đăng ký đã thanh toán
+                    </div>
+                  </div>
+                  <div className="font-semibold text-blue-700">
+                    {formatCurrency(item.revenue)}
+                  </div>
+                </div>
+              ))}
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Thống kê tất</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {stats.sockStats?.length ? (
+                stats.sockStats.map((item) => (
+                  <div
+                    key={item.id}
+                    className="flex items-center justify-between rounded-lg bg-gray-50 p-3"
+                  >
+                    <div className="flex items-center gap-2 font-medium">
+                      <span
+                        className="h-4 w-4 rounded-full border"
+                        style={{ backgroundColor: item.colorCode }}
+                      />
+                      {item.name}
+                    </div>
+                    <div className="text-lg font-bold">{item.count}</div>
+                  </div>
+                ))
+              ) : (
+                <p className="text-sm text-gray-500">
+                  Chưa có tất đã thanh toán.
+                </p>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+      )}
 
       {/* Registration Trends with Payment Line */}
       <Card>

@@ -31,6 +31,14 @@ interface Registration {
   bibNumber: string | null;
   bibName: string;
   totalAmount: number;
+  registrationPackage: "BASIC" | "FINISHER_SHIRT" | "FINISHER_SHIRT_SOCKS";
+  packageFee: number;
+  sockOption?: {
+    id: string;
+    name: string;
+    colorCode: string;
+    imageUrl?: string | null;
+  } | null;
   paymentStatus: string;
   registrationDate: Date;
   distance: { name: string };
@@ -380,7 +388,11 @@ export default function RegistrationsPage() {
             </Button>
           )}
 
-          <Button variant="outline" onClick={handleExport} disabled={!selectedEvent}>
+          <Button
+            variant="outline"
+            onClick={handleExport}
+            disabled={!selectedEvent}
+          >
             <Download className="w-4 h-4 mr-2" /> Xuất Excel
           </Button>
         </div>
@@ -481,6 +493,9 @@ export default function RegistrationsPage() {
                       <th className="px-6 py-3 text-left text-xs">Liên hệ</th>
                       <th className="px-6 py-3 text-left text-xs">Mã ĐK</th>
                       <th className="px-6 py-3 text-left text-xs">Cự ly</th>
+                      <th className="px-6 py-3 text-left text-xs">
+                        Gói đăng ký
+                      </th>
                       <th className="px-6 py-3 text-left text-xs">Số tiền</th>
                       <th className="px-6 py-3 text-left text-xs">
                         Trạng thái
@@ -534,6 +549,33 @@ export default function RegistrationsPage() {
                           </td>
 
                           <td className="px-6 py-4">{r.distance.name}</td>
+
+                          <td className="px-6 py-4 text-sm">
+                            {r.registrationPackage ===
+                            "FINISHER_SHIRT_SOCKS" ? (
+                              <div>
+                                <div className="font-medium">Áo + tất</div>
+                                <div className="mt-1 flex items-center gap-1.5 text-xs text-gray-600">
+                                  {r.sockOption && (
+                                    <span
+                                      className="h-3 w-3 rounded-full border"
+                                      style={{
+                                        backgroundColor: r.sockOption.colorCode,
+                                      }}
+                                    />
+                                  )}
+                                  {r.sockOption?.name ||
+                                    "Chưa xác định loại tất"}
+                                </div>
+                              </div>
+                            ) : r.registrationPackage === "FINISHER_SHIRT" ? (
+                              <span className="font-medium">Áo finisher</span>
+                            ) : (
+                              <span className="text-gray-500">
+                                Không áo, không tất
+                              </span>
+                            )}
+                          </td>
 
                           <td className="px-6 py-4 font-medium">
                             {formatCurrency(r.totalAmount)}

@@ -52,6 +52,14 @@ export async function GET(
             price: true,
           },
         },
+        sockOption: {
+          select: {
+            id: true,
+            name: true,
+            colorCode: true,
+            imageUrl: true,
+          },
+        },
       },
     });
 
@@ -112,6 +120,9 @@ export async function GET(
 
         raceFee: registration.raceFee,
         shirtFee: registration.shirtFee,
+        registrationPackage: registration.registrationPackage,
+        packageFee: registration.packageFee,
+        sockOption: registration.sockOption,
         totalAmount: registration.totalAmount,
         paymentStatus: registration.paymentStatus,
 

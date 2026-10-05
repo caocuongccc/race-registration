@@ -20,6 +20,14 @@ interface RegistrationData {
   email: string;
   phone: string;
   totalAmount: number;
+  registrationPackage: "BASIC" | "FINISHER_SHIRT" | "FINISHER_SHIRT_SOCKS";
+  packageFee: number;
+  sockOption?: {
+    id: string;
+    name: string;
+    colorCode: string;
+    imageUrl?: string | null;
+  } | null;
   paymentStatus: string;
   bibNumber?: string;
   shortCode?: string;
@@ -48,7 +56,7 @@ export default function PaymentPage() {
   const params = useParams();
   const router = useRouter();
   const [registration, setRegistration] = useState<RegistrationData | null>(
-    null
+    null,
   );
   const [loading, setLoading] = useState(true);
   const [checking, setChecking] = useState(false);
@@ -288,6 +296,21 @@ export default function PaymentPage() {
                   </span>
                 </div>
               )}
+              {registration.registrationPackage === "FINISHER_SHIRT_SOCKS" &&
+                registration.sockOption && (
+                  <div className="flex justify-between gap-4">
+                    <span className="text-gray-600">Tất:</span>
+                    <span className="flex items-center gap-2 font-medium">
+                      <span
+                        className="h-4 w-4 rounded-full border"
+                        style={{
+                          backgroundColor: registration.sockOption.colorCode,
+                        }}
+                      />
+                      {registration.sockOption.name}
+                    </span>
+                  </div>
+                )}
               <div className="border-t pt-3 flex justify-between items-center">
                 <span className="text-lg font-medium">Tổng cộng:</span>
                 <span className="text-2xl font-bold text-blue-600">
@@ -390,10 +413,10 @@ export default function PaymentPage() {
 
               <div className="bg-red-50 border border-red-200 p-4 rounded-lg">
                 <p className="text-sm text-red-800">
-                  ⚠️ <strong>Lưu ý:</strong> Vui lòng giữ nguyên nội dung
-                  chuyển khoản <strong>{transferContent}</strong>. Không sửa,
-                  thêm hoặc xóa ký tự để hệ thống tự động nhận diện và xác nhận
-                  thanh toán.
+                  ⚠️ <strong>Lưu ý:</strong> Vui lòng giữ nguyên nội dung chuyển
+                  khoản <strong>{transferContent}</strong>. Không sửa, thêm hoặc
+                  xóa ký tự để hệ thống tự động nhận diện và xác nhận thanh
+                  toán.
                 </p>
               </div>
 

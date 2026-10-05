@@ -29,6 +29,10 @@ export async function GET(
           where: { isAvailable: true },
           orderBy: [{ category: "asc" }, { type: "asc" }, { size: "asc" }],
         },
+        sockOptions: {
+          where: { isAvailable: true },
+          orderBy: { sortOrder: "asc" },
+        },
         eventImages: {
           where: {
             imageType: {
@@ -108,6 +112,8 @@ export async function GET(
         registrationServiceOnly: event.registrationServiceOnly,
         enableOptionalFinisherDonation: event.enableOptionalFinisherDonation,
         minFinisherDonation: event.minFinisherDonation,
+        finisherShirtPrice: event.finisherShirtPrice,
+        finisherShirtSockPrice: event.finisherShirtSockPrice,
         allowRegistration: event.allowRegistration,
 
         // ✅ NEW: Form field visibility configuration
@@ -146,6 +152,17 @@ export async function GET(
       })),
       shirts: Object.values(shirtsGrouped),
       shirtImages,
+      sockOptions: event.sockOptions.map((option) => ({
+        id: option.id,
+        name: option.name,
+        colorCode: option.colorCode,
+        imageUrl: option.imageUrl,
+        price: option.price,
+        isAvailable:
+          option.isAvailable &&
+          (option.stockQuantity === null ||
+            option.soldQuantity < option.stockQuantity),
+      })),
     };
 
     return NextResponse.json(response);

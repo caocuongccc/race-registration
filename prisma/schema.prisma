@@ -60,6 +60,8 @@ model Event {
   registrationServiceOnly  Boolean     @default(false) @map("registration_service_only")
   enableOptionalFinisherDonation Boolean @default(false) @map("enable_optional_finisher_donation")
   minFinisherDonation      Int         @default(0) @map("min_finisher_donation")
+  finisherShirtPrice       Int         @default(200000) @map("finisher_shirt_price")
+  finisherShirtSockPrice   Int         @default(230000) @map("finisher_shirt_sock_price")
   bankName                 String?     @db.Text
   bankAccount              String?     @db.Text
   bankHolder               String?     @db.Text
@@ -90,6 +92,7 @@ model Event {
   importBatches ImportBatch[]
   registrations Registration[]
   shirtOrders   ShirtOrder[]
+  sockOptions   EventSockOption[]
 
   @@map("events")
 }
@@ -204,6 +207,27 @@ model WebhookLog {
   @@map("webhook_logs")
 }
 
+model EventSockOption {
+  id            String         @id @default(cuid())
+  eventId       String
+  name          String
+  colorCode     String         @map("color_code")
+  imageUrl      String?        @map("image_url")
+  price         Int            @default(30000)
+  stockQuantity Int?           @map("stock_quantity")
+  soldQuantity  Int            @default(0) @map("sold_quantity")
+  isAvailable   Boolean        @default(true) @map("is_available")
+  sortOrder     Int            @default(0) @map("sort_order")
+  createdAt     DateTime       @default(now()) @map("created_at")
+  updatedAt     DateTime       @updatedAt @map("updated_at")
+  event         Event          @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  registrations Registration[]
+
+  @@unique([eventId, name])
+  @@index([eventId, isAvailable])
+  @@map("event_sock_options")
+}
+
 model Registration {
   id                    String              @id @default(cuid())
   eventId               String
@@ -232,6 +256,9 @@ model Registration {
   finisherShirtCategory ShirtCategory?      @map("finisher_shirt_category")
   finisherShirtType     ShirtType?          @map("finisher_shirt_type")
   finisherShirtSize     ShirtSize?          @map("finisher_shirt_size")
+  registrationPackage   RegistrationPackage @default(BASIC) @map("registration_package")
+  packageFee            Int                 @default(0) @map("package_fee")
+  sockOptionId          String?             @map("sock_option_id")
   raceFee               Int
   shirtFee              Int                 @default(0)
   totalAmount           Int
@@ -263,6 +290,7 @@ model Registration {
   event                 Event               @relation(fields: [eventId], references: [id])
   importBatch           ImportBatch?        @relation(fields: [importBatchId], references: [id])
   shirt                 EventShirt?         @relation(fields: [shirtId], references: [id])
+  sockOption            EventSockOption?     @relation(fields: [sockOptionId], references: [id])
   user                  User?               @relation(fields: [userId], references: [id])
   shirtOrders           ShirtOrder[]
   collectedBy           User?               @relation("RacePackCollector", fields: [racePackCollectedBy], references: [id])
@@ -272,6 +300,7 @@ model Registration {
   @@index([eventId, paymentStatus])
   @@index([distanceId])
   @@index([distanceGoalId])
+  @@index([sockOptionId])
   @@index([email])
   @@index([importBatchId, paymentStatus])
   @@map("registrations")
@@ -947,6 +976,12 @@ enum ShirtSize {
   KID_12
   KID_13
   KID_15
+}
+
+enum RegistrationPackage {
+  BASIC
+  FINISHER_SHIRT
+  FINISHER_SHIRT_SOCKS
 }
 
 enum RegistrationSource {

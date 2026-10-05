@@ -47,8 +47,8 @@ export async function POST(req: NextRequest) {
       finisherShirtCategory,
       finisherShirtType,
       finisherShirtSize,
-      wantsFinisherShirt,
-      finisherDonationAmount,
+      registrationPackage,
+      sockOptionId,
       utmSource,
     } = body;
 
@@ -77,6 +77,7 @@ export async function POST(req: NextRequest) {
       include: {
         distances: true,
         shirts: true,
+        sockOptions: true,
       },
     });
 
@@ -124,10 +125,30 @@ export async function POST(req: NextRequest) {
 
     const shouldCloneFinisherShirt =
       distance.requiresFinisherShirt && distance.cloneRaceShirtToFinisher;
-    const optionalFinisherSelected =
-      event.enableOptionalFinisherDonation && wantsFinisherShirt === true;
+    const allowedPackages = [
+      "BASIC",
+      "FINISHER_SHIRT",
+      "FINISHER_SHIRT_SOCKS",
+    ] as const;
+
+    if (
+      event.enableOptionalFinisherDonation &&
+      !allowedPackages.includes(registrationPackage)
+    ) {
+      return NextResponse.json(
+        { error: "Gói đăng ký không hợp lệ" },
+        { status: 400 },
+      );
+    }
+
+    const selectedPackage = event.enableOptionalFinisherDonation
+      ? (registrationPackage as (typeof allowedPackages)[number])
+      : distance.requiresFinisherShirt
+        ? "FINISHER_SHIRT"
+        : "BASIC";
     const requiresAnyFinisherShirt =
-      distance.requiresFinisherShirt || optionalFinisherSelected;
+      distance.requiresFinisherShirt || selectedPackage !== "BASIC";
+    const requiresSocks = selectedPackage === "FINISHER_SHIRT_SOCKS";
     const supportsRacekitSelection =
       event.hasShirt && !event.enableOptionalFinisherDonation;
 
@@ -169,21 +190,35 @@ export async function POST(req: NextRequest) {
       !isRacekitShirtIncluded &&
       shirtCategory === "NONE";
 
-    // Calculate fees
+    // Calculate fees. Package prices always come from the event, never the client.
     const raceFee = distance.price;
     let shirtFee = 0;
-    let optionalDonation = 0;
-
-    if (optionalFinisherSelected) {
-      optionalDonation = Number(finisherDonationAmount);
-      if (!Number.isInteger(optionalDonation) || optionalDonation < event.minFinisherDonation) {
-        return NextResponse.json(
-          { error: `Mức ủng hộ nhận áo finisher tối thiểu là ${event.minFinisherDonation.toLocaleString("vi-VN")}đ` },
-          { status: 400 },
-        );
-      }
+    const packageFee = event.enableOptionalFinisherDonation
+      ? selectedPackage === "FINISHER_SHIRT_SOCKS"
+        ? event.finisherShirtSockPrice
+        : selectedPackage === "FINISHER_SHIRT"
+          ? event.finisherShirtPrice
+          : 0
+      : 0;
+    const selectedSock = requiresSocks
+      ? event.sockOptions.find((option) => option.id === sockOptionId)
+      : null;
+    if (requiresSocks && (!selectedSock || !selectedSock.isAvailable)) {
+      return NextResponse.json(
+        { error: "Vui lòng chọn loại tất còn bán" },
+        { status: 400 },
+      );
     }
-
+    if (
+      selectedSock &&
+      selectedSock.stockQuantity !== null &&
+      selectedSock.soldQuantity >= selectedSock.stockQuantity
+    ) {
+      return NextResponse.json(
+        { error: "Loại tất đã hết hàng" },
+        { status: 409 },
+      );
+    }
     if (supportsRacekitSelection && !racekitShirtOptedOut && !shirtId) {
       return NextResponse.json(
         { error: "Vui lòng chọn size áo racekit" },
@@ -221,7 +256,7 @@ export async function POST(req: NextRequest) {
       shirtFee = isRacekitShirtIncluded ? 0 : shirt.price;
     }
 
-    const totalAmount = raceFee + shirtFee + optionalDonation;
+    const totalAmount = raceFee + shirtFee + packageFee;
     const isFreeRegistration = totalAmount <= 0;
     const bankAccountInfo = isFreeRegistration
       ? null
@@ -240,56 +275,81 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const newRegistration = await prisma.registration.create({
-      data: {
-        eventId: body.eventId,
-        distanceId: body.distanceId,
-        shirtId: body.shirtId || null,
+    const newRegistration = await prisma.$transaction(async (tx) => {
+      if (selectedSock) {
+        const reserved = await tx.eventSockOption.updateMany({
+          where: {
+            id: selectedSock.id,
+            eventId,
+            isAvailable: true,
+            ...(selectedSock.stockQuantity === null
+              ? {}
+              : { soldQuantity: { lt: selectedSock.stockQuantity } }),
+          },
+          data: { soldQuantity: { increment: 1 } },
+        });
 
-        fullName: body.fullName,
-        bibName: body.bibName || body.fullName,
-        email: body.email,
-        phone: body.phone,
-        dob: new Date(body.dob),
-        gender: body.gender,
-        idCard: body.idCard,
-        address: body.address || null,
-        city: body.city || null,
+        if (reserved.count !== 1) {
+          throw new Error("SOCK_OUT_OF_STOCK");
+        }
+      }
 
-        emergencyContactName: body.emergencyContactName || null,
-        emergencyContactPhone: body.emergencyContactPhone || null,
+      return tx.registration.create({
+        data: {
+          eventId: body.eventId,
+          distanceId: body.distanceId,
+          shirtId: body.shirtId || null,
 
-        healthDeclaration: body.healthDeclaration || false,
-        waiverAccepted: event.requireWaiver ? true : false,
-        waiverAcceptedAt: event.requireWaiver ? new Date() : null,
-        waiverVersion: event.requireWaiver
-          ? event.waiverVersion || "default"
-          : null,
-        bloodType: body.bloodType || null,
+          fullName: body.fullName,
+          bibName: body.bibName || body.fullName,
+          email: body.email,
+          phone: body.phone,
+          dob: new Date(body.dob),
+          gender: body.gender,
+          idCard: body.idCard,
+          address: body.address || null,
+          city: body.city || null,
 
-        shirtCategory: racekitShirtOptedOut ? null : body.shirtCategory || null,
-        shirtType: racekitShirtOptedOut ? null : body.shirtType || null,
-        shirtSize: racekitShirtOptedOut ? null : body.shirtSize || null,
-        finisherShirtSize: requiresAnyFinisherShirt
-          ? shouldCloneFinisherShirt
-            ? body.shirtSize
-            : body.finisherShirtSize
-          : null,
+          emergencyContactName: body.emergencyContactName || null,
+          emergencyContactPhone: body.emergencyContactPhone || null,
 
-        raceFee: raceFee,
-        shirtFee: shirtFee,
-        totalAmount: totalAmount,
-        paymentStatus: "PENDING",
-        registrationSource: "ONLINE",
+          healthDeclaration: body.healthDeclaration || false,
+          waiverAccepted: event.requireWaiver ? true : false,
+          waiverAcceptedAt: event.requireWaiver ? new Date() : null,
+          waiverVersion: event.requireWaiver
+            ? event.waiverVersion || "default"
+            : null,
+          bloodType: body.bloodType || null,
 
-        utmSource: body.utmSource || null,
-        confirmationToken: Math.random().toString(36).substring(7),
-      },
-      include: {
-        distance: true,
-        shirt: true,
-        event: true,
-      },
+          shirtCategory: racekitShirtOptedOut
+            ? null
+            : body.shirtCategory || null,
+          shirtType: racekitShirtOptedOut ? null : body.shirtType || null,
+          shirtSize: racekitShirtOptedOut ? null : body.shirtSize || null,
+          finisherShirtSize: requiresAnyFinisherShirt
+            ? shouldCloneFinisherShirt
+              ? body.shirtSize
+              : body.finisherShirtSize
+            : null,
+          registrationPackage: selectedPackage,
+          packageFee,
+          sockOptionId: selectedSock?.id ?? null,
+
+          raceFee: raceFee,
+          shirtFee: shirtFee,
+          totalAmount: totalAmount,
+          paymentStatus: "PENDING",
+          registrationSource: "ONLINE",
+
+          utmSource: body.utmSource || null,
+          confirmationToken: Math.random().toString(36).substring(7),
+        },
+        include: {
+          distance: true,
+          shirt: true,
+          event: true,
+        },
+      });
     });
 
     // Get decrypted bank account once so QR and manual transfer info match.
@@ -463,7 +523,9 @@ export async function POST(req: NextRequest) {
         });
       }
 
-      console.log("🎫 Free registration detected. Marking as PAID and generating BIB...");
+      console.log(
+        "🎫 Free registration detected. Marking as PAID and generating BIB...",
+      );
 
       const bibNumber = await generateBibNumberHybrid(
         registration.id,
@@ -529,7 +591,10 @@ export async function POST(req: NextRequest) {
           qrCode,
         });
       } catch (emailError: any) {
-        console.error("⚠️ Free registration confirmation email failed:", emailError);
+        console.error(
+          "⚠️ Free registration confirmation email failed:",
+          emailError,
+        );
 
         await prisma.emailLog.create({
           data: {
@@ -709,6 +774,12 @@ export async function POST(req: NextRequest) {
         : "Đăng ký thành công! Vui lòng kiểm tra email để biết hướng dẫn thanh toán.",
     });
   } catch (error) {
+    if (error instanceof Error && error.message === "SOCK_OUT_OF_STOCK") {
+      return NextResponse.json(
+        { error: "Loại tất đã hết hàng" },
+        { status: 409 },
+      );
+    }
     console.error("❌ Registration error:", error);
     return NextResponse.json(
       { error: "Đã có lỗi xảy ra khi xử lý đăng ký" },

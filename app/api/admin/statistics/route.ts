@@ -24,8 +24,12 @@ export async function GET(req: NextRequest) {
     const [totalRegistrations, paidRegistrations, pendingRegistrations] =
       await Promise.all([
         prisma.registration.count({ where: whereFilter }),
-        prisma.registration.count({ where: { ...whereFilter, paymentStatus: "PAID" } }),
-        prisma.registration.count({ where: { ...whereFilter, paymentStatus: "PENDING" } }),
+        prisma.registration.count({
+          where: { ...whereFilter, paymentStatus: "PAID" },
+        }),
+        prisma.registration.count({
+          where: { ...whereFilter, paymentStatus: "PENDING" },
+        }),
       ]);
 
     const [revenueResult, revenueByDistanceRaw, allDistanceRegistrations] =
@@ -81,19 +85,71 @@ export async function GET(req: NextRequest) {
 
     const totalRevenue = revenueResult._sum.totalAmount || 0;
 
+    const [packageGroups, sockGroups] = await Promise.all([
+      prisma.registration.groupBy({
+        by: ["registrationPackage"],
+        where: { ...whereFilter, paymentStatus: "PAID" },
+        _count: true,
+        _sum: { packageFee: true },
+      }),
+      prisma.registration.groupBy({
+        by: ["sockOptionId"],
+        where: {
+          ...whereFilter,
+          paymentStatus: "PAID",
+          registrationPackage: "FINISHER_SHIRT_SOCKS",
+          sockOptionId: { not: null },
+        },
+        _count: true,
+      }),
+    ]);
+    const sockOptionIds = sockGroups.flatMap((group) =>
+      group.sockOptionId ? [group.sockOptionId] : [],
+    );
+    const sockOptions =
+      sockOptionIds.length > 0
+        ? await prisma.eventSockOption.findMany({
+            where: { id: { in: sockOptionIds } },
+            select: { id: true, name: true, colorCode: true },
+          })
+        : [];
+    const sockOptionMap = new Map(
+      sockOptions.map((option) => [option.id, option]),
+    );
+    const packageStats = packageGroups.map((group) => ({
+      package: group.registrationPackage,
+      count: group._count,
+      revenue: group._sum.packageFee || 0,
+    }));
+    const sockStats = sockGroups.flatMap((group) => {
+      if (!group.sockOptionId) return [];
+      const option = sockOptionMap.get(group.sockOptionId);
+      return [
+        {
+          id: group.sockOptionId,
+          name: option?.name || "Không xác định",
+          colorCode: option?.colorCode || "#9ca3af",
+          count: group._count,
+        },
+      ];
+    });
+
     // --- BUILD DISTANCE METADATA (single query) ---
     const distanceIds = revenueByDistanceRaw.map((i: any) => i.distanceId);
     const allDistanceIds = [
       ...new Set(allDistanceRegistrations.map((r) => r.distanceId)),
     ];
-    const allDistanceIdsToFetch = [...new Set([...distanceIds, ...allDistanceIds])];
+    const allDistanceIdsToFetch = [
+      ...new Set([...distanceIds, ...allDistanceIds]),
+    ];
 
-    const distances = allDistanceIdsToFetch.length > 0
-      ? await prisma.distance.findMany({
-          where: { id: { in: allDistanceIdsToFetch } },
-          orderBy: { sortOrder: "asc" },
-        })
-      : [];
+    const distances =
+      allDistanceIdsToFetch.length > 0
+        ? await prisma.distance.findMany({
+            where: { id: { in: allDistanceIdsToFetch } },
+            orderBy: { sortOrder: "asc" },
+          })
+        : [];
 
     const distanceMap = new Map(distances.map((d) => [d.id, d]));
 
@@ -108,10 +164,14 @@ export async function GET(req: NextRequest) {
     const distanceDetails = distances
       .filter((d) => allDistanceIds.includes(d.id))
       .map((distance) => {
-        const regs = allDistanceRegistrations.filter((r) => r.distanceId === distance.id);
+        const regs = allDistanceRegistrations.filter(
+          (r) => r.distanceId === distance.id,
+        );
         const paid = regs.find((r) => r.paymentStatus === "PAID")?._count || 0;
-        const pending = regs.find((r) => r.paymentStatus === "PENDING")?._count || 0;
-        const failed = regs.find((r) => r.paymentStatus === "FAILED")?._count || 0;
+        const pending =
+          regs.find((r) => r.paymentStatus === "PENDING")?._count || 0;
+        const failed =
+          regs.find((r) => r.paymentStatus === "FAILED")?._count || 0;
         const total = paid + pending + failed;
         return {
           distanceId: distance.id,
@@ -224,14 +284,17 @@ export async function GET(req: NextRequest) {
     const shirtsByCategory: Record<string, number> = {};
     const shirtsBySize: Record<string, number> = {};
     shirtDetails.forEach((item) => {
-      shirtsByCategory[item.category] = (shirtsByCategory[item.category] || 0) + item.total;
+      shirtsByCategory[item.category] =
+        (shirtsByCategory[item.category] || 0) + item.total;
       shirtsBySize[item.size] = (shirtsBySize[item.size] || 0) + item.total;
     });
 
     const shirtsByStatus = {
       paid: ordersByStatus.find((s) => s.paymentStatus === "PAID")?._count || 0,
-      pending: ordersByStatus.find((s) => s.paymentStatus === "PENDING")?._count || 0,
-      failed: ordersByStatus.find((s) => s.paymentStatus === "FAILED")?._count || 0,
+      pending:
+        ordersByStatus.find((s) => s.paymentStatus === "PENDING")?._count || 0,
+      failed:
+        ordersByStatus.find((s) => s.paymentStatus === "FAILED")?._count || 0,
     };
 
     const shirtStats = {
@@ -246,7 +309,12 @@ export async function GET(req: NextRequest) {
     };
 
     // --- AGE GROUPS ---
-    const ageGroups: Record<string, number> = { "18-29": 0, "30-39": 0, "40-49": 0, "50+": 0 };
+    const ageGroups: Record<string, number> = {
+      "18-29": 0,
+      "30-39": 0,
+      "40-49": 0,
+      "50+": 0,
+    };
     const currentYear = now.getFullYear();
     registrantsDob.forEach((reg: any) => {
       if (!reg.dob) return;
@@ -273,9 +341,7 @@ export async function GET(req: NextRequest) {
     let emailStats: any[] = [];
     try {
       const emailWhereClause =
-        eventId && eventId !== "all"
-          ? { registration: { eventId } }
-          : {};
+        eventId && eventId !== "all" ? { registration: { eventId } } : {};
       const emailLogs = await prisma.emailLog.groupBy({
         by: ["emailType", "status"],
         where: emailWhereClause,
@@ -284,7 +350,13 @@ export async function GET(req: NextRequest) {
       const emailStatsByType = emailLogs.reduce((acc: any, log) => {
         const type = log.emailType;
         if (!acc[type]) {
-          acc[type] = { type: emailTypeLabel[type] || type, sent: 0, failed: 0, pending: 0, total: 0 };
+          acc[type] = {
+            type: emailTypeLabel[type] || type,
+            sent: 0,
+            failed: 0,
+            pending: 0,
+            total: 0,
+          };
         }
         const count = log._count.id;
         acc[type].total += count;
@@ -309,12 +381,14 @@ export async function GET(req: NextRequest) {
       shirtStats,
       ageGroups,
       emailStats,
+      packageStats,
+      sockStats,
     });
   } catch (error) {
     console.error("❌ Statistics API error:", error);
     return NextResponse.json(
       { error: "Failed to load statistics" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

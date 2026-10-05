@@ -388,8 +388,8 @@ export default function EventDetailPage() {
                 <CardContent className="space-y-3">
                   <div className="flex items-start gap-3">
                     <MapPin className="w-5 h-5 text-blue-600 mt-1" />
-                      <div>
-                        <div className="font-medium text-gray-900">Địa điểm</div>
+                    <div>
+                      <div className="font-medium text-gray-900">Địa điểm</div>
                       <div className="text-gray-600">
                         {event.racePackLocation}
                       </div>
@@ -399,7 +399,9 @@ export default function EventDetailPage() {
                     <div className="flex items-start gap-3">
                       <Calendar className="w-5 h-5 text-blue-600 mt-1" />
                       <div>
-                        <div className="font-medium text-gray-900">Thời gian</div>
+                        <div className="font-medium text-gray-900">
+                          Thời gian
+                        </div>
                         <div className="text-gray-600">
                           {event.racePackTime}
                         </div>
@@ -418,16 +420,26 @@ export default function EventDetailPage() {
               <CardContent className="pt-6 space-y-4">
                 <div className="text-center">
                   <div className="text-sm text-gray-600 mb-2">
-                    {event.enableOptionalFinisherDonation ? "Tham gia" : "Giá từ"}
+                    {event.enableOptionalFinisherDonation
+                      ? "Tham gia"
+                      : "Giá từ"}
                   </div>
                   <div className="text-4xl font-bold text-blue-600 mb-1">
                     {event.enableOptionalFinisherDonation
                       ? "Miễn phí"
-                      : formatCurrency(Math.min(...distances.map((d) => d.price)))}
+                      : formatCurrency(
+                          Math.min(...distances.map((d) => d.price)),
+                        )}
                   </div>
                   {event.enableOptionalFinisherDonation && (
-                    <div className="mb-4 text-sm font-medium text-orange-600">
-                      Áo finisher: ủng hộ từ {formatCurrency(event.minFinisherDonation)}
+                    <div className="mb-4 space-y-1 text-sm font-medium text-orange-600">
+                      <div>
+                        Áo finisher: {formatCurrency(event.finisherShirtPrice)}
+                      </div>
+                      <div>
+                        Áo finisher + tất:{" "}
+                        {formatCurrency(event.finisherShirtSockPrice)}
+                      </div>
                     </div>
                   )}
                   {/* CẬP NHẬT: Conditional Button */}
